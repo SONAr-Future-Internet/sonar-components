@@ -1,4 +1,4 @@
-package br.ufu.facom.mehar.sonar.servicebus;
+package br.ufu.facom.mehar.sonar.service.bus;
 
 /**
  * Hello world!

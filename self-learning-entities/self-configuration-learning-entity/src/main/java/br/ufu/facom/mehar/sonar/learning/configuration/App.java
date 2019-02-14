@@ -1,4 +1,4 @@
-package br.ufu.facom.mehar.sonar.ndca;
+package br.ufu.facom.mehar.sonar.learning.configuration;
 
 /**
  * Hello world!

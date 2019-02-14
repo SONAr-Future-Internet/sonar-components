@@ -1,4 +1,4 @@
-package br.ufu.facom.mehar.sonar.colectors.topology;
+package br.ufu.facom.mehar.sonar.collectors.topology;
 
 import junit.framework.Test;
 import junit.framework.TestCase;
