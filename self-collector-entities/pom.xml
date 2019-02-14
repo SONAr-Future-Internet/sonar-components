@@ -1,0 +1,31 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+        <groupId>br.ufu.facom.mehar</groupId>
+        <artifactId>sonar</artifactId>
+        <version>0.0.1-SNAPSHOT</version>
+  </parent>
+
+  <groupId>br.ufu.facom.mehar.sonar</groupId>
+  <artifactId>self-collector-entities</artifactId>
+  <version>0.0.1-SNAPSHOT</version>
+  <packaging>pom</packaging>
+  <name>Self-Collector Entities</name>
+  <url>http://sonar.facom.ufu.br</url>
+
+  <modules>
+    <module>topology-self-collector</module>
+    <module>metrics-self-collector</module>
+    <module>alarms-self-collector</module>
+    <module>samples-self-collector</module>
+  </modules>
+
+  <build>
+  </build>
+
+  <dependencies>
+    
+  </dependencies>
+</project>
