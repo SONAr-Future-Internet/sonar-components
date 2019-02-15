@@ -11,40 +11,59 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <dockerfile-maven-version>1.4.10</dockerfile-maven-version>
+    <docker.image.prefix>meharsonar</docker.image.prefix>
+    <docker.plugin.version>1.4.10</docker.plugin.version>
     <spring-boot-version>2.1.2.RELEASE</spring-boot-version>
   </properties>
 
-    <modules>
-        <module>self-organizing-entities</module>
-        <module>self-learning-entities</module>
-        <module>self-collector-entities</module>
-        <module>network-service-bus</module>
-        <module>network-event-manager</module>
-        <module>sonar-core</module>
-        <module>sonar-dashboard</module>
-    </modules>
+  <parent>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-parent</artifactId>
+    <version>2.1.2.RELEASE</version>
+  </parent>
+
+  <modules>
+    <module>self-organizing-entities</module>
+    <module>self-learning-entities</module>
+    <module>self-collector-entities</module>
+    <module>network-service-bus</module>
+    <module>network-event-manager</module>
+    <module>sonar-core</module>
+    <module>sonar-dashboard</module>
+  </modules>
 
   <build>
-	<pluginManagement>
-	    <plugins>
-	        <plugin>
-	            <groupId>org.apache.maven.plugins</groupId>
-	            <artifactId>maven-compiler-plugin</artifactId>
-	            <configuration>
-	                <source>1.7</source>
-	                <target>1.7</target>
-	            </configuration>
-	        </plugin>
-          <plugin>
-              <groupId>org.apache.maven.plugins</groupId>
-              <artifactId>maven-surefire-plugin</artifactId>
-              <configuration>
-                  <testFailureIgnore>true</testFailureIgnore>
-              </configuration>
-          </plugin>
+    <pluginManagement>
+      <plugins>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-compiler-plugin</artifactId>
+          <configuration>
+            <source>1.7</source>
+            <target>1.7</target>
+          </configuration>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-surefire-plugin</artifactId>
+          <configuration>
+            <testFailureIgnore>true</testFailureIgnore>
+          </configuration>
+        </plugin>
+        <plugin>
+          <groupId>com.spotify</groupId>
+          <artifactId>dockerfile-maven-plugin</artifactId>
+          <version>${docker.plugin.version}</version>
+          <configuration>
+            <repository>${docker.image.prefix}/${project.artifactId}</repository>
+            <contextDirectory>${docker.context.directory}</contextDirectory>
+            <buildArgs>
+              <artifact>${project.build.finalName}.${project.packaging}</artifact>
+            </buildArgs>
+          </configuration>
+      </plugin>
       </plugins>
-	</pluginManagement>
+    </pluginManagement>
   </build>
 
   <dependencies>
