@@ -17,9 +17,9 @@
 
 
   <modules>
-    <module>self-prediction-learning-entity</module>
-    <module>self-analysis-learning-entity</module>
-    <module>self-configuration-learning-entity</module>
+    <module>prediction-self-learning-entity</module>
+    <module>analysis-self-learning-entity</module>
+    <module>configuration-self-learning-entity</module>
   </modules>
 
 

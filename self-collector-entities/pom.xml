@@ -16,10 +16,10 @@
   <url>http://sonar.facom.ufu.br</url>
 
   <modules>
-    <module>topology-self-collector</module>
-    <module>metrics-self-collector</module>
-    <module>alarms-self-collector</module>
-    <module>samples-self-collector</module>
+    <module>topology-self-collector-entity</module>
+    <module>metrics-self-collector-entity</module>
+    <module>alarms-self-collector-entity</module>
+    <module>samples-self-collector-entity</module>
   </modules>
 
   <build>

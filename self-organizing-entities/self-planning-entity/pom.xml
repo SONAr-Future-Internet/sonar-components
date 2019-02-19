@@ -12,7 +12,7 @@
   <artifactId>self-planning-entity</artifactId>
   <version>0.0.1-SNAPSHOT</version>
   <packaging>jar</packaging>
-  <name>SME - Self-Planning Entity</name>
+  <name>SPE - Self-Planning Entity</name>
   <url>http://sonar.facom.ufu.br</url>
 
   <build>
