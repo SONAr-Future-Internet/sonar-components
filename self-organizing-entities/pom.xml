@@ -12,7 +12,7 @@
   <artifactId>self-organizing-entities</artifactId>
   <version>0.0.1-SNAPSHOT</version>
   <packaging>pom</packaging>
-  <name>Self-Organizing Entities</name>
+  <name>SOEs - Self-Organizing Entities</name>
   <url>http://sonar.facom.ufu.br</url>
 
   <modules>

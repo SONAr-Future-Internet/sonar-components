@@ -12,7 +12,7 @@
   <artifactId>self-collector-entities</artifactId>
   <version>0.0.1-SNAPSHOT</version>
   <packaging>pom</packaging>
-  <name>Self-Collector Entities</name>
+  <name>SCoEs - Self-Collector Entities</name>
   <url>http://sonar.facom.ufu.br</url>
 
   <modules>
@@ -20,6 +20,7 @@
     <module>metrics-self-collector-entity</module>
     <module>alarms-self-collector-entity</module>
     <module>samples-self-collector-entity</module>
+    <module>logs-self-collector-entity</module>
   </modules>
 
   <build>

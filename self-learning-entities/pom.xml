@@ -12,14 +12,16 @@
   <artifactId>self-learning-entities</artifactId>
   <version>0.0.1-SNAPSHOT</version>
   <packaging>pom</packaging>
-  <name>Self-Learning Entities</name>
+  <name>SLEs - Self-Learning Entities</name>
   <url>http://sonar.facom.ufu.br</url>
 
 
   <modules>
     <module>prediction-self-learning-entity</module>
-    <module>analysis-self-learning-entity</module>
-    <module>configuration-self-learning-entity</module>
+    <module>diagnosis-self-learning-entity</module>
+    <module>rating-self-learning-entity</module>
+    <module>tunning-self-learning-entity</module>
+    <module>intent-self-learning-entity</module>
   </modules>
 
 

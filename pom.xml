@@ -23,14 +23,44 @@
   </parent>
 
   <modules>
+    <module>core-libs</module>
     <module>self-organizing-entities</module>
     <module>self-learning-entities</module>
     <module>self-collector-entities</module>
-    <module>network-service-bus</module>
+    <module>sonar-service-bus</module>
+    <module>auto-boot-manager</module>
+    <module>control-plane-interceptor</module>
     <module>network-event-manager</module>
-    <module>sonar-core</module>
     <module>sonar-dashboard</module>
   </modules>
+
+  <repositories>
+    <repository>
+      <id>local-repo-facom-internal</id>
+      <name>Repositorio versionamento FACOM Interno</name>
+      <url>http://archiva.facom.ufu.br/archiva/repository/internal</url>
+    </repository>
+    <repository>
+      <id>local-repo-facom-external</id>
+      <name>Repositorio versionamento FACOM external</name>
+      <url>http://archiva.facom.ufu.br/archiva/repository/external/</url>
+    </repository>
+    <repository>
+      <id>local-repo-facom-snapshots</id>
+      <name>Repositorio versionamento FACOM Snapshots</name>
+      <url>http://archiva.facom.ufu.br/archiva/repository/snapshots</url>
+    </repository>
+    <!--<repository>
+      <id>opendaylight</id>
+      <name>opendaylight repository</name>
+      <url>https://nexus.opendaylight.org/content/repositories/opendaylight.release/</url>
+    </repository>
+    <repository>
+      <id>mavencentral</id>
+      <name>maven central repository</name>
+      <url>http://central.maven.org/maven2/</url>
+    </repository>-->
+  </repositories>
 
   <build>
     <pluginManagement>

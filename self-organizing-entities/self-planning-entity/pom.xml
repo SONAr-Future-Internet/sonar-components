@@ -8,11 +8,11 @@
         <version>0.0.1-SNAPSHOT</version>
   </parent>
 
-  <groupId>br.ufu.facom.mehar.sonar.organizing</groupId>
+  <groupId>br.ufu.facom.mehar.sonar.soe</groupId>
   <artifactId>self-planning-entity</artifactId>
   <version>0.0.1-SNAPSHOT</version>
   <packaging>jar</packaging>
-  <name>SPE - Self-Planning Entity</name>
+  <name>SPLE - Self-Planning Entity</name>
   <url>http://sonar.facom.ufu.br</url>
 
   <build>
