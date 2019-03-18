@@ -20,7 +20,6 @@
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
-				<version>${spring-boot-version}</version>
 				<configuration>
 					<mainClass>br.ufu.facom.mehar.sonar.dashboard.App</mainClass>
 					<executable>true</executable>
@@ -34,11 +33,10 @@
 	</build>
 	<dependencies>
 		<!--<dependency> <groupId>org.springframework.boot</groupId> <artifactId>spring-boot-starter</artifactId> 
-			<version>${spring-boot-version}</version> </dependency> -->
+			<version>${spring.version}</version> </dependency> -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-web</artifactId>
-			<version>${spring-boot-version}</version>
 		</dependency>
 	</dependencies>
 </project>

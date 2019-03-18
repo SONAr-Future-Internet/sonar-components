@@ -13,7 +13,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <docker.image.prefix>meharsonar</docker.image.prefix>
     <docker.plugin.version>1.4.10</docker.plugin.version>
-    <spring-boot-version>2.1.2.RELEASE</spring-boot-version>
+    <spring.boot.version>2.1.2.RELEASE</spring.boot.version>
   </properties>
 
   <parent>
@@ -28,9 +28,10 @@
     <module>self-learning-entities</module>
     <module>self-collector-entities</module>
     <module>sonar-service-bus</module>
-    <module>auto-boot-manager</module>
     <module>control-plane-interceptor</module>
+    <module>auto-boot-manager</module>
     <module>network-event-manager</module>
+    <module>containerized-infrastructure-manager</module>
     <module>sonar-dashboard</module>
   </modules>
 
@@ -76,7 +77,7 @@
         <plugin>
           <groupId>org.springframework.boot</groupId>
           <artifactId>spring-boot-maven-plugin</artifactId>
-          <version>${spring-boot-version}</version>
+          <version>${spring.boot.version}</version>
         </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
