@@ -3,12 +3,14 @@ package br.ufu.facom.mehar.sonar.cim.model;
 public class Container {
 	private String namespace = "";
 	private String imageName;
-	private String identification;
+	private String id;
 
 	private String inPort;
 	private String outPort;
 
 	private String status;
+	
+	private String server;
 
 	public String getInPort() {
 		return inPort;
@@ -34,12 +36,12 @@ public class Container {
 		this.status = status;
 	}
 
-	public String getIdentification() {
-		return identification;
+	public String getId() {
+		return id;
 	}
 
-	public void setIdentification(String identification) {
-		this.identification = identification;
+	public void setId(String id) {
+		this.id = id;
 	}
 
 	public String getNamespace() {
@@ -58,4 +60,11 @@ public class Container {
 		this.imageName = imageName;
 	}
 
+	public String getServer() {
+		return server;
+	}
+
+	public void setServer(String server) {
+		this.server = server;
+	}
 }
