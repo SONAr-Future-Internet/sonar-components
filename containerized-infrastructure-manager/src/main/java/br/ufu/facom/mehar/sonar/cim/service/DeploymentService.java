@@ -59,11 +59,17 @@ public class DeploymentService {
 							activate(server, namespace, image);
 						} else {
 							Registry.Image activeImage = activeNamespace.getImage(image.getId());
-							for (Registry.Container service : image.getContainers()) {
-
-								if (activeImage.getContainerById(service.getId()) == null) {
-									if (activeImage.getContainerByOutPort(service.getOutPort()) == null) {
-										activate(server, namespace, image, service);
+							
+							if(image.getContainers().isEmpty()) {
+								if(activeImage.getContainers().isEmpty()) {
+									activate(server, namespace, image);
+								}
+							}else {							
+								for (Registry.Container service : image.getContainers()) {
+									if (activeImage.getContainerById(service.getId()) == null) {
+										if (activeImage.getContainerByOutPort(service.getOutPort()) == null) {
+											activate(server, namespace, image, service);
+										}
 									}
 								}
 							}
@@ -90,8 +96,12 @@ public class DeploymentService {
 	}
 
 	private void activate(Registry.Server server, Registry.Namespace namespace, Registry.Image image) {
-		for (Registry.Container service : image.getContainers()) {
-			this.activate(server, namespace, image, service);
+		if(image.getContainers().isEmpty()) {
+			containerService.run(server.getId(), namespace.getId(), image.getId());
+		}else {
+			for (Registry.Container service : image.getContainers()) {
+				this.activate(server, namespace, image, service);
+			}
 		}
 	}
 
