@@ -25,15 +25,17 @@
   </build>
 
   <dependencies>
+  	<!-- Internal Dependencies -->
 	<dependency>
-	    <groupId>org.anarres.dhcp</groupId>
-	    <artifactId>dhcp-protocol</artifactId>
-	    <version>1.0.9</version>
+   		<groupId>br.ufu.facom.mehar.sonar.core</groupId>
+   		<artifactId>dhcp</artifactId>
+   		<version>${project.version}</version>
 	</dependency>
-	<dependency>
-   		<groupId>org.anarres.dhcp</groupId>
-   		<artifactId>dhcp-server-netty</artifactId>
-   		<version>1.0.9</version>
-	</dependency>
+	
+	<!-- Spring -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-web</artifactId>
+    </dependency>
   </dependencies>
 </project>
