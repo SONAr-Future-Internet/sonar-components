@@ -3,28 +3,20 @@
   <modelVersion>4.0.0</modelVersion>
 
   <parent>
-        <groupId>br.ufu.facom.mehar</groupId>
-        <artifactId>sonar</artifactId>
+        <groupId>br.ufu.facom.mehar.sonar</groupId>
+        <artifactId>sonar-core</artifactId>
         <version>0.0.1-SNAPSHOT</version>
   </parent>
 
-  <groupId>br.ufu.facom.mehar.sonar</groupId>
-  <artifactId>sonar-core</artifactId>
+  <groupId>br.ufu.facom.mehar.sonar.core</groupId>
+  <artifactId>dhcp</artifactId>
   <version>0.0.1-SNAPSHOT</version>
-  <packaging>pom</packaging>
-  <name>SONAr Core Libs</name>
+  <packaging>jar</packaging>
+  <name>Core - DHCP</name>
   <url>http://sonar.facom.ufu.br</url>
 
-
-  <modules>
-    <module>sonar-model</module>
-    <module>sonar-service-bus-client</module>
-    <module>dhcp</module>
-  </modules>
-
-
   <build>
-
+    
   </build>
 
   <dependencies>

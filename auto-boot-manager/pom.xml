@@ -25,6 +25,15 @@
   </build>
 
   <dependencies>
-    
+	<dependency>
+	    <groupId>org.anarres.dhcp</groupId>
+	    <artifactId>dhcp-protocol</artifactId>
+	    <version>1.0.9</version>
+	</dependency>
+	<dependency>
+   		<groupId>org.anarres.dhcp</groupId>
+   		<artifactId>dhcp-server-netty</artifactId>
+   		<version>1.0.9</version>
+	</dependency>
   </dependencies>
 </project>
