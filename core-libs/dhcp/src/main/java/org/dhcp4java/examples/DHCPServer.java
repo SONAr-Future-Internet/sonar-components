@@ -1,12 +1,10 @@
-package br.ufu.facom.mehar.sonar.boot.server;
-
+package org.dhcp4java.examples;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Enumeration;
 import java.util.HashMap;
@@ -19,48 +17,23 @@ import org.dhcp4java.DHCPOption;
 import org.dhcp4java.DHCPPacket;
 import org.dhcp4java.DHCPServerInitException;
 import org.dhcp4java.DHCPServlet;
-import org.jboss.logging.Logger;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.context.event.ApplicationReadyEvent;
-import org.springframework.context.event.EventListener;
-import org.springframework.stereotype.Component;
 
-import br.ufu.facom.mehar.sonar.boot.model.Device;
-import br.ufu.facom.mehar.sonar.boot.server.exception.IpPoolConversionException;
-import br.ufu.facom.mehar.sonar.boot.server.exception.IpPoolOverflowException;
-import br.ufu.facom.mehar.sonar.boot.service.DeviceService;
-
-@Component
 public class DHCPServer {
-	Logger logger = Logger.getLogger(DHCPServer.class);
-
-
-	@Value("${dhcp.bindAddress:0.0.0.0:67}")
-	private String dhcpBindAddress; 
+	private String dhcpBindAddress = "0.0.0.0:67"; 
+	private String serverThreads = "1";
+	private String leaseTime = "-1";
+	private String renewalTime = "-1";
+	private String poolFirstIp = "192.168.0.2";
+	private String poolLastIp = "192.168.0.254";
 	
-	@Value("${dhcp.serverThreads:1}")
-	private String serverThreads;
 	
-	@Value("${dhcp.leaseTime:-1}")
-	private String leaseTime;
+	public static void main(String[] args) {
+		new DHCPServer().run();
+	}
 	
-	@Value("${dhcp.renewalTime:-1}")
-	private String renewalTime;
-	
-	@Value("${dhcp.poolFirstIp:192.168.0.2}")
-	private String poolFirstIp;
-	
-	@Value("${dhcp.poolLastIp:192.168.0.254}")
-	private String poolLastIp;
-	
-	@Autowired
-	DeviceService deviceService;
-	
-	@EventListener(ApplicationReadyEvent.class)
 	public void run() {
 		try {
-			logger.info("Starting DHCP Server...");
+			System.out.println("Starting DHCP Server...");
 			
 			final InetAddress serverIdentifier = searchServerAddress();
 			
@@ -107,8 +80,8 @@ public class DHCPServer {
 
 				@Override
 				protected DHCPPacket doRequest(DHCPPacket request) {
-					logger.info("doRequest method invoked!");
-					logger.info(request.toString());
+					System.out.println("doRequest method invoked!");
+					System.out.println(request.toString());
 					
 					String macAddress = request.getChaddrAsHex();
 					InetAddress requestedAddress = request.getOptionAsInetAddr(DHCPConstants.DHO_DHCP_REQUESTED_ADDRESS);
@@ -137,28 +110,28 @@ public class DHCPServer {
 
 				@Override
 				protected DHCPPacket doInform(DHCPPacket request) {
-					logger.info("doInform method no implemented yet!");
-					logger.info(request.toString());
+					System.out.println("doInform method no implemented yet!");
+					System.out.println(request.toString());
 					return null;
 				}
 
 				@Override
 				protected DHCPPacket doDecline(DHCPPacket request) {
-					logger.info("doDecline method no implemented yet!");
-					logger.info(request.toString());
+					System.out.println("doDecline method no implemented yet!");
+					System.out.println(request.toString());
 					return null;
 				}
 
 				@Override
 				protected DHCPPacket doRelease(DHCPPacket request) {
-					logger.info("doRelease method no implemented yet!");
-					logger.info(request.toString());
+					System.out.println("doRelease method no implemented yet!");
+					System.out.println(request.toString());
 					return null;
 				}
 			}, dhcpProperties);
 			new Thread(server).start();
 		} catch (DHCPServerInitException e) {
-			logger.fatal("DHCP Server init failure", e);
+			System.err.println("DHCP Server init failure");
 		}
 	}
 
@@ -182,7 +155,7 @@ public class DHCPServer {
 				}
 			}
 		} catch (SocketException e) {
-			logger.fatal("Error while detecting Server IP Address...", e);
+			System.err.println("Error while detecting Server IP Address...");
 		}
 		return null;
 	}
@@ -237,7 +210,7 @@ public class DHCPServer {
 							currentip[3] = 0;
 							return convertIntArrayToInetAddress(currentip);
 						}else {
-							throw new IpPoolOverflowException();
+							throw new RuntimeException();
 						}
 					}
 				}
@@ -297,8 +270,8 @@ public class DHCPServer {
 			try {
 				return InetAddress.getByName(ipString);
 			} catch (UnknownHostException e) {
-				logger.fatal("Error converting String to InetAddress.",e);
-				throw new IpPoolConversionException("Error converting String with Mask to InetAddress.", e);
+				System.err.println("Error converting String to InetAddress.");
+				throw new RuntimeException("Error converting String with Mask to InetAddress. Value:"+ipString, e);
 			}
 		}
 
@@ -306,8 +279,8 @@ public class DHCPServer {
 			try {
 				return InetAddress.getByAddress(byteArray);
 			} catch (UnknownHostException e) {
-				logger.fatal("Error converting ByteArray to InetAddress.",e);
-				throw new IpPoolConversionException("Error converting ByteArray to InetAddress.", e);
+				System.err.println("Error converting ByteArray to InetAddress.");
+				throw new RuntimeException("Error converting ByteArray to InetAddress. Value:"+byteArray, e);
 			}
 		}
 

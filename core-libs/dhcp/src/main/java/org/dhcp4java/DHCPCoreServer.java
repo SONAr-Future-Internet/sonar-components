@@ -137,8 +137,6 @@ public class DHCPCoreServer implements Runnable {
             InputStream propFileStream = this.getClass().getResourceAsStream("/DHCPd.properties");
             if (propFileStream != null) {
             	this.properties.load(propFileStream);
-            } else {
-                logger.severe("Could not load /DHCPd.properties");
             }
 
             // now integrate provided properties
