@@ -1,4 +1,4 @@
-package br.ufu.facom.mehar.sonar.boot.server;
+package br.ufu.facom.mehar.sonar.boot.manager;
 
 import java.net.Inet4Address;
 import java.net.InetAddress;
@@ -27,6 +27,7 @@ import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 import br.ufu.facom.mehar.sonar.boot.model.Device;
+import br.ufu.facom.mehar.sonar.boot.model.Device.SourceType;
 import br.ufu.facom.mehar.sonar.boot.server.exception.IpPoolConversionException;
 import br.ufu.facom.mehar.sonar.boot.server.exception.IpPoolOverflowException;
 import br.ufu.facom.mehar.sonar.boot.service.DeviceService;
@@ -57,7 +58,6 @@ public class DHCPServer {
 	@Autowired
 	DeviceService deviceService;
 	
-	@EventListener(ApplicationReadyEvent.class)
 	public void run() {
 		try {
 			logger.info("Starting DHCP Server...");
@@ -72,15 +72,19 @@ public class DHCPServer {
 			final Integer renewalTime = Integer.parseInt(this.renewalTime);
 			
 			final IPPool pool = this.new IPPool();
+			
+			logger.info("  - server: "+serverIdentifier+" bind: "+this.dhcpBindAddress+".");
 
 			DHCPCoreServer server = DHCPCoreServer.initServer(new DHCPServlet() {
 				@Override
 				protected DHCPPacket doDiscover(DHCPPacket request) {
-					System.out.println("doDiscover method invoked!");
-					System.out.println(request.toString());
+					logger.debug("doDiscover method invoked!");
+					logger.debug(request.toString());
 					
 					String macAddress = request.getChaddrAsHex();
 					InetAddress offeredInetAddress = pool.getIP(macAddress);
+					
+					logger.info("Discover from "+macAddress+" offered:"+offeredInetAddress);
 					
 					DHCPPacket response = request.clone();
 					
@@ -107,11 +111,13 @@ public class DHCPServer {
 
 				@Override
 				protected DHCPPacket doRequest(DHCPPacket request) {
-					logger.info("doRequest method invoked!");
-					logger.info(request.toString());
+					logger.debug("doRequest method invoked!");
+					logger.debug(request.toString());
 					
 					String macAddress = request.getChaddrAsHex();
 					InetAddress requestedAddress = request.getOptionAsInetAddr(DHCPConstants.DHO_DHCP_REQUESTED_ADDRESS);
+					
+					logger.info("Request "+requestedAddress+" from "+macAddress);
 					
 					DHCPPacket response = request.clone();
 
@@ -131,6 +137,8 @@ public class DHCPServer {
 					options.add( DHCPOption.newOptionAsInetAddress(DHCPConstants.DHO_SUBNET_MASK,  pool.getMask()) );
 					
 					response.setOptions(options);
+					
+					deviceService.register(new Device(requestedAddress, macAddress, SourceType.DHCP));
 					
 					return response;
 				}
