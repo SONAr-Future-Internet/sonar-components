@@ -33,12 +33,16 @@ public class LldpDiscovery {
         target.setRetries(2);
         target.setTimeout(1500);
         target.setVersion(SnmpConstants.version2c);
-         
-        Map<String, String> result = doWalk("1.0.8802.1.1.2.1.4.1.1", target); // ifTable, mib-2 interfaces
- 
-        System.out.println(result);
         
-        for (Map.Entry<String, String> entry : result.entrySet()) {
+        //LLDP-MIB
+        Map<String, String> lldpInfo = doWalk("1.0.8802.1.1.2.1.4.1.1", target);
+        
+        //IP-MIB - ipNetToPhysicalTable (ARP)
+        Map<String, String> arpInfo = doWalk("1.0.8802.1.1.2.1.4.1.1", target);
+ 
+        System.out.println(arpInfo);
+        
+        for (Map.Entry<String, String> entry : arpInfo.entrySet()) {
             if (entry.getKey().startsWith(".1.3.6.1.2.1.2.2.1.2.")) {
                 System.out.println("ifDescr" + entry.getKey().replace(".1.3.6.1.2.1.2.2.1.2", "") + ": " + entry.getValue());
             }
