@@ -18,12 +18,26 @@
   <build>
     
   </build>
-
   <dependencies>
+	<!-- Internal Dependencies -->
+	<dependency>
+  	  <groupId>br.ufu.facom.mehar.sonar.core</groupId>
+  	  <artifactId>sonar-model</artifactId>
+  	  <version>${project.version}</version>
+	</dependency>
+	<dependency>
+  	  <groupId>br.ufu.facom.mehar.sonar.core</groupId>
+  	  <artifactId>sonar-utils</artifactId>
+  	  <version>${project.version}</version>
+	</dependency>
+
+    <!-- Spring -->
   	<dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-web</artifactId>
     </dependency>
+    
+    <!-- SNMP -->
     <dependency>
       <groupId>org.snmp4j</groupId>
       <artifactId>snmp4j</artifactId>
