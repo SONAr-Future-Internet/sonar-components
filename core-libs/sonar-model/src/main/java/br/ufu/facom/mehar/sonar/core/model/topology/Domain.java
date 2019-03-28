@@ -1,11 +1,12 @@
 package br.ufu.facom.mehar.sonar.core.model.topology;
 
 import java.util.Set;
+import java.util.UUID;
 
 // Network Partition abstraction 
 public class Domain {
 	// Primary Key
-	private Long idDomain;
+	private UUID idDomain;
 
 	// Name
 	private String name;
@@ -18,14 +19,14 @@ public class Domain {
 	private String ipRangeStart;
 	private String ipRangeFinish;
 	
-	// OneToMany Mapping [transient] (Domain -> Element)
+	// OneToMany (Domain -> Element)
 	private Set<Element> elementList;
 
-	public Long getIdDomain() {
+	public UUID getIdDomain() {
 		return idDomain;
 	}
 
-	public void setIdDomain(Long idDomain) {
+	public void setIdDomain(UUID idDomain) {
 		this.idDomain = idDomain;
 	}
 

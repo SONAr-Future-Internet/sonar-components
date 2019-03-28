@@ -6,24 +6,15 @@ import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 
-import org.dhcp4java.DHCPConstants;
-import org.dhcp4java.DHCPCoreServer;
-import org.dhcp4java.DHCPOption;
-import org.dhcp4java.DHCPPacket;
-import org.dhcp4java.DHCPServerInitException;
-import org.dhcp4java.DHCPServlet;
 import org.jboss.logging.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.context.event.ApplicationReadyEvent;
-import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 import br.ufu.facom.mehar.sonar.boot.model.Device;
@@ -31,6 +22,12 @@ import br.ufu.facom.mehar.sonar.boot.model.Device.SourceType;
 import br.ufu.facom.mehar.sonar.boot.server.exception.IpPoolConversionException;
 import br.ufu.facom.mehar.sonar.boot.server.exception.IpPoolOverflowException;
 import br.ufu.facom.mehar.sonar.boot.service.DeviceService;
+import br.ufu.facom.mehar.sonar.core.dhcp.DHCPConstants;
+import br.ufu.facom.mehar.sonar.core.dhcp.DHCPCoreServer;
+import br.ufu.facom.mehar.sonar.core.dhcp.DHCPOption;
+import br.ufu.facom.mehar.sonar.core.dhcp.DHCPPacket;
+import br.ufu.facom.mehar.sonar.core.dhcp.DHCPServerInitException;
+import br.ufu.facom.mehar.sonar.core.dhcp.DHCPServlet;
 
 @Component
 public class DHCPServer {

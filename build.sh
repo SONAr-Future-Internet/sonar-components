@@ -131,7 +131,6 @@ if [ -z "$target" ]
 	     echo -e "\t./build.sh abm|boot-manager|auto-boot-manager --------------------------------------- builds 'Auto-Boot-Manager' application."
 	     echo -e "\t./build.sh cpi|interceptor|control-plane-interceptor -------------------------------- builds 'Control-Plane-Interceptor' application."
 	     echo -e "\t./build.sh h|help ------------------------------------------------------------------- shows the information above."
-
   	fi
 
   	if [ ! -z "$buildAll" ]

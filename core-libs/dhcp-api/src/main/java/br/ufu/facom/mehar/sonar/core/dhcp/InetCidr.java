@@ -16,7 +16,7 @@
  *	License along with this library; if not, write to the Free Software
  *	Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
-package org.dhcp4java;
+package br.ufu.facom.mehar.sonar.core.dhcp;
 
 import java.io.Serializable;
 import java.net.Inet4Address;
@@ -26,7 +26,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.dhcp4java.Util;
+import br.ufu.facom.mehar.sonar.core.dhcp.Util;
 
 /**
  * @author Stephan Hadinger

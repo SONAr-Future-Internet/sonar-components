@@ -16,41 +16,40 @@
  *	License along with this library; if not, write to the Free Software
  *	Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
-package org.dhcp4java.examples;
+package br.ufu.facom.mehar.sonar.core.dhcp.impl;
 
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
+import static br.ufu.facom.mehar.sonar.core.dhcp.DHCPConstants.*;
 
-import org.dhcp4java.DHCPConstants;
-import org.dhcp4java.DHCPPacket;
+import java.util.Random;
 
-
+import br.ufu.facom.mehar.sonar.core.dhcp.DHCPPacket;
 
 /**
- * A simple DHCP sniffer.
+ * Example of DHCP Client (under construction).
  *
  * @author Stephan Hadinger
  * @version 1.00
  */
-public class DHCPSniffer {
-    private DHCPSniffer() {
+public class DHCPClient {
+    private static byte[] macAddress = {
+        (byte) 0x00, (byte) 0x01, (byte) 0x02, (byte) 0x03, (byte) 0x04, (byte) 0x05
+    };
+
+    private DHCPClient() {
     	throw new UnsupportedOperationException();
     }
 
     public static void main(String[] args) {
-        try {
-            DatagramSocket socket = new DatagramSocket(DHCPConstants.BOOTP_REQUEST_PORT);
+        // first send discover
+        DHCPPacket discover = new DHCPPacket();
 
-            while (true) {
-                DatagramPacket pac = new DatagramPacket(new byte[1500], 1500);
-                DHCPPacket     dhcp;
-
-                socket.receive(pac);
-                dhcp = DHCPPacket.getPacket(pac);
-                System.out.println(dhcp.toString());
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        discover.setOp(BOOTREQUEST);
+        discover.setHtype(HTYPE_ETHER);
+        discover.setHlen((byte) 6);
+        discover.setHops((byte) 0);
+        discover.setXid( (new Random()).nextInt() );
+        discover.setSecs((short) 0);
+        discover.setFlags((short) 0);
+        discover.setChaddr(macAddress);
     }
 }

@@ -1,4 +1,4 @@
-package org.dhcp4java.examples;
+package br.ufu.facom.mehar.sonar.core.dhcp.impl;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
@@ -11,12 +11,12 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 
-import org.dhcp4java.DHCPConstants;
-import org.dhcp4java.DHCPCoreServer;
-import org.dhcp4java.DHCPOption;
-import org.dhcp4java.DHCPPacket;
-import org.dhcp4java.DHCPServerInitException;
-import org.dhcp4java.DHCPServlet;
+import br.ufu.facom.mehar.sonar.core.dhcp.DHCPConstants;
+import br.ufu.facom.mehar.sonar.core.dhcp.DHCPCoreServer;
+import br.ufu.facom.mehar.sonar.core.dhcp.DHCPOption;
+import br.ufu.facom.mehar.sonar.core.dhcp.DHCPPacket;
+import br.ufu.facom.mehar.sonar.core.dhcp.DHCPServerInitException;
+import br.ufu.facom.mehar.sonar.core.dhcp.DHCPServlet;
 
 public class DHCPServer {
 	private String dhcpBindAddress = "0.0.0.0:67"; 

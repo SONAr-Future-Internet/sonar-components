@@ -16,14 +16,14 @@
  *	License along with this library; if not, write to the Free Software
  *	Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
-package org.dhcp4java.examples;
+package br.ufu.facom.mehar.sonar.core.dhcp.impl;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import org.dhcp4java.DHCPPacket;
-import org.dhcp4java.DHCPCoreServer;
-import org.dhcp4java.DHCPServerInitException;
-import org.dhcp4java.DHCPServlet;
+import br.ufu.facom.mehar.sonar.core.dhcp.DHCPCoreServer;
+import br.ufu.facom.mehar.sonar.core.dhcp.DHCPPacket;
+import br.ufu.facom.mehar.sonar.core.dhcp.DHCPServerInitException;
+import br.ufu.facom.mehar.sonar.core.dhcp.DHCPServlet;
 
 
 /**
@@ -39,7 +39,7 @@ public class DHCPSnifferServlet extends DHCPServlet {
     /**
      * Print received packet as INFO log, and do not respnd.
      * 
-     * @see org.dhcp4java.DHCPServlet#service(org.dhcp4java.DHCPPacket)
+     * @see br.ufu.facom.mehar.sonar.core.dhcp.DHCPServlet#service(br.ufu.facom.mehar.sonar.core.dhcp.DHCPPacket)
      */
     @Override
     public DHCPPacket service(DHCPPacket request) {

@@ -20,6 +20,32 @@
   </build>
 
   <dependencies>
-    
+  	<!-- Internal Dependencies -->
+	<dependency>
+  	  <groupId>br.ufu.facom.mehar.sonar.core</groupId>
+  	  <artifactId>sonar-model</artifactId>
+  	  <version>${project.version}</version>
+	</dependency>
+	
+  	<!-- Spring -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-web</artifactId>
+      <scope>compile</scope>
+    </dependency>
+  	
+  	<!-- Cassandra -->
+    <dependency>
+    	<groupId>com.datastax.cassandra</groupId>
+    	<artifactId>cassandra-driver-core</artifactId>
+    	<version>3.1.4</version>
+	</dependency>
+	
+	<!-- Commons Lang -->
+	<dependency>
+    	<groupId>org.apache.commons</groupId>
+    	<artifactId>commons-lang3</artifactId>
+    	<version>3.8.1</version>
+	</dependency>
   </dependencies>
 </project>

@@ -16,7 +16,9 @@
  *	License along with this library; if not, write to the Free Software
  *	Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
-package org.dhcp4java;
+package br.ufu.facom.mehar.sonar.core.dhcp;
+
+import static br.ufu.facom.mehar.sonar.core.dhcp.DHCPConstants.*;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -36,8 +38,6 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-
-import static org.dhcp4java.DHCPConstants.*;
 
 /**
  * The basic class for manipulating DHCP packets.
