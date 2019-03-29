@@ -1,15 +1,17 @@
 package br.ufu.facom.mehar.sonar.core.model.topology;
 
+import java.util.UUID;
+
 // Port abstraction
 public class Port {
 	// Primary Key
-	private Long idPort;
+	private UUID idPort;
 
 	// ManyToOne (Port -> Element)
-	private Long idElement;
+	private UUID idElement;
 
 	// OneToOne (Port -> Port)
-	private Long remoteIdPort;
+	private UUID remoteIdPort;
 
 
 	// Local Fields
@@ -28,37 +30,37 @@ public class Port {
 	private String mode; // Simplex, Half-Duplex e Full-Duplex
 	private Long bandwidth; // Speed configured / max bandwidth
 	
-	// ManyToOne [transient] [non-serializable] (Port -> Element)
-	private Element element;
-	// OneToOne [transient] [non-serializable] (Port -> Port)
-	private Port remotePort;
+	// ManyToOne (Port -> Element)
+	private transient Element element;
+	// OneToOne (Port -> Port)
+	private transient Port remotePort;
 
 	// Modes
 	public static final String MODE_SIMPLEX = "SIMPLEX";
 	public static final String MODE_HALF_DUPLEX = "HALF_DUPLEX";
 	public static final String MODE_FULL_DUPLEX = "FULL_DUPLEX";
 
-	public Long getIdPort() {
+	public UUID getIdPort() {
 		return idPort;
 	}
 
-	public void setIdPort(Long idPort) {
+	public void setIdPort(UUID idPort) {
 		this.idPort = idPort;
 	}
 
-	public Long getIdElement() {
+	public UUID getIdElement() {
 		return idElement;
 	}
 
-	public void setIdElement(Long idElement) {
+	public void setIdElement(UUID idElement) {
 		this.idElement = idElement;
 	}
 
-	public Long getRemoteIdPort() {
+	public UUID getRemoteIdPort() {
 		return remoteIdPort;
 	}
 
-	public void setRemoteIdPort(Long remoteIdPort) {
+	public void setRemoteIdPort(UUID remoteIdPort) {
 		this.remoteIdPort = remoteIdPort;
 	}
 

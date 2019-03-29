@@ -18,7 +18,7 @@
 
   <modules>
     <module>sonar-model</module>
-    <module>sonar-utils</module>
+    <module>sonar-util</module>
     <module>sonar-service-bus-client</module>
     <module>distributed-network-database-client</module>
     <module>dhcp-api</module>

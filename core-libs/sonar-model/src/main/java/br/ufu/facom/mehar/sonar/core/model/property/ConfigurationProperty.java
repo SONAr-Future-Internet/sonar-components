@@ -1,8 +1,17 @@
-package br.ufu.facom.mehar.sonar.core.model.parameter;
+package br.ufu.facom.mehar.sonar.core.model.property;
 
-public class Parameter {
+public class ConfigurationProperty {
+	private String group;
 	private String key;
 	private Object value;
+
+	public String getGroup() {
+		return group;
+	}
+
+	public void setGroup(String group) {
+		this.group = group;
+	}
 
 	public String getKey() {
 		return key;

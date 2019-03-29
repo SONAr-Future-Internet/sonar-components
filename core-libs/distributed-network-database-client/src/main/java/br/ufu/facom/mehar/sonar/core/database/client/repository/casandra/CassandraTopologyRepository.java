@@ -1,10 +1,19 @@
 package br.ufu.facom.mehar.sonar.core.database.client.repository.casandra;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 import org.springframework.stereotype.Repository;
 
+import com.datastax.driver.core.ResultSet;
+import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Session;
+import com.datastax.driver.core.querybuilder.Delete;
+import com.datastax.driver.core.querybuilder.Insert;
+import com.datastax.driver.core.querybuilder.QueryBuilder;
+import com.datastax.driver.core.querybuilder.Select;
+import com.datastax.driver.core.querybuilder.Truncate;
 import com.datastax.driver.core.utils.UUIDs;
 
 import br.ufu.facom.mehar.sonar.core.database.client.repository.TopologyRepository;
@@ -12,272 +21,460 @@ import br.ufu.facom.mehar.sonar.core.model.topology.Domain;
 import br.ufu.facom.mehar.sonar.core.model.topology.Element;
 import br.ufu.facom.mehar.sonar.core.model.topology.Port;
 
-
 @Repository
-public class CassandraTopologyRepository extends CassandraGenericRepository implements TopologyRepository{
+public class CassandraTopologyRepository extends CassandraGenericRepository implements TopologyRepository {
+	private static final String KEYSPACE = "topology";
+	private static final String DOMAIN_COLECTION = "domain";
+	private static final String ELEMENT_COLECTION = "element";
+	private static final String PORT_COLECTION = "port";
 
 	@Override
 	public Domain save(Domain domain) {
-		Session session = session();
+		Session session = session(KEYSPACE);
 		try {
-			domain.setIdDomain(UUIDs.timeBased());
-			
-			String cql = "INSERT INTO domain JSON '"+fromObject(domain)+"'";
-			
-		    session.execute(cql);
-		    
-		    return domain;
-		}finally {
+			if (domain.getIdDomain() == null) {
+				domain.setIdDomain(UUIDs.random());
+			}
+
+			Insert insertQuery = QueryBuilder.insertInto(KEYSPACE, DOMAIN_COLECTION)
+					.json(fromObject(domain, "elementList"));
+			session.execute(insertQuery);
+
+			return domain;
+		} finally {
 			close(session);
 		}
 	}
 
 	@Override
 	public Element save(Element element) {
-		// TODO Auto-generated method stub
-		return null;
+		Session session = session(KEYSPACE);
+		try {
+			if (element.getIdElement() == null) {
+				element.setIdElement(UUIDs.random());
+			}
+
+			Insert insertQuery = QueryBuilder.insertInto(KEYSPACE, ELEMENT_COLECTION)
+					.json(fromObject(element, "domain", "portList"));
+			session.execute(insertQuery);
+
+			return element;
+		} finally {
+			close(session);
+		}
 	}
+	
 
 	@Override
-	public Port save(Port element) {
-		// TODO Auto-generated method stub
-		return null;
+	public Port save(Port port) {
+		Session session = session(KEYSPACE);
+		try {
+			if (port.getIdPort() == null) {
+				port.setIdPort(UUIDs.random());
+			}
+
+			Insert insertQuery = QueryBuilder.insertInto(KEYSPACE, PORT_COLECTION)
+					.json(fromObject(port, "element", "remotePort"));
+			session.execute(insertQuery);
+
+			return port;
+		} finally {
+			close(session);
+		}
 	}
 
 	@Override
 	public Domain update(Domain domain) {
-		// TODO Auto-generated method stub
-		return null;
+		Session session = session(KEYSPACE);
+		try {
+			this.delete(domain);
+			return this.save(domain);
+		} finally {
+			close(session);
+		}
 	}
 
 	@Override
 	public Element update(Element element) {
-		// TODO Auto-generated method stub
-		return null;
+		Session session = session(KEYSPACE);
+		try {
+			this.delete(element);
+			return this.save(element);
+		} finally {
+			close(session);
+		}
 	}
 
 	@Override
-	public Port update(Port element) {
-		// TODO Auto-generated method stub
-		return null;
+	public Port update(Port port) {
+		Session session = session(KEYSPACE);
+		try {
+			this.delete(port);
+			return this.save(port);
+		} finally {
+			close(session);
+		}
 	}
 
 	@Override
 	public Boolean delete(Domain domain) {
-		// TODO Auto-generated method stub
-		return null;
+		Session session = session(KEYSPACE);
+		try {
+			Delete.Where delete = QueryBuilder.delete().from(KEYSPACE, DOMAIN_COLECTION)
+					.where(QueryBuilder.eq("idDomain", domain.getIdDomain()));
+			session.execute(delete);
+
+			return Boolean.TRUE;
+		} finally {
+			close(session);
+		}
 	}
 
 	@Override
 	public Boolean delete(Element element) {
-		// TODO Auto-generated method stub
-		return null;
+		Session session = session(KEYSPACE);
+		try {
+			Delete.Where delete = QueryBuilder.delete().from(KEYSPACE, ELEMENT_COLECTION)
+					.where(QueryBuilder.eq("idElement", element.getIdElement()));
+			session.execute(delete);
+
+			return Boolean.TRUE;
+		} finally {
+			close(session);
+		}
 	}
 
 	@Override
 	public Boolean delete(Port port) {
-		// TODO Auto-generated method stub
-		return null;
+		Session session = session(KEYSPACE);
+		try {
+			Delete.Where delete = QueryBuilder.delete().from(KEYSPACE, PORT_COLECTION)
+					.where(QueryBuilder.eq("idPort", port.getIdPort()));
+			
+			session.execute(delete);
+
+			return Boolean.TRUE;
+		} finally {
+			close(session);
+		}
+	}
+	
+	@Override
+	public Boolean deleteDomains() {
+		Session session = session(KEYSPACE);
+		try {
+			Truncate truncate = QueryBuilder.truncate(KEYSPACE, DOMAIN_COLECTION);
+			
+			session.execute(truncate);
+
+			return Boolean.TRUE;
+		} finally {
+			close(session);
+		}
+	}
+
+	@Override
+	public Boolean deleteElements() {
+		Session session = session(KEYSPACE);
+		try {
+			Truncate truncate = QueryBuilder.truncate(KEYSPACE, ELEMENT_COLECTION);
+			
+			session.execute(truncate);
+
+			return Boolean.TRUE;
+		} finally {
+			close(session);
+		}
+	}
+	
+	@Override
+	public Boolean deletePorts() {
+		Session session = session(KEYSPACE);
+		try {
+			Truncate truncate = QueryBuilder.truncate(KEYSPACE, PORT_COLECTION);
+			
+			session.execute(truncate);
+
+			return Boolean.TRUE;
+		} finally {
+			close(session);
+		}
+	}
+	
+	@Override
+	public Boolean deleteDomainById(UUID idDomain) {
+		Session session = session(KEYSPACE);
+		try {
+			Delete.Where delete = QueryBuilder.delete().from(KEYSPACE, DOMAIN_COLECTION)
+					.where(QueryBuilder.eq("idDomain", idDomain));
+			
+			session.execute(delete);
+
+			return Boolean.TRUE;
+		} finally {
+			close(session);
+		}
+	}
+
+	@Override
+	public Boolean deleteElementById(UUID idElement) {
+		Session session = session(KEYSPACE);
+		try {
+			Delete.Where delete = QueryBuilder.delete().from(KEYSPACE, ELEMENT_COLECTION)
+					.where(QueryBuilder.eq("idElement", idElement));
+			
+			session.execute(delete);
+
+			return Boolean.TRUE;
+		} finally {
+			close(session);
+		}
+	}
+
+	@Override
+	public Boolean deletePortById(UUID idPort) {
+		Session session = session(KEYSPACE);
+		try {
+			Delete.Where delete = QueryBuilder.delete().from(KEYSPACE, PORT_COLECTION)
+					.where(QueryBuilder.eq("idPort", idPort));
+			
+			session.execute(delete);
+
+			return Boolean.TRUE;
+		} finally {
+			close(session);
+		}
+	}
+
+	@Override
+	public Boolean deleteElementByIdDomain(UUID idDomain) {
+		Session session = session(KEYSPACE);
+		try {
+			Delete.Where delete = QueryBuilder.delete().from(KEYSPACE, ELEMENT_COLECTION)
+					.where(QueryBuilder.eq("idDomain", idDomain));
+			
+			session.execute(delete);
+
+			return Boolean.TRUE;
+		} finally {
+			close(session);
+		}
+	}
+
+	@Override
+	public Boolean deletePortByIdElement(UUID idElement) {
+		Session session = session(KEYSPACE);
+		try {
+			Delete.Where delete = QueryBuilder.delete().from(KEYSPACE, PORT_COLECTION)
+					.where(QueryBuilder.eq("idElement", idElement));
+			
+			session.execute(delete);
+
+			return Boolean.TRUE;
+		} finally {
+			close(session);
+		}
+	}
+
+	@Override
+	public List<Domain> getDomains() {
+		Session session = session(KEYSPACE);
+		try {
+			Select select = QueryBuilder.select().json().from(KEYSPACE, DOMAIN_COLECTION);
+			ResultSet rs = session.execute(select);
+			
+			List<Domain> result = new ArrayList<Domain>();
+			for(Row r : rs.all()) {
+				result.add(toObject(r.getString(0), Domain.class));
+			}
+			
+			return result;
+		} finally {
+			close(session);
+		}
 	}
 
 	@Override
 	public Domain getDomainById(Domain idDomain) {
-		// TODO Auto-generated method stub
-		return null;
+		Session session = session(KEYSPACE);
+		try {
+			Select.Where select = QueryBuilder.select().json().from(KEYSPACE, DOMAIN_COLECTION)
+					.where(QueryBuilder.eq("idDomain", idDomain));;
+			ResultSet rs = session.execute(select);
+			
+			for(Row r : rs.all()) {
+				return(toObject(r.getString(0), Domain.class));
+			}
+			
+			return null;
+		} finally {
+			close(session);
+		}
 	}
 
 	@Override
-	public Domain getDomainByIPAddress(String ip) {
-		// TODO Auto-generated method stub
-		return null;
+	public List<Element> getElements() {
+		Session session = session(KEYSPACE);
+		try {
+			Select select = QueryBuilder.select().json().from(KEYSPACE, ELEMENT_COLECTION);
+			ResultSet rs = session.execute(select);
+			
+			List<Element> result = new ArrayList<Element>();
+			for(Row r : rs.all()) {
+				result.add(toObject(r.getString(0), Element.class));
+			}
+			
+			return result;
+		} finally {
+			close(session);
+		}
 	}
 
 	@Override
-	public Element getElementById(Long idElement) {
-		// TODO Auto-generated method stub
-		return null;
+	public List<Element> getElementsByIdDomain(UUID idDomain) {
+		Session session = session(KEYSPACE);
+		try {
+			Select.Where select = QueryBuilder.select().json().from(KEYSPACE, ELEMENT_COLECTION)
+					.where(QueryBuilder.eq("idDomain", idDomain));;
+			ResultSet rs = session.execute(select);
+			
+			List<Element> result = new ArrayList<Element>();
+			for(Row r : rs.all()) {
+				result.add(toObject(r.getString(0), Element.class));
+			}
+			
+			return result;
+		} finally {
+			close(session);
+		}
 	}
 
 	@Override
-	public Element getElementByIPAddress(String address) {
-		// TODO Auto-generated method stub
-		return null;
+	public Element getElementById(UUID idElement) {
+		Session session = session(KEYSPACE);
+		try {
+			Select.Where select = QueryBuilder.select().json().from(KEYSPACE, ELEMENT_COLECTION)
+					.where(QueryBuilder.eq("idElement", idElement));;
+			ResultSet rs = session.execute(select);
+			
+			for(Row r : rs.all()) {
+				return(toObject(r.getString(0), Element.class));
+			}
+			
+			return null;
+		} finally {
+			close(session);
+		}
 	}
 
 	@Override
-	public Element getElementByHostname(String address) {
-		// TODO Auto-generated method stub
-		return null;
+	public List<Element> getElementByIPAddress(String address) {
+		Session session = session(KEYSPACE);
+		try {
+			Select.Where select = QueryBuilder.select().json().from(KEYSPACE, ELEMENT_COLECTION)
+					.where(QueryBuilder.in("managementIPAddressList", address));;
+			ResultSet rs = session.execute(select);
+			
+			List<Element> result = new ArrayList<Element>();
+			for(Row r : rs.all()) {
+				result.add(toObject(r.getString(0), Element.class));
+			}
+			
+			return result;
+		} finally {
+			close(session);
+		}
 	}
 
 	@Override
-	public Element getElementByPortMacAddress(String macAddress) {
-		// TODO Auto-generated method stub
-		return null;
+	public List<Element> getElementByHostname(String name) {
+		Session session = session(KEYSPACE);
+		try {
+			Select.Where select = QueryBuilder.select().json().from(KEYSPACE, ELEMENT_COLECTION)
+					.where(QueryBuilder.in("name", name));;
+			ResultSet rs = session.execute(select);
+			
+			List<Element> result = new ArrayList<Element>();
+			for(Row r : rs.all()) {
+				result.add(toObject(r.getString(0), Element.class));
+			}
+			
+			return result;
+		} finally {
+			close(session);
+		}
 	}
 
 	@Override
-	public Port getPortById(Long idPort) {
-		// TODO Auto-generated method stub
-		return null;
+	public List<Port> getPorts() {
+		Session session = session(KEYSPACE);
+		try {
+			Select select = QueryBuilder.select().json().from(KEYSPACE, PORT_COLECTION);
+			ResultSet rs = session.execute(select);
+			
+			List<Port> result = new ArrayList<Port>();
+			for(Row r : rs.all()) {
+				result.add(toObject(r.getString(0), Port.class));
+			}
+			
+			return result;
+		} finally {
+			close(session);
+		}
+	}
+
+	@Override
+	public List<Port> getPortsByIdElement(UUID idElement) {
+		Session session = session(KEYSPACE);
+		try {
+			Select.Where select = QueryBuilder.select().json().from(KEYSPACE, PORT_COLECTION)
+					.where(QueryBuilder.eq("idElement", idElement));;
+			ResultSet rs = session.execute(select);
+			
+			List<Port> result = new ArrayList<Port>();
+			for(Row r : rs.all()) {
+				result.add(toObject(r.getString(0), Port.class));
+			}
+			
+			return result;
+		} finally {
+			close(session);
+		}
+	}
+
+	@Override
+	public Port getPortById(UUID idPort) {
+		Session session = session(KEYSPACE);
+		try {
+			Select.Where select = QueryBuilder.select().json().from(KEYSPACE, PORT_COLECTION)
+					.where(QueryBuilder.eq("idPort", idPort));;
+			ResultSet rs = session.execute(select);
+			
+			for(Row r : rs.all()) {
+				return(toObject(r.getString(0), Port.class));
+			}
+			
+			return null;
+		} finally {
+			close(session);
+		}
 	}
 
 	@Override
 	public Port getPortByMacAddress(String macAddress) {
-		// TODO Auto-generated method stub
-		return null;
+		Session session = session(KEYSPACE);
+		try {
+			Select.Where select = QueryBuilder.select().json().from(KEYSPACE, PORT_COLECTION)
+					.where(QueryBuilder.eq("macAddress", macAddress));;
+			ResultSet rs = session.execute(select);
+			
+			for(Row r : rs.all()) {
+				return(toObject(r.getString(0), Port.class));
+			}
+			
+			return null;
+		} finally {
+			close(session);
+		}
 	}
-
-	@Override
-	public Port getByHostnameAndIfId(String hostname, String ifId) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public Port getByIpAddressAndIfId(String ip, String ifId) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public List<Port> getPortByElement(Element element) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public List<Port> getPortByIdElement(Long idElement) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-//
-//	@Override
-//	public Domain save(Domain domain) {
-//		Session session = session();
-//		
-//		// TODO Auto-generated method stub
-//		return null;
-//	}
-//
-//	@Override
-//	public Element save(Element element) {
-//		// TODO Auto-generated method stub
-//		return null;
-//	}
-//
-//	@Override
-//	public Port save(Port element) {
-//		// TODO Auto-generated method stub
-//		return null;
-//	}
-//
-//	@Override
-//	public Domain update(Domain domain) {
-//		// TODO Auto-generated method stub
-//		return null;
-//	}
-//
-//	@Override
-//	public Element update(Element element) {
-//		// TODO Auto-generated method stub
-//		return null;
-//	}
-//
-//	@Override
-//	public Port update(Port element) {
-//		// TODO Auto-generated method stub
-//		return null;
-//	}
-//
-//	@Override
-//	public Boolean delete(Domain domain) {
-//		// TODO Auto-generated method stub
-//		return null;
-//	}
-//
-//	@Override
-//	public Boolean delete(Element element) {
-//		// TODO Auto-generated method stub
-//		return null;
-//	}
-//
-//	@Override
-//	public Boolean delete(Port port) {
-//		// TODO Auto-generated method stub
-//		return null;
-//	}
-//
-//	@Override
-//	public Domain getDomainById(Domain idDomain) {
-//		// TODO Auto-generated method stub
-//		return null;
-//	}
-//
-//	@Override
-//	public Domain getDomainByIPAddress(String ip) {
-//		// TODO Auto-generated method stub
-//		return null;
-//	}
-//
-//	@Override
-//	public Element getElementById(Long idElement) {
-//		// TODO Auto-generated method stub
-//		return null;
-//	}
-//
-//	@Override
-//	public Element getElementByIPAddress(String address) {
-//		// TODO Auto-generated method stub
-//		return null;
-//	}
-//
-//	@Override
-//	public Element getElementByHostname(String address) {
-//		// TODO Auto-generated method stub
-//		return null;
-//	}
-//
-//	@Override
-//	public Element getElementByPortMacAddress(String macAddress) {
-//		// TODO Auto-generated method stub
-//		return null;
-//	}
-//
-//	@Override
-//	public Port getPortById(Long idPort) {
-//		// TODO Auto-generated method stub
-//		return null;
-//	}
-//
-//	@Override
-//	public Port getPortByMacAddress(String macAddress) {
-//		// TODO Auto-generated method stub
-//		return null;
-//	}
-//
-//	@Override
-//	public Port getByHostnameAndIfId(String hostname, String ifId) {
-//		// TODO Auto-generated method stub
-//		return null;
-//	}
-//
-//	@Override
-//	public Port getByIpAddressAndIfId(String ip, String ifId) {
-//		// TODO Auto-generated method stub
-//		return null;
-//	}
-//
-//	@Override
-//	public List<Port> getPortByElement(Element element) {
-//		// TODO Auto-generated method stub
-//		return null;
-//	}
-//
-//	@Override
-//	public List<Port> getPortByIdElement(Long idElement) {
-//		// TODO Auto-generated method stub
-//		return null;
-//	}
-
 }

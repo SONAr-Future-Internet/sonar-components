@@ -3,6 +3,8 @@ package br.ufu.facom.mehar.sonar.core.util;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 
+import org.apache.commons.net.util.SubnetUtils;
+
 import br.ufu.facom.mehar.sonar.core.util.exception.IPConversionException;
 import br.ufu.facom.mehar.sonar.core.util.exception.IPOverflowException;
 
@@ -101,6 +103,20 @@ public class IPUtils {
 		}
 		
 		return ip;
+	}
+
+	public static String calculateNetworkAddress(String ip, String networkMask) {
+		SubnetUtils utils = new SubnetUtils(ip, networkMask);
+		return utils.getInfo().getAddress();
+	}
+	
+	public static Boolean isInNetwork(String ip, String address, String networkMask) {
+		SubnetUtils utils = new SubnetUtils(address, networkMask);
+		return utils.getInfo().isInRange(ip) || utils.getInfo().getBroadcastAddress().equals(ip) ||  utils.getInfo().getAddress().equals(ip);
+	}
+	
+	public static Boolean isInRange(String ip, String firstIp, String lastIp) {
+		return (compare(ip, firstIp) >= 0 && compare(ip, lastIp) <= 0);
 	}
 
 }

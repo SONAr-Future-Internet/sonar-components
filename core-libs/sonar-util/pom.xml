@@ -9,7 +9,7 @@
   </parent>
 
   <groupId>br.ufu.facom.mehar.sonar.core</groupId>
-  <artifactId>sonar-utils</artifactId>
+  <artifactId>sonar-util</artifactId>
   <version>0.0.1-SNAPSHOT</version>
   <packaging>jar</packaging>
   <name>Core - SONAr Utils</name>
@@ -20,6 +20,11 @@
   </build>
 
   <dependencies>
-    
+    <!-- Network Utils -->
+	<dependency>
+	    <groupId>commons-net</groupId>
+	    <artifactId>commons-net</artifactId>
+	    <version>3.6</version>
+	</dependency>
   </dependencies>
 </project>

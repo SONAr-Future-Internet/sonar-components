@@ -2,20 +2,22 @@ package br.ufu.facom.mehar.sonar.core.model.topology;
 
 import java.util.Date;
 import java.util.Set;
+import java.util.UUID;
 
 // Generic Element abstraction (types: Device, Host, Server, Entity)
 public class Element {
 	// Primary Key
-	private Long idElement;
+	private UUID idElement;
 
 	// ManyToOne (Element -> Domain)
-	private Long idDomain;
-
-	// Type of Element
-	private String typeElement;
+	private UUID idDomain;
 
 	// Name / Hostname
 	private Long name;
+	
+	// Type of Element
+	private String typeElement;
+
 
 	// Management IPs
 	private Set<String> managementIPAddressList;
@@ -27,19 +29,20 @@ public class Element {
 	private String lastDicoveredSource; // from?
 
 	// Atributes
-	private Long memory; // ram memory
-	private Long cores; // processor cores
+	private Integer memory; // ram memory
+	private Integer cores; // processor cores
 	private Double clock; // processor clock
 	private Long disk; // disk size
-	private String cost; // generic cost per second
-	private String energy; // energy usage per second
+	private Double cost; // generic cost per second
+	private Double energy; // energy usage per second
 
-	// OneToMany Mapping [transient] (Element -> Ports)
+	// ManyToOne (Element -> Domain)
+	private transient Domain domain;
+	
+	// OneToMany Mapping (Element -> Ports)
 	private Set<Port> portList;
-	// ManyToOne [transient] [non-serializable] (Element -> Domain)
-	private Domain domain;
-
-	// Types
+	
+	// Types Enumeration as Constants
 	public static final String TYPE_DEVICE = "DEVICE";
 	public static final String TYPE_HOST = "HOST";
 	public static final String TYPE_ENTITY = "ENTITY";
@@ -49,19 +52,19 @@ public class Element {
 	public static final String DISCOVERY_SNMP_LLDP = "SNMP_LLDP";
 	public static final String DISCOVERY_SDN_CONTROLER = "SDN_CONTROLLER";
 
-	public Long getIdElement() {
+	public UUID getIdElement() {
 		return idElement;
 	}
 
-	public void setIdElement(Long idElement) {
+	public void setIdElement(UUID idElement) {
 		this.idElement = idElement;
 	}
 
-	public Long getIdDomain() {
+	public UUID getIdDomain() {
 		return idDomain;
 	}
 
-	public void setIdDomain(Long idDomain) {
+	public void setIdDomain(UUID idDomain) {
 		this.idDomain = idDomain;
 	}
 
@@ -121,21 +124,7 @@ public class Element {
 		this.lastDicoveredSource = lastDicoveredSource;
 	}
 
-	public Long getMemory() {
-		return memory;
-	}
-
-	public void setMemory(Long memory) {
-		this.memory = memory;
-	}
-
-	public Long getCores() {
-		return cores;
-	}
-
-	public void setCores(Long cores) {
-		this.cores = cores;
-	}
+	
 
 	public Double getClock() {
 		return clock;
@@ -153,19 +142,35 @@ public class Element {
 		this.disk = disk;
 	}
 
-	public String getCost() {
+	public Integer getMemory() {
+		return memory;
+	}
+
+	public void setMemory(Integer memory) {
+		this.memory = memory;
+	}
+
+	public Integer getCores() {
+		return cores;
+	}
+
+	public void setCores(Integer cores) {
+		this.cores = cores;
+	}
+
+	public Double getCost() {
 		return cost;
 	}
 
-	public void setCost(String cost) {
+	public void setCost(Double cost) {
 		this.cost = cost;
 	}
 
-	public String getEnergy() {
+	public Double getEnergy() {
 		return energy;
 	}
 
-	public void setEnergy(String energy) {
+	public void setEnergy(Double energy) {
 		this.energy = energy;
 	}
 
