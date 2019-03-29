@@ -1,12 +1,14 @@
 package br.ufu.facom.mehar.sonar.collectors.metrics.model;
 
+import java.io.Serializable;
 import java.util.List;
 
-public class Device {
+public class Device implements Serializable {
 
+	private static final long serialVersionUID = 1L;
 	private String device;
 	private List<Port> ports;
-
+	
 	public String getDevice() {
 		return device;
 	}

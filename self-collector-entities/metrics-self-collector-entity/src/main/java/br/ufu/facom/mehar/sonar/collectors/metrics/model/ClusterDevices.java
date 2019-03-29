@@ -3,24 +3,24 @@ package br.ufu.facom.mehar.sonar.collectors.metrics.model;
 import java.io.Serializable;
 import java.util.List;
 
-public class Statistics implements Serializable {
+public class ClusterDevices implements Serializable{
 
 	private static final long serialVersionUID = 1L;
-	private List<Device> statistics;
-	
-	public List<Device> getStatistics() {
-		return statistics;
+	private List<String> devices;
+
+	public List<String> getDevices() {
+		return devices;
 	}
 
-	public void setStatistics(List<Device> statistics) {
-		this.statistics = statistics;
+	public void setDevices(List<String> devices) {
+		this.devices = devices;
 	}
 	
 	@Override
 	public String toString() {
 		StringBuilder sb = new StringBuilder();
-		sb.append("{statistics: ");
-		sb.append(statistics);
+		sb.append("{devices: ");
+		sb.append(devices);
 		sb.append("}");
 		return sb.toString();
 	}
