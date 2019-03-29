@@ -1,7 +1,10 @@
 package br.ufu.facom.mehar.sonar.collectors.metrics.model;
 
-public class Port {
+import java.io.Serializable;
 
+public class Port implements Serializable {
+
+	private static final long serialVersionUID = 1L;
 	private int port;
 	private long packetsReceived;
 	private long packetsSent;
@@ -12,7 +15,7 @@ public class Port {
 	private long packetsRxErrors;
 	private long packetsTxErrors;
 	private long durationSec;
-
+	
 	public int getPort() {
 		return port;
 	}
