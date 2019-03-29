@@ -4,44 +4,48 @@
 
   <parent>
         <groupId>br.ufu.facom.mehar.sonar</groupId>
-        <artifactId>self-collector-entities</artifactId>
+        <artifactId>sonar-core</artifactId>
         <version>0.0.1-SNAPSHOT</version>
   </parent>
 
-  <groupId>br.ufu.facom.mehar.sonar.collectors</groupId>
-  <artifactId>topology-self-collector-entity</artifactId>
+  <groupId>br.ufu.facom.mehar.sonar.core</groupId>
+  <artifactId>distributed-network-database-client</artifactId>
   <version>0.0.1-SNAPSHOT</version>
   <packaging>jar</packaging>
-  <name>TSCoE - Topology Self-Collector Entity</name>
+  <name>Core - Distributed Network Database Client</name>
   <url>http://sonar.facom.ufu.br</url>
 
   <build>
     
   </build>
+
   <dependencies>
-	<!-- Internal Dependencies -->
+  	<!-- Internal Dependencies -->
 	<dependency>
   	  <groupId>br.ufu.facom.mehar.sonar.core</groupId>
   	  <artifactId>sonar-model</artifactId>
   	  <version>${project.version}</version>
 	</dependency>
-	<dependency>
-  	  <groupId>br.ufu.facom.mehar.sonar.core</groupId>
-  	  <artifactId>sonar-utils</artifactId>
-  	  <version>${project.version}</version>
-	</dependency>
-
-    <!-- Spring -->
-  	<dependency>
+	
+  	<!-- Spring -->
+    <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-web</artifactId>
+      <scope>compile</scope>
     </dependency>
-    
-    <!-- SNMP -->
+  	
+  	<!-- Cassandra -->
     <dependency>
-      <groupId>org.snmp4j</groupId>
-      <artifactId>snmp4j</artifactId>
-      <version>2.7.0</version>
+    	<groupId>com.datastax.cassandra</groupId>
+    	<artifactId>cassandra-driver-core</artifactId>
+    	<version>3.1.4</version>
+	</dependency>
+	
+	<!-- Commons Lang -->
+	<dependency>
+    	<groupId>org.apache.commons</groupId>
+    	<artifactId>commons-lang3</artifactId>
+    	<version>3.8.1</version>
 	</dependency>
   </dependencies>
 </project>

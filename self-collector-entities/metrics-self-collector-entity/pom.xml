@@ -16,6 +16,14 @@
 	<url>http://sonar.facom.ufu.br</url>
 
 	<dependencies>
+		<!-- Internal Dependencies -->
+		<dependency>
+	  	  <groupId>br.ufu.facom.mehar.sonar.core</groupId>
+	  	  <artifactId>sonar-model</artifactId>
+	  	  <version>${project.version}</version>
+		</dependency>
+		
+		<!-- Spring Dependencies -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter</artifactId>
@@ -39,6 +47,8 @@
 			<artifactId>spring-boot-starter-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+		
+		<!-- Client -->
 		<dependency>
 			<groupId>org.apache.httpcomponents</groupId>
 			<artifactId>httpclient</artifactId>

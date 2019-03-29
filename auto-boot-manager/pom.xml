@@ -28,7 +28,7 @@
   	<!-- Internal Dependencies -->
 	<dependency>
    		<groupId>br.ufu.facom.mehar.sonar.core</groupId>
-   		<artifactId>dhcp</artifactId>
+   		<artifactId>dhcp-api</artifactId>
    		<version>${project.version}</version>
 	</dependency>
 	
