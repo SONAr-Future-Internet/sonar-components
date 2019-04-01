@@ -9,26 +9,24 @@
   </parent>
 
   <groupId>br.ufu.facom.mehar.sonar</groupId>
-  <artifactId>auto-boot-manager</artifactId>
+  <artifactId>sonar-custom</artifactId>
   <version>0.0.1-SNAPSHOT</version>
-  <packaging>jar</packaging>
-
-  <name>ABM - Auto-Boot Manager</name>
+  <packaging>pom</packaging>
+  <name>SONAr Custom Components</name>
   <url>http://sonar.facom.ufu.br</url>
 
-  <properties>
-    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-  </properties>
+
+  <modules>
+    <module>sonar-containerized-infrastructure-manager</module>
+    <module>sonar-dhcp-server</module>
+  </modules>
+
 
   <build>
-        
+
   </build>
 
   <dependencies>
-	<!-- Spring -->
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-web</artifactId>
-    </dependency>
+    
   </dependencies>
 </project>

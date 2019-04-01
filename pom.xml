@@ -24,16 +24,29 @@
   </parent>
 
   <modules>
+    <!-- Core Libs and Clients -->
     <module>core-libs</module>
+    <module>client-apis</module>
+
+    <!-- Alternative implementations of Required Apps -->
+    <module>custom-components</module>
+
+    <!-- Network Buses : Integration, Admin and Customer -->
+    <module>network-service-bus</module>
+    
+    <!-- Initial Module: Boot the solution -->
+    <module>auto-boot-manager</module>
+    
+    <!-- SONar Entities -->
     <module>self-organizing-entities</module>
     <module>self-learning-entities</module>
     <module>self-collector-entities</module>
-    <module>sonar-service-bus</module>
-    <module>control-plane-interceptor</module>
-    <module>auto-boot-manager</module>
-    <module>network-event-manager</module>
-    <module>containerized-infrastructure-manager</module>
+
+    <!-- View and Assisted management -->
     <module>sonar-dashboard</module>
+
+    <!-- "Appliances" for dealing wih network data-->
+    <module>function-apps</module>
   </modules>
 
   <repositories>

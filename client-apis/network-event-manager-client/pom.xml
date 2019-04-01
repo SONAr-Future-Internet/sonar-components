@@ -3,30 +3,23 @@
   <modelVersion>4.0.0</modelVersion>
 
   <parent>
-        <groupId>br.ufu.facom.mehar</groupId>
-        <artifactId>sonar</artifactId>
+        <groupId>br.ufu.facom.mehar.sonar</groupId>
+        <artifactId>sonar-client</artifactId>
         <version>0.0.1-SNAPSHOT</version>
   </parent>
 
-  <groupId>br.ufu.facom.mehar.sonar</groupId>
-  <artifactId>sonar-core</artifactId>
+  <groupId>br.ufu.facom.mehar.sonar.client</groupId>
+  <artifactId>network-event-manager-client</artifactId>
   <version>0.0.1-SNAPSHOT</version>
-  <packaging>pom</packaging>
-  <name>SONAr Core Libs</name>
+  <packaging>jar</packaging>
+  <name>Client NEM - Network Event Manager Client</name>
   <url>http://sonar.facom.ufu.br</url>
 
-
-  <modules>
-    <module>sonar-model</module>
-    <module>sonar-util</module>
-  </modules>
-
-
   <build>
-
+    
   </build>
 
   <dependencies>
-    
+  
   </dependencies>
 </project>

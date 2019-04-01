@@ -1,12 +1,18 @@
 package br.ufu.facom.mehar.sonar.core.util;
 
+import java.net.Inet4Address;
 import java.net.InetAddress;
+import java.net.InterfaceAddress;
+import java.net.NetworkInterface;
+import java.net.SocketException;
 import java.net.UnknownHostException;
+import java.util.Enumeration;
 
 import org.apache.commons.net.util.SubnetUtils;
 
 import br.ufu.facom.mehar.sonar.core.util.exception.IPConversionException;
 import br.ufu.facom.mehar.sonar.core.util.exception.IPOverflowException;
+import br.ufu.facom.mehar.sonar.core.util.exception.SonarUtilException;
 
 public class IPUtils {
 	public static InetAddress convertIntArrayToInetAddress(int[] arrayInt) {
@@ -119,4 +125,27 @@ public class IPUtils {
 		return (compare(ip, firstIp) >= 0 && compare(ip, lastIp) <= 0);
 	}
 
+	
+	public static InterfaceAddress searchActiveInterfaceAddress() {
+		Enumeration<NetworkInterface> enumInterface;
+		try {
+			enumInterface = NetworkInterface.getNetworkInterfaces();
+
+			while (enumInterface.hasMoreElements()) {
+				NetworkInterface netInf = enumInterface.nextElement();
+
+				if (!netInf.isLoopback() && !netInf.isVirtual() && netInf.isUp()) {
+					for (InterfaceAddress interfaceAddress : netInf.getInterfaceAddresses()) {
+						InetAddress addressInf = interfaceAddress.getAddress();
+						if (addressInf instanceof Inet4Address && !addressInf.isLoopbackAddress()) {
+							return interfaceAddress;
+						}
+					}
+				}
+			}
+		} catch (SocketException e) {
+			throw new SonarUtilException("Error while detecting Server IP Address.", e);
+		}
+		return null;
+	}
 }

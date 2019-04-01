@@ -3,17 +3,17 @@
   <modelVersion>4.0.0</modelVersion>
 
   <parent>
-        <groupId>br.ufu.facom.mehar</groupId>
-        <artifactId>sonar</artifactId>
+        <groupId>br.ufu.facom.mehar.sonar</groupId>
+        <artifactId>sonar-function</artifactId>
         <version>0.0.1-SNAPSHOT</version>
   </parent>
 
-  <groupId>br.ufu.facom.mehar.sonar</groupId>
-  <artifactId>auto-boot-manager</artifactId>
+  <groupId>br.ufu.facom.mehar.sonar.function</groupId>
+  <artifactId>control-plane-interceptor</artifactId>
   <version>0.0.1-SNAPSHOT</version>
   <packaging>jar</packaging>
 
-  <name>ABM - Auto-Boot Manager</name>
+  <name>CPI - Control Plane Interceptor</name>
   <url>http://sonar.facom.ufu.br</url>
 
   <properties>
@@ -25,10 +25,6 @@
   </build>
 
   <dependencies>
-	<!-- Spring -->
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-web</artifactId>
-    </dependency>
+    
   </dependencies>
 </project>

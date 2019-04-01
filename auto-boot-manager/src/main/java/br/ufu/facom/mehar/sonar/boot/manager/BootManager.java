@@ -10,9 +10,6 @@ import org.springframework.stereotype.Component;
 public class BootManager {
 	
 	private Logger logger = Logger.getLogger(BootManager.class);
-
-	@Autowired
-	DHCPServer dhcpServer;
 	
 	@EventListener(ApplicationReadyEvent.class)
 	public void run() {
@@ -20,7 +17,7 @@ public class BootManager {
 		logger.info("Starting SONAr components...");
 		
 		//Run DHCP Server
-		dhcpServer.run();
+		logger.info("Starting DHCP Server...");
 		
 		//Run LLDP Discovery
 		logger.info("Starting LLDP discovery...");
