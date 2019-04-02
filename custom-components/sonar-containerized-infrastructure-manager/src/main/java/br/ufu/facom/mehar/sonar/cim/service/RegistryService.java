@@ -22,68 +22,15 @@ public class RegistryService {
 	}
 
 	public void register(Container container) {
-//		synchronized (registry) {
-//			Registry.Server server = registry.getServer(container.getServer());
-//			if (server == null) {
-//				server = registry.addServer(container.getServer());
-//			}
-//
-//			Registry.Namespace namespace = server.getNamespace(container.getNamespace());
-//			if (namespace == null) {
-//				namespace = server.addNamespace(container.getNamespace());
-//			}
-//
-//			Registry.Image image = namespace.getImage(container.getImageName());
-//			if (image == null) {
-//				image = namespace.addImage(container.getImageName());
-//			}
-//
-//			Registry.Container service = null;
-//			if (container.getId() != null && !container.getId().isEmpty()) {
-//				service = image.getContainerById(container.getId());
-//			} else {
-//				service = image.getContainerByOutPort(container.getOutPort());
-//			}
-//
-//			if (service == null) {
-//				image.addContainer(container.getId(), container.getStatus(), container.getInPort(),
-//						container.getOutPort());
-//			}
-//		}
+		synchronized (registry) {
+			registry.registerContainer(container);
+		}
 	}
 
 	public void unregister(Container container) {
-//		synchronized (registry) {
-//			Registry.Server server = registry.getServer(container.getServer());
-//			if (server != null) {
-//
-//				Registry.Namespace namespace = server.getNamespace(container.getNamespace());
-//				if (namespace != null) {
-//				}
-//				Registry.Image image = namespace.getImage(container.getImageName());
-//				if (image != null) {
-//
-//					Registry.Container service = null;
-//					if (container.getId() != null && !container.getId().isEmpty()) {
-//						service = image.getContainerById(container.getId());
-//					} else {
-//						service = image.getContainerByOutPort(container.getOutPort());
-//					}
-//
-//					if (service != null) {
-//						image.delContainer(service);
-//
-//						if (image.getContainers().isEmpty()) {
-//							namespace.delImage(image);
-//
-//							if (namespace.getImages().isEmpty()) {
-//								server.delNamespace(namespace);
-//							}
-//						}
-//					}
-//				}
-//			}
-//		}
+		synchronized (registry) {
+			registry.removeContainer(container);
+		}
 	}
 
 	public Registry get() {

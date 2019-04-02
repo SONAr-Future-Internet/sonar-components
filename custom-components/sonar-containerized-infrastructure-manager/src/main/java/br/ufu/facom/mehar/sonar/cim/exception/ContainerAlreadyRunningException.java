@@ -1,7 +1,9 @@
 package br.ufu.facom.mehar.sonar.cim.exception;
 
-public class ContainerAlreadyRunningException extends GeneralContainerizedInfrastructureManagerException {
+import br.ufu.facom.mehar.sonar.core.model.container.Container;
 
+public class ContainerAlreadyRunningException extends GeneralContainerizedInfrastructureManagerException {
+	
 	private static final long serialVersionUID = 3161814041892507363L;
 
 	public ContainerAlreadyRunningException() {

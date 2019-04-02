@@ -24,7 +24,6 @@ public class APIv1Controller {
 	@Autowired
 	private RegistryService registryService;
 
-	//Registry
 	@RequestMapping(value = "/registry", method = RequestMethod.GET)
 	public Registry get() {
 		return this.registryService.get();

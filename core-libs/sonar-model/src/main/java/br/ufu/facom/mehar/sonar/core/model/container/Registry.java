@@ -21,6 +21,9 @@ public class Registry extends HashMap<String, Map<String, List<Container>>>{
 		 }
 		 
 		 List<Container> containerList = namespaceMap.get(container.getNamespace());
+		 if(containerList.contains(container)) {
+			 containerList.remove(container);
+		 }
 		 containerList.add(container);
 	}
 	

@@ -139,7 +139,7 @@ public class ContainerService {
 				throw new ContainerNotFoundException("Can't find a container with id "+containerId+" in server "+server+".");
 			}else {
 				if(alreadyCreatedContainer.getStatus().equals(DockerService.RUNNING_STATE)) {
-					throw new ContainerAlreadyRunningException("Container with id "+containerId+" in server "+server+" is already running.");
+					dealWithAlreadyRunningContainer(server, container, alreadyCreatedContainer, "Container with id "+containerId+" in server "+server+" is already running.");
 				}else {
 					return runContainer(container, server, alreadyCreatedContainer.getId());
 				}
@@ -152,7 +152,7 @@ public class ContainerService {
 				throw new ContainerNotFoundException("Can't find a container with name "+containerName+" in server "+server+".");
 			}else {
 				if(alreadyCreatedContainer.getStatus().equals(DockerService.RUNNING_STATE)) {
-					throw new ContainerAlreadyRunningException("Container with name "+containerName+" in server "+server+" is already running.");
+					dealWithAlreadyRunningContainer(server, container, alreadyCreatedContainer, "Container with name "+containerName+" in server "+server+" is already running.");
 				}else {
 					return runContainer(container, server, alreadyCreatedContainer.getId());
 				}
@@ -165,7 +165,7 @@ public class ContainerService {
 			if(containers != null && !containers.isEmpty()) {
 				for(Container alreadyCreatedContainer : containers) {
 					if(alreadyCreatedContainer.getStatus().equals(DockerService.RUNNING_STATE)) {
-						throw new ContainerAlreadyRunningException("Container singleton with image "+fullImageName+" in server "+server+" is already running.");
+						dealWithAlreadyRunningContainer(server, container, alreadyCreatedContainer, "Container singleton with image "+fullImageName+" in server "+server+" is already running.");
 					}
 				}
 				
@@ -183,7 +183,7 @@ public class ContainerService {
 						if(portMapping.equals(alreadyCreatedContainer.getPortMapping())) {
 							//if already running
 							if(alreadyCreatedContainer.getStatus().equals(DockerService.RUNNING_STATE)) {
-								throw new ContainerAlreadyRunningException("Container with image "+fullImageName+" with port-mapping "+alreadyCreatedContainer.getPortMapping()+" in server "+server+" is already running.");
+								dealWithAlreadyRunningContainer(server, container, alreadyCreatedContainer, "Container with image "+fullImageName+" with port-mapping "+alreadyCreatedContainer.getPortMapping()+" in server "+server+" is already running.");
 							}else {
 								return runContainer(container, server, alreadyCreatedContainer.getId());
 							}
@@ -197,7 +197,7 @@ public class ContainerService {
 							if(alreadyCreatedContainer.getPortMapping() == null || alreadyCreatedContainer.getPortMapping().isEmpty()) {
 								//if already running
 								if(alreadyCreatedContainer.getStatus().equals(DockerService.RUNNING_STATE)) {
-									throw new ContainerAlreadyRunningException("Container with image "+fullImageName+" without port-mapping in server "+server+" is already running.");
+									dealWithAlreadyRunningContainer(server, container, alreadyCreatedContainer, "Container with image "+fullImageName+" without port-mapping in server "+server+" is already running.");
 								}
 							}
 						}
@@ -239,6 +239,14 @@ public class ContainerService {
 			
 			throw e;
 		}
+	}
+
+	private void dealWithAlreadyRunningContainer(String server, Container container, Container alreadyCreatedContainer, String message) {
+		registryService.register(merge(container, alreadyCreatedContainer));
+		if(alreadyCreatedContainer.getPortMapping() != null && !alreadyCreatedContainer.getPortMapping().isEmpty()) {
+			portPoolService.blockPorts(server, alreadyCreatedContainer.getPortMapping().values());
+		}
+		throw new ContainerAlreadyRunningException(message);
 	}
 
 	private Container runContainer(Container container, String server, String containerId) {

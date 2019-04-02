@@ -6,6 +6,7 @@ import java.io.IOException;
 import org.apache.commons.lang.builder.ReflectionToStringBuilder;
 import org.jboss.logging.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
@@ -25,18 +26,33 @@ public class DeploymentService {
 
 	@Autowired
 	private RegistryService registryService;
+	
+	@Value("${cim.serverLocalEnabled:true}")
+	private Boolean SERVER_LOCAL_ENABLED;
+	
+	@Value("${cim.runDeploymentPlan:false}")
+	private Boolean RUN_DEPLOYMENT_PLAN;
 
 	@EventListener(ApplicationReadyEvent.class)
 	public void init() {
 
 		try {
-			ClassLoader classLoader = getClass().getClassLoader();
-			File file = new File(classLoader.getResource("deployment-plan.cimd").getFile());
-
-			ObjectMapper objectMapper = new ObjectMapper();
-			Registry registry = objectMapper.readValue(file, Registry.class);
-
-			this.run(registry);
+			if(RUN_DEPLOYMENT_PLAN) {
+				ClassLoader classLoader = getClass().getClassLoader();
+				File file = new File(classLoader.getResource("deployment-plan.cimd").getFile());
+	
+				ObjectMapper objectMapper = new ObjectMapper();
+				Registry registry = objectMapper.readValue(file, Registry.class);
+	
+				this.run(registry);
+			}
+			
+			if(SERVER_LOCAL_ENABLED) {
+				registryService.registerServer("local");
+				for(Container container : containerService.getRunningContainersByServer("local")) {
+					registryService.register(container);
+				}
+			}
 
 		} catch (IOException e) {
 			logger.error("Error starting components on 'deployment-plan'.", e);
@@ -51,8 +67,7 @@ public class DeploymentService {
 				registryService.register(containerRunning);
 				logger.info("     - " + container.getImageNameWithNamespaceAndVersion() + " started!");
 			} catch (ContainerAlreadyRunningException e) {
-				logger.info("     - " + container.getImageNameWithNamespaceAndVersion()
-						+ " is already running. Details:" + ReflectionToStringBuilder.toString(container), e);
+				logger.info("     - " + container.getImageNameWithNamespaceAndVersion() + " is already running. Details:" + ReflectionToStringBuilder.toString(container), e);
 			}
 		}
 	}

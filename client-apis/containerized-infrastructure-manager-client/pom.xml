@@ -20,6 +20,18 @@
   </build>
 
   <dependencies>
-  
+    <!-- Internal -->
+  	<dependency>
+  		<groupId>br.ufu.facom.mehar.sonar.core</groupId>
+  		<artifactId>sonar-model</artifactId>
+  		<version>${sonar.version}</version>
+  	</dependency>
+  	
+  	<!-- Spring -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-web</artifactId>
+      <scope>compile</scope>
+    </dependency>
   </dependencies>
 </project>
