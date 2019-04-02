@@ -19,15 +19,25 @@ public class DataTranslator {
 		
 		container.setId(dockerContainer.id());
 		
+		if(dockerContainer.names() != null && !dockerContainer.names().isEmpty()) {
+			container.setName(dockerContainer.names().get(0));
+		}
+		
 		container.setServer(server);
 		
 		String image = dockerContainer.image();
 		if(image.contains("/")) {
 			String imageParts[] = image.split("/",2);
 			container.setNamespace(imageParts[0]);
-			container.setImageName(imageParts[1]);
+			if(imageParts[1].contains(":")) {
+				String imageParts2[] = imageParts[1].split(":",2);
+				container.setImage(imageParts2[0]);
+				container.setVersion(imageParts2[1]);
+			}else {
+				container.setImage(imageParts[1]);
+			}
 		}else {
-			container.setImageName(image);
+			container.setImage(image);
 		}
 		
 		container.setStatus(dockerContainer.state());
@@ -39,7 +49,7 @@ public class DataTranslator {
 				container.getPortMapping().put(map.privatePort().toString(), map.publicPort().toString());
 			}
 		}
-
+		
 		return container;
 	}
 	

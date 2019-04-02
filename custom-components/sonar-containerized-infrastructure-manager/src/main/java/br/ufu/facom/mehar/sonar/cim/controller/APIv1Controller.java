@@ -95,11 +95,11 @@ public class APIv1Controller {
 	//Stop and Destroy if (autoDestroy)
 	@RequestMapping(value = "/server/{server}/namespace/{namespace}/image/{image}/container/{idOrName}", method = RequestMethod.DELETE)
 	public Container stopContainer(@PathVariable(value="server") String server, @PathVariable(value="namespace") String namespace, @PathVariable(value="image") String image, @PathVariable(value="idOrName") String idOrName) {
-		return this.containerService.stopByIdOrName(server, namespace, image, idOrName);
+		return this.containerService.stop(server, namespace, image, idOrName);
 	}
 	@RequestMapping(value = "/server/{server}/namespace/{namespace}/image/{image}", method = RequestMethod.DELETE)
 	public List<Container> stopContainer(@PathVariable(value="server") String server, @PathVariable(value="namespace") String namespace, @PathVariable(value="image") String image) {
-		return this.containerService.stop(server, namespace, image, image);
+		return this.containerService.stop(server, namespace, image);
 	}
 	@RequestMapping(value = "/server/{server}/container", method = RequestMethod.DELETE)
 	public Container stopContainer(@RequestBody Container container) {

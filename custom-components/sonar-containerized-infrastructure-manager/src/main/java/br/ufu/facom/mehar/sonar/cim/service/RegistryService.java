@@ -11,19 +11,13 @@ public class RegistryService {
 	
 	public void registerServer(String serverIdentification) {
 		synchronized (registry) {
-			Registry.Server server = registry.getServer(serverIdentification);
-			if (server == null) {
-				server = registry.addServer(serverIdentification);
-			}
+			registry.registerServer(serverIdentification);
 		}
 	}
 	
 	public void unregisterServer(String serverIdentification) {
 		synchronized (registry) {
-			Registry.Server server = registry.getServer(serverIdentification);
-			if (server != null) {
-				registry.delServer(serverIdentification);
-			}
+			registry.removeServer(serverIdentification);
 		}
 	}
 

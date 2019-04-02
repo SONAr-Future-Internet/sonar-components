@@ -3,19 +3,19 @@ package br.ufu.facom.mehar.sonar.cim.service;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.springframework.stereotype.Service;
 
-import com.google.common.collect.ImmutableList;
 import com.spotify.docker.client.DefaultDockerClient;
 import com.spotify.docker.client.DockerClient;
 import com.spotify.docker.client.DockerClient.ListContainersParam;
 import com.spotify.docker.client.exceptions.DockerCertificateException;
 import com.spotify.docker.client.exceptions.DockerException;
 import com.spotify.docker.client.messages.Container;
-import com.spotify.docker.client.messages.Container.PortMapping;
 import com.spotify.docker.client.messages.ContainerConfig;
 import com.spotify.docker.client.messages.ContainerCreation;
 import com.spotify.docker.client.messages.HostConfig;
@@ -31,8 +31,18 @@ public class DockerService {
 
 	public static final String RUNNING_STATE = "running";
 	public static final String STOPPED_STATE = "stopped";
+	public static final String CREATED_STATE = "created";
+	public static final String RESTARTING_STATE = "restarting";
+	public static final String PAUSED_STATE = "paused";
+	public static final String EXITED_STATE = "exited";
+	public static final String DEAD_STATE = "dead"; // API 1.24
+	public static final String REMOVED_STATE = "removed"; // CUSTOM
+
 	private static final int MAX_STOP_TIME = 5;
 
+	/*
+	 * Connect and Disconnect Methods
+	 */
 	private DockerClient connectToDockerServer(String server) {
 		try {
 			if (server != null && (server.equalsIgnoreCase("local") || server.equalsIgnoreCase("localhost"))) {
@@ -46,100 +56,139 @@ public class DockerService {
 	}
 
 	private void closeConnection(DockerClient client) {
+
 		if (client != null) {
 
 			client.close();
 		}
 	}
 
-	public String runContainer(String server, String image, Boolean singleton, String inPort, String outPort) {
-
-		String[] exposedPorts = null;
-		Map<String, List<PortBinding>> portBindings = null;
-
-		if (inPort != null && outPort != null && !inPort.isEmpty() && !outPort.isEmpty()) {
-			exposedPorts = Arrays.asList(inPort).toArray(new String[1]);
-
-			portBindings = new HashMap<>();
-			portBindings.put(inPort, Arrays.asList(PortBinding.of("0.0.0.0", outPort)));
-		}
-
-		HostConfig hostConfig = HostConfig.builder().autoRemove(true).portBindings(portBindings).build();
-
-		ContainerConfig containerConfig = ContainerConfig.builder().hostConfig(hostConfig).image(image)
-				.exposedPorts(exposedPorts).build();
-
+	/*
+	 * Run Container
+	 */
+	public Container runContainerById(String server, String containerId) {
 		DockerClient docker = null;
 		try {
 			docker = this.connectToDockerServer(server);
 
-			List<Container> containersAlreadyCreated = docker
-					.listContainers(ListContainersParam.create("image", image));
-			if (containersAlreadyCreated != null && !containersAlreadyCreated.isEmpty()) {
-				for (int i = 0; i < containersAlreadyCreated.size(); i++) {
-					if (containersAlreadyCreated.get(i).state().equals(RUNNING_STATE)) {
-						if (singleton) {
-							throw new ContainerInstantiationException(
-									"There is already a container running from image " + image + " in server " + server
-											+ " with id " + containersAlreadyCreated.get(i).id() + ".");
-						} else {
-							if (outPort != null && !outPort.isEmpty()) {
-								ImmutableList<PortMapping> portMapping = containersAlreadyCreated.get(i).ports();
-								if (portMapping != null && !portMapping.isEmpty()) {
-									PortMapping mapping = portMapping.get(0);
-									if (outPort.equals(mapping.publicPort().toString())) {
-										throw new ContainerInstantiationException(
-												"There is already a container running from image " + image
-														+ " in server " + server + " with id "
-														+ containersAlreadyCreated.get(i).id() + " on exposed port "
-														+ outPort + ".");
-									}
-								}
-							}
-						}
-					} else {
-						docker.removeContainer(containersAlreadyCreated.get(i).id());
-					}
-				}
-			}
-
-			ContainerCreation creation = docker.createContainer(containerConfig);
-			String containerId = creation.id();
+			//Running
 			docker.startContainer(containerId);
-			return containerId;
+			
+			//Querying
+			List<Container> result = docker.listContainers(ListContainersParam.filter("id", containerId));
+			if (result != null && !result.isEmpty()) {
+				return result.get(0);
+			}else {
+				throw new ContainerInstantiationException("Error recovering container with id "+containerId+" in server " + server + ".");
+			}
 
 		} catch (DockerException | InterruptedException e) {
 			throw new ContainerInstantiationException(
-					"Error creating container from image " + image + " in server " + server + ".", e);
+					"Error running with id "+containerId+" in server " + server + ".", e);
 		} finally {
 			this.closeConnection(docker);
 		}
 	}
 
-	public List<Container> stopContainer(String server, String image) {
-		List<Container> result = new ArrayList<Container>();
+	public Container runContainer(String server, String fullImageName, String containerName,
+			Map<String, String> portMapping, Set<String> exposedPorts, List<String> env, Set<String> volumes,
+			List<String> entrypoint, List<String> cmd, Boolean autoDestroy) {
+		
+		HostConfig.Builder hostConfigBuilder = HostConfig.builder().autoRemove(autoDestroy);
+		if (portMapping != null && !portMapping.isEmpty()) {
+			Map<String, List<PortBinding>> portBindings = new HashMap<String, List<PortBinding>>();
+			for(String inPort : portMapping.keySet()) {
+				String outPort = portMapping.get(inPort);
+				portBindings.put(inPort, Arrays.asList(PortBinding.of("0.0.0.0", outPort)));
+			}
+			
+			if(exposedPorts == null) {
+				exposedPorts = new HashSet<String>();
+			}
+			
+			exposedPorts.addAll(portMapping.keySet());
+			
+			hostConfigBuilder = hostConfigBuilder.portBindings(portBindings);
+		}
+		
+		HostConfig hostConfig = hostConfigBuilder.build();
+
+		ContainerConfig.Builder containerConfigBuilder = ContainerConfig.builder().hostConfig(hostConfig).image(fullImageName);
+		if(exposedPorts != null && !exposedPorts.isEmpty()) {
+			containerConfigBuilder = containerConfigBuilder.exposedPorts(exposedPorts);
+		}
+		if(env != null && !env.isEmpty()) {
+			containerConfigBuilder.env(env);
+		}
+		if(volumes != null && !volumes.isEmpty()) {
+			containerConfigBuilder.volumes(volumes);
+		}
+		if(entrypoint != null && !entrypoint.isEmpty()) {
+			containerConfigBuilder.entrypoint(entrypoint);
+		}
+		if(cmd != null && !cmd.isEmpty()) {
+			containerConfigBuilder.cmd(cmd);
+		}
+		
+		ContainerConfig containerConfig = containerConfigBuilder.build();
+		
 		DockerClient docker = null;
 		try {
 			docker = this.connectToDockerServer(server);
-			List<Container> containersAlreadyCreated = docker
-					.listContainers(ListContainersParam.create("image", image));
-			if (containersAlreadyCreated != null && !containersAlreadyCreated.isEmpty()) {
-				for (int i = 0; i < containersAlreadyCreated.size(); i++) {
-					Container container = containersAlreadyCreated.get(i);
-					if (container.state().equals(RUNNING_STATE)) {
-						docker.stopContainer(container.id(), MAX_STOP_TIME);
-						result.add(container);
-					}
-				}
+
+			//Creation
+			ContainerCreation creation = docker.createContainer(containerConfig, containerName);
+			String containerId = creation.id();
+			
+			//Running
+			docker.startContainer(containerId);
+			
+			//Querying
+			List<Container> result = docker.listContainers(ListContainersParam.filter("id", containerId));
+			if (result != null && !result.isEmpty()) {
+				return result.get(0);
+			}else {
+				throw new ContainerInstantiationException("Error recovering container with id "+containerId+" in server " + server + ".");
 			}
+
 		} catch (DockerException | InterruptedException e) {
-			new ContainerSearchException("Error searching for Docker container.", e);
+			throw new ContainerInstantiationException("Error creating container from image " + fullImageName + " in server " + server + ".", e);
 		} finally {
 			this.closeConnection(docker);
 		}
-		return result;
 	}
 
+	/*
+	 * Stop Container
+	 */
+
+	public void stopContainer(String server, String containerId, Boolean autoDestroy) {
+		DockerClient docker = null;
+		try {
+			docker = this.connectToDockerServer(server);
+
+			//Running
+			docker.stopContainer(containerId, MAX_STOP_TIME);
+			
+			//Querying
+			List<Container> result = docker.listContainers(ListContainersParam.filter("id", containerId));
+			if (result != null && !result.isEmpty()) {
+				if(autoDestroy) {
+					docker.removeContainer(containerId);
+				}
+			}
+
+		} catch (DockerException | InterruptedException e) {
+			throw new ContainerInstantiationException(
+					"Error running with id "+containerId+" in server " + server + ".", e);
+		} finally {
+			this.closeConnection(docker);
+		}
+	}
+
+	/*
+	 * Get Containers
+	 */
 	public List<Container> getContainersByImage(String server, String image) {
 		DockerClient docker = null;
 		try {
@@ -174,7 +223,6 @@ public class DockerService {
 		return result;
 	}
 
-
 	public Container getContainerById(String server, String id) {
 		DockerClient docker = null;
 		try {
@@ -190,7 +238,7 @@ public class DockerService {
 		}
 		return null;
 	}
-	
+
 	public Container getContainerByName(String server, String name) {
 		DockerClient docker = null;
 		try {
@@ -220,58 +268,16 @@ public class DockerService {
 		return new ArrayList<>();
 	}
 
-	public Container runContainerById(String id) {
-		// TODO Auto-generated method stub
-		return null;
+	public List<Container> getRunningContainers(String server) {
+		DockerClient docker = null;
+		try {
+			docker = this.connectToDockerServer(server);
+			return docker.listContainers(ListContainersParam.withStatusRunning());
+		} catch (DockerException | InterruptedException e) {
+			new ContainerSearchException("Error searching for Docker container.", e);
+		} finally {
+			this.closeConnection(docker);
+		}
+		return new ArrayList<>();
 	}
-
-//	public List<Container> getRunningContainers(String server) {
-//		DockerClient docker = null;
-//		try {
-//			docker = this.connectToDockerServer(server);
-//			return docker.listContainers(ListContainersParam.withStatusRunning());
-//		} catch (DockerException | InterruptedException e) {
-//			new ContainerSearchException("Error searching for Docker container.", e);
-//		} finally {
-//			this.closeConnection(docker);
-//		}
-//		return new ArrayList<>();
-//	}
-	
-//	public List<Container> getRunningContainersByNamespace(String server, String namespace) {
-//		List<Container> result = new ArrayList<Container>();
-//		DockerClient docker = null;
-//		try {
-//			docker = this.connectToDockerServer(server);
-//			List<Container> containers = docker.listContainers(ListContainersParam.withStatusRunning(),
-//					ListContainersParam.allContainers());
-//			if (containers != null && !containers.isEmpty()) {
-//				for (int i = 0; i < containers.size(); i++) {
-//					if (containers.get(i).image().startsWith(namespace + "/")) {
-//						result.add(containers.get(i));
-//					}
-//				}
-//			}
-//		} catch (DockerException | InterruptedException e) {
-//			new ContainerSearchException("Error searching for Docker container.", e);
-//		} finally {
-//			this.closeConnection(docker);
-//		}
-//		return result;
-//	}
-	
-//	public List<Container> getRunningContainersByImage(String server, String image) {
-//		DockerClient docker = null;
-//		try {
-//			docker = this.connectToDockerServer(server);
-//			return docker.listContainers(ListContainersParam.withStatusRunning(),
-//					ListContainersParam.create("image", image));
-//		} catch (DockerException | InterruptedException e) {
-//			new ContainerSearchException("Error searching for Docker container.", e);
-//		} finally {
-//			this.closeConnection(docker);
-//		}
-//		return new ArrayList<>();
-//	}
-
 }
