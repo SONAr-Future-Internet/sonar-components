@@ -1,12 +1,15 @@
 package br.ufu.facom.mehar.sonar.core.model.container;
 
+import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
-public class Container {
+public class Container implements Serializable{
+	private static final long serialVersionUID = -3994886242833800179L;
+
 	private String server;
 
 	private String namespace = "";
@@ -23,7 +26,9 @@ public class Container {
 	private List<String> entrypoint;
 	private Set<String> volumes;
 	
-	private String status;
+	private ContainerStatus status;
+	
+	private Map<String, String> accessPort;
 
 	private Boolean autoDestroy;
 	private Boolean singleton;
@@ -60,11 +65,11 @@ public class Container {
 		this.portMapping = portMapping;
 	}
 
-	public String getStatus() {
+	public ContainerStatus getStatus() {
 		return status;
 	}
 
-	public void setStatus(String status) {
+	public void setStatus(ContainerStatus status) {
 		this.status = status;
 	}
 
@@ -148,6 +153,14 @@ public class Container {
 		this.volumes = volumes;
 	}
 
+	public Map<String, String> getAccessPort() {
+		return accessPort;
+	}
+
+	public void setAccessPort(Map<String, String> accessPort) {
+		this.accessPort = accessPort;
+	}
+
 	@JsonIgnore
 	public String getImageNameWithNamespace() {
 		return Container.getImageNameWithNamespace(namespace, image);
@@ -174,7 +187,17 @@ public class Container {
 	private static String getImageNameWithVersion(String image, String version) {
 		return version != null? image + ":" +version : image;
 	}
-	
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + ((image == null) ? 0 : image.hashCode());
+		result = prime * result + ((namespace == null) ? 0 : namespace.hashCode());
+		result = prime * result + ((portMapping == null) ? 0 : portMapping.hashCode());
+		result = prime * result + ((server == null) ? 0 : server.hashCode());
+		return result;
+	}
 
 	@Override
 	public boolean equals(Object obj) {
@@ -185,20 +208,10 @@ public class Container {
 		if (getClass() != obj.getClass())
 			return false;
 		Container other = (Container) obj;
-		if (id == null) {
-			if (other.id != null)
-				return false;
-		} else if (!id.equals(other.id))
-			return false;
 		if (image == null) {
 			if (other.image != null)
 				return false;
 		} else if (!image.equals(other.image))
-			return false;
-		if (name == null) {
-			if (other.name != null)
-				return false;
-		} else if (!name.equals(other.name))
 			return false;
 		if (namespace == null) {
 			if (other.namespace != null)
@@ -215,13 +228,6 @@ public class Container {
 				return false;
 		} else if (!server.equals(other.server))
 			return false;
-		if (version == null) {
-			if (other.version != null)
-				return false;
-		} else if (!version.equals(other.version))
-			return false;
 		return true;
 	}
-	
-	
 }

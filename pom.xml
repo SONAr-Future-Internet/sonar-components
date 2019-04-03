@@ -32,7 +32,7 @@
     <module>custom-components</module>
 
     <!-- Network Buses : Integration, Admin and Customer -->
-    <module>network-service-bus</module>
+    <module>network-service-broker</module>
     
     <!-- Initial Module: Boot the solution -->
     <module>auto-boot-manager</module>

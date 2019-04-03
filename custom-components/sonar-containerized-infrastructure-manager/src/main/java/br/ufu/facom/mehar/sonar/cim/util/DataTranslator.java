@@ -8,6 +8,7 @@ import com.google.common.collect.ImmutableList;
 import com.spotify.docker.client.messages.Container.PortMapping;
 
 import br.ufu.facom.mehar.sonar.core.model.container.Container;
+import br.ufu.facom.mehar.sonar.core.model.container.ContainerStatus;
 
 public class DataTranslator {
 	public static Container convertDockerContainerToGenericContainer(com.spotify.docker.client.messages.Container dockerContainer, String server){
@@ -40,7 +41,7 @@ public class DataTranslator {
 			container.setImage(image);
 		}
 		
-		container.setStatus(dockerContainer.state());
+		container.setStatus(ContainerStatus.getByDockerStatus(dockerContainer.state()));
 		
 		ImmutableList<PortMapping> portMapping =  dockerContainer.ports();
 		if(portMapping != null && !portMapping.isEmpty()) {

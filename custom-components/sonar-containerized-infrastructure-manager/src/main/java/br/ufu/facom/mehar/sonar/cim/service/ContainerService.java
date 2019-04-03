@@ -14,6 +14,7 @@ import br.ufu.facom.mehar.sonar.cim.exception.ContainerMismatchException;
 import br.ufu.facom.mehar.sonar.cim.exception.ContainerNotFoundException;
 import br.ufu.facom.mehar.sonar.cim.util.DataTranslator;
 import br.ufu.facom.mehar.sonar.core.model.container.Container;
+import br.ufu.facom.mehar.sonar.core.model.container.ContainerStatus;
 
 @Service
 public class ContainerService {
@@ -138,7 +139,7 @@ public class ContainerService {
 			if(alreadyCreatedContainer == null) {
 				throw new ContainerNotFoundException("Can't find a container with id "+containerId+" in server "+server+".");
 			}else {
-				if(alreadyCreatedContainer.getStatus().equals(DockerService.RUNNING_STATE)) {
+				if(alreadyCreatedContainer.getStatus().equals(ContainerStatus.RUNNING_STATE)) {
 					dealWithAlreadyRunningContainer(server, container, alreadyCreatedContainer, "Container with id "+containerId+" in server "+server+" is already running.");
 				}else {
 					return runContainer(container, server, alreadyCreatedContainer.getId());
@@ -151,7 +152,7 @@ public class ContainerService {
 			if(alreadyCreatedContainer == null) {
 				throw new ContainerNotFoundException("Can't find a container with name "+containerName+" in server "+server+".");
 			}else {
-				if(alreadyCreatedContainer.getStatus().equals(DockerService.RUNNING_STATE)) {
+				if(alreadyCreatedContainer.getStatus().equals(ContainerStatus.RUNNING_STATE)) {
 					dealWithAlreadyRunningContainer(server, container, alreadyCreatedContainer, "Container with name "+containerName+" in server "+server+" is already running.");
 				}else {
 					return runContainer(container, server, alreadyCreatedContainer.getId());
@@ -164,7 +165,7 @@ public class ContainerService {
 			
 			if(containers != null && !containers.isEmpty()) {
 				for(Container alreadyCreatedContainer : containers) {
-					if(alreadyCreatedContainer.getStatus().equals(DockerService.RUNNING_STATE)) {
+					if(alreadyCreatedContainer.getStatus().equals(ContainerStatus.RUNNING_STATE)) {
 						dealWithAlreadyRunningContainer(server, container, alreadyCreatedContainer, "Container singleton with image "+fullImageName+" in server "+server+" is already running.");
 					}
 				}
@@ -182,7 +183,7 @@ public class ContainerService {
 						//Same Port-Mapping
 						if(portMapping.equals(alreadyCreatedContainer.getPortMapping())) {
 							//if already running
-							if(alreadyCreatedContainer.getStatus().equals(DockerService.RUNNING_STATE)) {
+							if(alreadyCreatedContainer.getStatus().equals(ContainerStatus.RUNNING_STATE)) {
 								dealWithAlreadyRunningContainer(server, container, alreadyCreatedContainer, "Container with image "+fullImageName+" with port-mapping "+alreadyCreatedContainer.getPortMapping()+" in server "+server+" is already running.");
 							}else {
 								return runContainer(container, server, alreadyCreatedContainer.getId());
@@ -196,7 +197,7 @@ public class ContainerService {
 							//if neither has port mapping
 							if(alreadyCreatedContainer.getPortMapping() == null || alreadyCreatedContainer.getPortMapping().isEmpty()) {
 								//if already running
-								if(alreadyCreatedContainer.getStatus().equals(DockerService.RUNNING_STATE)) {
+								if(alreadyCreatedContainer.getStatus().equals(ContainerStatus.RUNNING_STATE)) {
 									dealWithAlreadyRunningContainer(server, container, alreadyCreatedContainer, "Container with image "+fullImageName+" without port-mapping in server "+server+" is already running.");
 								}
 							}
@@ -360,26 +361,24 @@ public class ContainerService {
 			if(actualContainer == null) {
 				throw new ContainerNotFoundException("Can't find a container with id "+container.getId()+" in server "+container.getServer()+".");
 			}else {
-				if(!actualContainer.getStatus().equals(DockerService.RUNNING_STATE)) {
-					throw new ContainerAlreadyRunningException("Container with id "+container.getId()+" in server "+container.getServer()+" is not running.");
-				}else {
+				if(actualContainer.getStatus().equals(ContainerStatus.RUNNING_STATE)) {
 					dockerService.stopContainer(container.getServer(), container.getId(), container.getAutoDestroy());
+				}	
 					
-					if(Boolean.TRUE.equals(container.getAutoDestroy())){
-						container.setStatus(DockerService.REMOVED_STATE);
-						
-						if(container.getPortMapping() != null && !container.getPortMapping().isEmpty()) {
-							for(String outPort : container.getPortMapping().values()) {
-								portPoolService.releasePort(container.getServer(), Integer.parseInt(outPort));
-							}
+				if(Boolean.TRUE.equals(container.getAutoDestroy())){
+					container.setStatus(ContainerStatus.REMOVED_STATE);
+					
+					if(container.getPortMapping() != null && !container.getPortMapping().isEmpty()) {
+						for(String outPort : container.getPortMapping().values()) {
+							portPoolService.releasePort(container.getServer(), Integer.parseInt(outPort));
 						}
-						registryService.unregister(container);
-					}else {
-						container.setStatus(DockerService.STOPPED_STATE);
 					}
-					
-					return container;
+					registryService.unregister(container);
+				}else {
+					container.setStatus(ContainerStatus.STOPPED_STATE);
 				}
+				
+				return container;
 			}
 		}else {
 			throw new ContainerInvalidException("Container requested to stop is invalid! "+container);

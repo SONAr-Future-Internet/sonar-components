@@ -29,15 +29,6 @@ import br.ufu.facom.mehar.sonar.cim.exception.UnsupportedMethodException;
 @Service
 public class DockerService {
 
-	public static final String RUNNING_STATE = "running";
-	public static final String STOPPED_STATE = "stopped";
-	public static final String CREATED_STATE = "created";
-	public static final String RESTARTING_STATE = "restarting";
-	public static final String PAUSED_STATE = "paused";
-	public static final String EXITED_STATE = "exited";
-	public static final String DEAD_STATE = "dead"; // API 1.24
-	public static final String REMOVED_STATE = "removed"; // CUSTOM
-
 	private static final int MAX_STOP_TIME = 5;
 
 	/*
@@ -189,17 +180,29 @@ public class DockerService {
 	/*
 	 * Get Containers
 	 */
-	public List<Container> getContainersByImage(String server, String image) {
+	public List<Container> getContainersByImage(String server, String fullImageName) {
+		List<Container> result = new ArrayList<Container>();
 		DockerClient docker = null;
+		
+		String imageName = fullImageName.contains(":")? fullImageName.split(":",2)[0] : fullImageName;
 		try {
 			docker = this.connectToDockerServer(server);
-			return docker.listContainers(ListContainersParam.create("image", image));
+			List<Container> containers = docker.listContainers(ListContainersParam.allContainers());
+			if (containers != null && !containers.isEmpty()) {
+				for (int i = 0; i < containers.size(); i++) {
+					String fullContainerImageName = containers.get(i).image();
+					String containerImageName = fullContainerImageName.contains(":")? fullContainerImageName.split(":",2)[0] : fullImageName;
+					if (containerImageName.equals(imageName)) {
+						result.add(containers.get(i));
+					}
+				}
+			}
 		} catch (DockerException | InterruptedException e) {
 			new ContainerSearchException("Error searching for Docker container.", e);
 		} finally {
 			this.closeConnection(docker);
 		}
-		return new ArrayList<>();
+		return result;
 	}
 
 	public List<Container> getContainersByNamespace(String server, String namespace) {

@@ -3,20 +3,24 @@
   <modelVersion>4.0.0</modelVersion>
 
   <parent>
-        <groupId>br.ufu.facom.mehar.sonar</groupId>
-        <artifactId>self-collector-entities</artifactId>
+        <groupId>br.ufu.facom.mehar</groupId>
+        <artifactId>sonar</artifactId>
         <version>0.0.1-SNAPSHOT</version>
   </parent>
 
-  <groupId>br.ufu.facom.mehar.sonar.collectors</groupId>
-  <artifactId>alarms-self-collector-entity</artifactId>
+  <groupId>br.ufu.facom.mehar.sonar</groupId>
+  <artifactId>network-service-bus</artifactId>
   <version>0.0.1-SNAPSHOT</version>
-  <packaging>jar</packaging>
-  <name>ASCoE - Alarms Self-Collector Entity</name>
+  <packaging>pom</packaging>
+  <name>NSB - Network Service Broker</name>
   <url>http://sonar.facom.ufu.br</url>
 
+  <modules>
+    <module>administration-service-broker</module>
+    <module>customer-service-broker</module>
+  </modules>
+
   <build>
-    
   </build>
 
   <dependencies>

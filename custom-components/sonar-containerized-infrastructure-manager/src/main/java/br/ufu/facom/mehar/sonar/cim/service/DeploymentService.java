@@ -39,7 +39,7 @@ public class DeploymentService {
 		try {
 			if(RUN_DEPLOYMENT_PLAN) {
 				ClassLoader classLoader = getClass().getClassLoader();
-				File file = new File(classLoader.getResource("deployment-plan.cimd").getFile());
+				File file = new File(classLoader.getResource("deployment-plan.json").getFile());
 	
 				ObjectMapper objectMapper = new ObjectMapper();
 				Registry registry = objectMapper.readValue(file, Registry.class);

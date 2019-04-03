@@ -26,6 +26,11 @@
   		<artifactId>sonar-model</artifactId>
   		<version>${sonar.version}</version>
   	</dependency>
+  	<dependency>
+  		<groupId>br.ufu.facom.mehar.sonar.core</groupId>
+  		<artifactId>sonar-util</artifactId>
+  		<version>${sonar.version}</version>
+  	</dependency>
   	
   	<!-- Spring -->
     <dependency>
@@ -33,5 +38,12 @@
       <artifactId>spring-boot-starter-web</artifactId>
       <scope>compile</scope>
     </dependency>
+    
+    <!-- Commons Lang -->
+	<dependency>
+    	<groupId>org.apache.commons</groupId>
+    	<artifactId>commons-lang3</artifactId>
+    	<version>3.8.1</version>
+	</dependency>
   </dependencies>
 </project>
