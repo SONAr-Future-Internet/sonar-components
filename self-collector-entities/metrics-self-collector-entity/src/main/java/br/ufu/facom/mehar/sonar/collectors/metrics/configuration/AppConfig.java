@@ -18,6 +18,9 @@ import org.springframework.http.client.support.BasicAuthenticationInterceptor;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.web.client.RestTemplate;
 
+import br.ufu.facom.mehar.sonar.client.api.event.amqp.Publisher;
+import br.ufu.facom.mehar.sonar.client.api.event.amqp.PublisherImpl;
+
 @Configuration
 public class AppConfig {
 
@@ -69,6 +72,11 @@ public class AppConfig {
 	public Jackson2JsonMessageConverter jackson2JsonMessageConverter() {
 		Jackson2JsonMessageConverter jackson2JsonMessageConverter = new Jackson2JsonMessageConverter();
 		return jackson2JsonMessageConverter;
+	}
+
+	@Bean
+	public Publisher publisher() {
+		return new PublisherImpl();
 	}
 
 }

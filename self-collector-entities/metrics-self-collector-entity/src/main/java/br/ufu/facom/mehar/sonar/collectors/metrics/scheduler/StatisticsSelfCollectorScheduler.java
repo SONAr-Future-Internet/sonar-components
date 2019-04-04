@@ -14,7 +14,8 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
-import br.ufu.facom.mehar.sonar.collectors.metrics.amqp.MessageSender;
+import br.ufu.facom.mehar.sonar.client.api.event.amqp.Publisher;
+//import br.ufu.facom.mehar.sonar.collectors.metrics.amqp.MessageSender;
 import br.ufu.facom.mehar.sonar.collectors.metrics.configuration.AppProperties;
 import br.ufu.facom.mehar.sonar.collectors.metrics.model.Statistics;
 import br.ufu.facom.mehar.sonar.collectors.metrics.network.topology.DynamicTopology;
@@ -29,8 +30,10 @@ public class StatisticsSelfCollectorScheduler {
 	private RestTemplate restTemplate;
 	@Autowired
 	private DynamicTopology dynamicTopology;
+	// @Autowired
+	// private MessageSender messageSender;
 	@Autowired
-	private MessageSender messageSender;
+	private Publisher publisher;
 	private List<String> devices;
 
 	@PostConstruct
@@ -68,9 +71,9 @@ public class StatisticsSelfCollectorScheduler {
 			LOGGER.error(e.getMessage());
 		}
 	}
-	
+
 	private void publishToTopic(Statistics statistics) {
-		messageSender.publish(statistics);
+		publisher.publish(statistics);
 	}
 
 }
