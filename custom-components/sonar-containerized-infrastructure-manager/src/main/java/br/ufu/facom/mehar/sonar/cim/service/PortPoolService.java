@@ -72,4 +72,16 @@ public class PortPoolService {
 			}
 		}
 	}
+
+	public void blockPort(String server, Integer port) {
+		synchronized (allocatedPorts) {
+			if(!allocatedPorts.containsKey(server)) {
+				allocatedPorts.put(server, new ArrayList<Integer>());
+			}
+			
+			if (!allocatedPorts.get(server).contains(port)) {
+				allocatedPorts.get(server).add(port);
+			}
+		}
+	}
 }

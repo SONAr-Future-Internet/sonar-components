@@ -5,7 +5,22 @@ public class DataProperty {
 	private String instance;
 	private String group;
 	private String key;
-	private Object value;
+	private String value;
+
+
+
+	public DataProperty() {
+		super();
+	}
+
+	public DataProperty(String application, String instance, String group, String key, String value) {
+		this();
+		this.application = application;
+		this.instance = instance;
+		this.group = group;
+		this.key = key;
+		this.value = value;
+	}
 
 	public String getInstance() {
 		return instance;
@@ -39,11 +54,11 @@ public class DataProperty {
 		this.key = key;
 	}
 
-	public Object getValue() {
+	public String getValue() {
 		return value;
 	}
 
-	public void setValue(Object value) {
+	public void setValue(String value) {
 		this.value = value;
 	}
 

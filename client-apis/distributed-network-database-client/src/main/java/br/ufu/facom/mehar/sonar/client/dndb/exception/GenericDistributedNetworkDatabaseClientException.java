@@ -1,4 +1,4 @@
-package br.ufu.facom.mehar.sonar.client.nddb.exception;
+package br.ufu.facom.mehar.sonar.client.dndb.exception;
 
 public class GenericDistributedNetworkDatabaseClientException extends RuntimeException{
 	private static final long serialVersionUID = 133147478047662440L;

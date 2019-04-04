@@ -3,7 +3,18 @@ package br.ufu.facom.mehar.sonar.core.model.property;
 public class ConfigurationProperty {
 	private String group;
 	private String key;
-	private Object value;
+	private String value;
+	
+	public ConfigurationProperty() {
+		super();
+	}
+
+	public ConfigurationProperty(String group, String key, String value) {
+		this();
+		this.group = group;
+		this.key = key;
+		this.value = value;
+	}
 
 	public String getGroup() {
 		return group;
@@ -21,11 +32,11 @@ public class ConfigurationProperty {
 		this.key = key;
 	}
 
-	public Object getValue() {
+	public String getValue() {
 		return value;
 	}
 
-	public void setValue(Object value) {
+	public void setValue(String value) {
 		this.value = value;
 	}
 

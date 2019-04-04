@@ -21,7 +21,20 @@
   </properties>
 
   <build>
-        
+    <plugins>
+      <plugin>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-maven-plugin</artifactId>
+        <configuration>
+          <mainClass>br.ufu.facom.mehar.sonar.dhcp.App</mainClass>
+          <executable>true</executable>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>com.spotify</groupId>
+        <artifactId>dockerfile-maven-plugin</artifactId>
+      </plugin>
+    </plugins>
   </build>
 
   <dependencies>
@@ -31,6 +44,17 @@
   		<artifactId>sonar-util</artifactId>
   		<version>${sonar.version}</version>
   	</dependency>
+  	<dependency>
+  		<groupId>br.ufu.facom.mehar.sonar.client</groupId>
+  		<artifactId>distributed-network-database-client</artifactId>
+  		<version>${sonar.version}</version>
+  	</dependency>
+  	<dependency>
+  		<groupId>br.ufu.facom.mehar.sonar.client</groupId>
+		<artifactId>network-event-manager-client</artifactId>
+  		<version>${sonar.version}</version>
+  	</dependency>
+  	
   	
 	<!-- Spring -->
     <dependency>

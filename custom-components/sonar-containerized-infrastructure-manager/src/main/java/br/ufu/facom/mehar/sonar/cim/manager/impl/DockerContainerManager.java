@@ -1,4 +1,4 @@
-package br.ufu.facom.mehar.sonar.cim.manager;
+package br.ufu.facom.mehar.sonar.cim.manager.impl;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -26,6 +26,7 @@ import br.ufu.facom.mehar.sonar.cim.exception.ContainerInstantiationException;
 import br.ufu.facom.mehar.sonar.cim.exception.ContainerSearchException;
 import br.ufu.facom.mehar.sonar.cim.exception.ContainerServerConnectionException;
 import br.ufu.facom.mehar.sonar.cim.exception.UnsupportedMethodException;
+import br.ufu.facom.mehar.sonar.cim.manager.ContainerManager;
 
 @Component("docker")
 public class DockerContainerManager implements ContainerManager{

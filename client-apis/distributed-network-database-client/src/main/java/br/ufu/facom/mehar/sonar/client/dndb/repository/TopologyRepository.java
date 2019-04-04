@@ -1,4 +1,4 @@
-package br.ufu.facom.mehar.sonar.client.nddb.repository;
+package br.ufu.facom.mehar.sonar.client.dndb.repository;
 
 import java.util.List;
 import java.util.UUID;

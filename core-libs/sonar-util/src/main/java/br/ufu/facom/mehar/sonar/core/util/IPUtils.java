@@ -148,4 +148,8 @@ public class IPUtils {
 		}
 		return null;
 	}
+
+	public static String convertInetToIPString(InetAddress inetAddress) {
+		return inetAddress.getHostAddress();
+	}
 }

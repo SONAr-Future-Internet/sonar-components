@@ -36,6 +36,16 @@
   		<artifactId>containerized-infrastructure-manager-client</artifactId>
   		<version>${sonar.version}</version>
   	</dependency>
+  	  	<dependency>
+  		<groupId>br.ufu.facom.mehar.sonar.client</groupId>
+  		<artifactId>distributed-network-database-client</artifactId>
+  		<version>${sonar.version}</version>
+  	</dependency>
+  	<dependency>
+  		<groupId>br.ufu.facom.mehar.sonar.client</groupId>
+		<artifactId>network-event-manager-client</artifactId>
+  		<version>${sonar.version}</version>
+  	</dependency>
   	
 	<!-- Spring -->
     <dependency>

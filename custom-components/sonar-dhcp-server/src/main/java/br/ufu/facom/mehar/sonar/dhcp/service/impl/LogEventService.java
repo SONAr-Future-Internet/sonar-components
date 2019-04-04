@@ -6,12 +6,12 @@ import java.util.Date;
 import org.jboss.logging.Logger;
 import org.springframework.stereotype.Service;
 
-import br.ufu.facom.mehar.sonar.dhcp.service.DHCPEventService;
+import br.ufu.facom.mehar.sonar.dhcp.service.EventService;
 
-@Service("log")
-public class LogDHCPEventService implements DHCPEventService {
+@Service
+public class LogEventService implements EventService {
 
-	Logger logger = Logger.getLogger(LogDHCPEventService.class);
+	Logger logger = Logger.getLogger(LogEventService.class);
 
 	@Override
 	public void publishNewIpConfiguredEvent(InetAddress requestedAddress, String macAddress, InetAddress serverIP,

@@ -1,4 +1,4 @@
-package br.ufu.facom.mehar.sonar.client.nddb.service;
+package br.ufu.facom.mehar.sonar.client.dndb.service;
 
 import java.util.HashSet;
 import java.util.List;
@@ -8,8 +8,8 @@ import java.util.UUID;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import br.ufu.facom.mehar.sonar.client.nddb.exception.DataValidationException;
-import br.ufu.facom.mehar.sonar.client.nddb.repository.TopologyRepository;
+import br.ufu.facom.mehar.sonar.client.dndb.exception.DataValidationException;
+import br.ufu.facom.mehar.sonar.client.dndb.repository.TopologyRepository;
 import br.ufu.facom.mehar.sonar.core.model.topology.Domain;
 import br.ufu.facom.mehar.sonar.core.model.topology.Element;
 import br.ufu.facom.mehar.sonar.core.model.topology.Port;

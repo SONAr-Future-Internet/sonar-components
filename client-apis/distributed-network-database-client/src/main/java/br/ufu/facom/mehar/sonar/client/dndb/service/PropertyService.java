@@ -1,11 +1,11 @@
-package br.ufu.facom.mehar.sonar.client.nddb.service;
+package br.ufu.facom.mehar.sonar.client.dndb.service;
 
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import br.ufu.facom.mehar.sonar.client.nddb.repository.PropertyRepository;
+import br.ufu.facom.mehar.sonar.client.dndb.repository.PropertyRepository;
 import br.ufu.facom.mehar.sonar.core.model.property.ConfigurationProperty;
 import br.ufu.facom.mehar.sonar.core.model.property.DataProperty;
 

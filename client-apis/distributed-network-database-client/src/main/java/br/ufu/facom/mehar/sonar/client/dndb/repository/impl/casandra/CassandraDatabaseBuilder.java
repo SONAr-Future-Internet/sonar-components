@@ -1,4 +1,4 @@
-package br.ufu.facom.mehar.sonar.client.nddb.repository.casandra;
+package br.ufu.facom.mehar.sonar.client.dndb.repository.impl.casandra;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -8,12 +8,15 @@ import java.util.List;
 
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
+import org.springframework.stereotype.Service;
 
+import com.datastax.driver.core.Metadata;
 import com.datastax.driver.core.Session;
 
-import br.ufu.facom.mehar.sonar.client.nddb.exception.DatabaseBuilderException;
-import br.ufu.facom.mehar.sonar.client.nddb.repository.DatabaseBuilder;
+import br.ufu.facom.mehar.sonar.client.dndb.exception.DatabaseBuilderException;
+import br.ufu.facom.mehar.sonar.client.dndb.repository.DatabaseBuilder;
 
+@Service
 public class CassandraDatabaseBuilder extends CassandraGenericRepository implements DatabaseBuilder {
 
 	@Override
@@ -51,6 +54,17 @@ public class CassandraDatabaseBuilder extends CassandraGenericRepository impleme
 			line = buf.readLine();
 		}
 		return statements;
+	}
+
+	@Override
+	public Boolean isBuilt() {
+		Session session = session();
+		try {
+			Metadata metadata = session.getCluster().getMetadata();
+			return metadata.getKeyspace("topology") != null && metadata.getKeyspace("property") != null;
+		}  finally {
+			close(session);
+		}
 	}
 
 }

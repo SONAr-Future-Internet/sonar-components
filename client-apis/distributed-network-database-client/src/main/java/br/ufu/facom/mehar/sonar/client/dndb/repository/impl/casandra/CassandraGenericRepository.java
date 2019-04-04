@@ -1,35 +1,45 @@
-package br.ufu.facom.mehar.sonar.client.nddb.repository.casandra;
+package br.ufu.facom.mehar.sonar.client.dndb.repository.impl.casandra;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.net.InetSocketAddress;
 import java.util.HashMap;
 import java.util.Map;
 
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.Cluster.Builder;
 import com.datastax.driver.core.Session;
+import com.datastax.driver.core.exceptions.NoHostAvailableException;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import br.ufu.facom.mehar.sonar.client.nddb.exception.JsonConversionException;
+import br.ufu.facom.mehar.sonar.client.dndb.configuration.DNDBConfiguration;
+import br.ufu.facom.mehar.sonar.client.dndb.exception.JsonConversionException;
 
 public abstract class CassandraGenericRepository {
-
+	
 	private Cluster cluster;
-
+	
 	private ObjectMapper objectMapper = new ObjectMapper();
 	{
 		objectMapper.setSerializationInclusion(Include.NON_NULL);
 		objectMapper.configure(MapperFeature.ACCEPT_CASE_INSENSITIVE_PROPERTIES, true);
 	}
+
 	
 	public void clusterStart() {
+		
 		Builder b =  Cluster.builder()
-				.withoutMetrics()
-				.addContactPoint("127.0.0.1")
-				.withPort(9042);
+				.withoutMetrics();
+		
+		for(String seedStr : DNDBConfiguration.getSeeds()) {
+			String ip = seedStr.split(":",2)[0].trim();
+			String port = seedStr.split(":",2)[1].trim();
+			b.addContactPointsWithPorts(new InetSocketAddress(ip, Integer.parseInt(port)));
+		}
+		
 		cluster = b.build();
 	}
 	
@@ -43,14 +53,22 @@ public abstract class CassandraGenericRepository {
 	}
 	
 	public Session session(String keystore) {
-		if(cluster == null) {
-			clusterStart();
-		}
-		
-		if(keystore != null) {
-			return cluster.connect(keystore);
-		}else {
-			return cluster.connect();
+		try {
+			if(cluster == null) {
+				clusterStart();
+			}
+			
+			if(keystore != null) {
+				return cluster.connect(keystore);
+			}else {
+				return cluster.connect();
+			}
+		}catch(NoHostAvailableException e) {
+			if(cluster != null && !cluster.isClosed()) {
+				cluster.close();
+			}
+			cluster = null;
+			throw e;
 		}
 	}
 	

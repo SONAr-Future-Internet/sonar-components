@@ -22,8 +22,8 @@ import br.ufu.facom.mehar.sonar.dhcp.api.DHCPOption;
 import br.ufu.facom.mehar.sonar.dhcp.api.DHCPPacket;
 import br.ufu.facom.mehar.sonar.dhcp.api.DHCPServerInitException;
 import br.ufu.facom.mehar.sonar.dhcp.api.DHCPServlet;
-import br.ufu.facom.mehar.sonar.dhcp.service.DHCPEventService;
-import br.ufu.facom.mehar.sonar.dhcp.service.IPPoolService;
+import br.ufu.facom.mehar.sonar.dhcp.service.EventService;
+import br.ufu.facom.mehar.sonar.dhcp.service.PoolService;
 
 @Component
 public class DHCPServer {
@@ -45,18 +45,16 @@ public class DHCPServer {
 	private String subnetMask;
 
 	@Autowired
-	@Qualifier("log")
-	private DHCPEventService eventService;
+	private EventService eventService;
 
 	@Autowired
-	@Qualifier("memory")
-	private IPPoolService ipPoolService;
+	private PoolService poolService;
 
 	@EventListener(ApplicationReadyEvent.class)
 	public void run() {
 		try {
 			logger.info("Starting DHCP Server...");
-
+			
 			final InterfaceAddress bindInterfaceAddress =  IPUtils.searchActiveInterfaceAddress();
 
 			final InetAddress serverIP = bindInterfaceAddress.getAddress();
@@ -78,7 +76,7 @@ public class DHCPServer {
 					logger.debug(request.toString());
 
 					String macAddress = request.getChaddrAsHex();
-					InetAddress offeredInetAddress = ipPoolService.getIP(macAddress);
+					InetAddress offeredInetAddress = poolService.getIP(macAddress);
 
 					logger.info("Discover from " + macAddress + " offered:" + offeredInetAddress);
 

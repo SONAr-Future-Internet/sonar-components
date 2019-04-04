@@ -222,7 +222,7 @@ public class ContainerService {
 					}else {
 						Integer outPort = Integer.parseInt(inPort);
 						portsAllocated.add(outPort);
-						portPoolService.allocatePort(server, outPort);
+						portPoolService.blockPort(server, outPort);
 					}
 				}
 			}

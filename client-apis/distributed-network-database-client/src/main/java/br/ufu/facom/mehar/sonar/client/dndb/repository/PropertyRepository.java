@@ -1,4 +1,4 @@
-package br.ufu.facom.mehar.sonar.client.nddb.repository;
+package br.ufu.facom.mehar.sonar.client.dndb.repository;
 
 import java.util.List;
 
@@ -16,7 +16,7 @@ public interface PropertyRepository {
 	public ConfigurationProperty getConfiguration(String group, String key);
 	
 	public Boolean setProperty(ConfigurationProperty property);
-	public Boolean setProperty(String group, String key, Object value);
+	public Boolean setProperty(String group, String key, String value);
 	
 	
 	/*
@@ -33,5 +33,5 @@ public interface PropertyRepository {
 	public DataProperty getData(String application, String instance, String group, String key);
 	
 	public Boolean setData(DataProperty property);
-	public Boolean setData(String application, String group, String key, Object value);
+	public Boolean setData(String application, String instance, String group, String key, String value);
 }

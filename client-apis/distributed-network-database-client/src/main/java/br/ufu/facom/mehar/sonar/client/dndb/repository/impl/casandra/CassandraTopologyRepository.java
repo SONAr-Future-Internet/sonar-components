@@ -1,4 +1,4 @@
-package br.ufu.facom.mehar.sonar.client.nddb.repository.casandra;
+package br.ufu.facom.mehar.sonar.client.dndb.repository.impl.casandra;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -16,7 +16,7 @@ import com.datastax.driver.core.querybuilder.Select;
 import com.datastax.driver.core.querybuilder.Truncate;
 import com.datastax.driver.core.utils.UUIDs;
 
-import br.ufu.facom.mehar.sonar.client.nddb.repository.TopologyRepository;
+import br.ufu.facom.mehar.sonar.client.dndb.repository.TopologyRepository;
 import br.ufu.facom.mehar.sonar.core.model.topology.Domain;
 import br.ufu.facom.mehar.sonar.core.model.topology.Element;
 import br.ufu.facom.mehar.sonar.core.model.topology.Port;

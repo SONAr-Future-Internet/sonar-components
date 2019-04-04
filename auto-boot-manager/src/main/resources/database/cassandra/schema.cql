@@ -37,3 +37,17 @@ CREATE TABLE IF NOT EXISTS topology.port (
 	remoteIpAddress TEXT,
 	mode TEXT,
 	bandwidth BIGINT );
+-- Property
+CREATE KEYSPACE IF NOT EXISTS property WITH REPLICATION = { 'class' : 'NetworkTopologyStrategy', 'datacenter1' : 3 };
+CREATE TABLE IF NOT EXISTS property.configuration ( 
+	group TEXT, 
+	key TEXT, 
+	value TEXT,
+	PRIMARY KEY (group, key) );
+CREATE TABLE IF NOT EXISTS property.data (
+	application TEXT,
+ 	instance TEXT,
+	group TEXT, 
+	key TEXT, 
+	value TEXT,
+	PRIMARY KEY (application, instance, group, key) );
