@@ -25,6 +25,18 @@
   </build>
 
   <dependencies>
+  	<!-- Internal -->
+  	<dependency>
+  		<groupId>br.ufu.facom.mehar.sonar.core</groupId>
+  		<artifactId>sonar-model</artifactId>
+  		<version>${sonar.version}</version>
+  	</dependency>
+  	<dependency>
+  		<groupId>br.ufu.facom.mehar.sonar.client</groupId>
+  		<artifactId>containerized-infrastructure-manager-client</artifactId>
+  		<version>${sonar.version}</version>
+  	</dependency>
+  	
 	<!-- Spring -->
     <dependency>
       <groupId>org.springframework.boot</groupId>

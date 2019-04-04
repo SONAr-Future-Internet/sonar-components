@@ -1,6 +1,7 @@
 package br.ufu.facom.mehar.sonar.cim.service;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -54,6 +55,20 @@ public class PortPoolService {
 			
 			if (allocatedPorts.get(server).contains(port)) {
 				allocatedPorts.get(server).remove(port);
+			}
+		}
+	}
+
+	public void blockPorts(String server, Collection<String> ports) {
+		synchronized (allocatedPorts) {
+			if(!allocatedPorts.containsKey(server)) {
+				allocatedPorts.put(server, new ArrayList<Integer>());
+			}
+			
+			for(String port : ports) {
+				if (!allocatedPorts.get(server).contains(port)) {
+					allocatedPorts.get(server).add(Integer.parseInt(port));
+				}
 			}
 		}
 	}

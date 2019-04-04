@@ -1,0 +1,12 @@
+{"local":
+	{"meharsonar":
+		[
+			{	"image":"sonar-dashboard",
+				"version":"latest",
+				"portMapping":{"8080":"8180"},
+				"autoDestroy":true,
+				"singleton":false
+			}
+		]
+	}
+}

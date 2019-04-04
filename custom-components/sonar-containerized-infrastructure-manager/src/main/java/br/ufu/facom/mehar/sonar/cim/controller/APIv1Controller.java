@@ -24,7 +24,6 @@ public class APIv1Controller {
 	@Autowired
 	private RegistryService registryService;
 
-	//Registry
 	@RequestMapping(value = "/registry", method = RequestMethod.GET)
 	public Registry get() {
 		return this.registryService.get();
@@ -52,7 +51,7 @@ public class APIv1Controller {
 	
 
 	//GET's (all servers)
-	@RequestMapping(value = "/", method = RequestMethod.GET)
+	@RequestMapping(value = "/container", method = RequestMethod.GET)
 	public List<Container> getContainersInAllServers() {
 		return this.containerService.getContainers();
 	}
@@ -78,6 +77,11 @@ public class APIv1Controller {
 	
 	//Create and/or Run
 	@RequestMapping(value = "/server/{server}/container", method = RequestMethod.POST)
+	public Container run(@PathVariable(value="server") String server, @RequestBody Container container) {
+		container.setServer(server);
+		return this.containerService.run(container);
+	}
+	@RequestMapping(value = "/container", method = RequestMethod.POST)
 	public Container runContainer(@RequestBody Container container) {
 		return this.containerService.run(container);
 	}
@@ -95,13 +99,19 @@ public class APIv1Controller {
 	//Stop and Destroy if (autoDestroy)
 	@RequestMapping(value = "/server/{server}/namespace/{namespace}/image/{image}/container/{idOrName}", method = RequestMethod.DELETE)
 	public Container stopContainer(@PathVariable(value="server") String server, @PathVariable(value="namespace") String namespace, @PathVariable(value="image") String image, @PathVariable(value="idOrName") String idOrName) {
-		return this.containerService.stopByIdOrName(server, namespace, image, idOrName);
+		return this.containerService.stop(server, namespace, image, idOrName);
 	}
 	@RequestMapping(value = "/server/{server}/namespace/{namespace}/image/{image}", method = RequestMethod.DELETE)
 	public List<Container> stopContainer(@PathVariable(value="server") String server, @PathVariable(value="namespace") String namespace, @PathVariable(value="image") String image) {
-		return this.containerService.stop(server, namespace, image, image);
+		return this.containerService.stop(server, namespace, image);
 	}
 	@RequestMapping(value = "/server/{server}/container", method = RequestMethod.DELETE)
+	public Container stopContainer(@PathVariable(value="server") String server, @RequestBody Container container) {
+		container.setServer(server);
+		return this.containerService.stop(container);
+	}
+	
+	@RequestMapping(value = "/container", method = RequestMethod.DELETE)
 	public Container stopContainer(@RequestBody Container container) {
 		return this.containerService.stop(container);
 	}
