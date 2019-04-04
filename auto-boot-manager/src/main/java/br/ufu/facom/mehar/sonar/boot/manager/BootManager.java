@@ -74,7 +74,7 @@ public class BootManager {
 		String port = container.getAccessPort().get(accessPort);
 		if (port != null) {
 			if (container.getServer() != null && !container.getServer().isEmpty()
-					&& !container.getServer().equals("local")) {
+					&& container.getServer().equals("local")) {
 				return container.getServer() + ":" + port;
 			} else {
 				throw new InvalidEndpointException("Invalid endpoint " + accessPort + " of '" + component
