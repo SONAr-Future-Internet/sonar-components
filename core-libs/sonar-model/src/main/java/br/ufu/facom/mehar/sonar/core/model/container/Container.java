@@ -195,7 +195,7 @@ public class Container implements Serializable{
 		result = prime * result + ((image == null) ? 0 : image.hashCode());
 		result = prime * result + ((namespace == null) ? 0 : namespace.hashCode());
 		result = prime * result + ((portMapping == null) ? 0 : portMapping.hashCode());
-		result = prime * result + ((server == null) ? 0 : server.hashCode());
+		result = prime * result + ((version == null) ? 0 : version.hashCode());
 		return result;
 	}
 
@@ -223,10 +223,10 @@ public class Container implements Serializable{
 				return false;
 		} else if (!portMapping.equals(other.portMapping))
 			return false;
-		if (server == null) {
-			if (other.server != null)
+		if (version == null) {
+			if (other.version != null)
 				return false;
-		} else if (!server.equals(other.server))
+		} else if (!version.equals(other.version))
 			return false;
 		return true;
 	}

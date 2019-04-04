@@ -5,17 +5,16 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
-import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import br.ufu.facom.mehar.sonar.client.nddb.exception.DataValidationException;
 import br.ufu.facom.mehar.sonar.client.nddb.repository.TopologyRepository;
-import br.ufu.facom.mehar.sonar.client.nddb.repository.casandra.CassandraTopologyRepository;
 import br.ufu.facom.mehar.sonar.core.model.topology.Domain;
 import br.ufu.facom.mehar.sonar.core.model.topology.Element;
 import br.ufu.facom.mehar.sonar.core.model.topology.Port;
 import br.ufu.facom.mehar.sonar.core.util.IPUtils;
+import br.ufu.facom.mehar.sonar.core.util.ObjectUtils;
 
 @Service
 public class TopologyService {
@@ -45,7 +44,7 @@ public class TopologyService {
 					
 					
 					if(IPUtils.isInNetwork(domain.getNetworkAddress(), domainPersisted.getNetworkAddress(), domainPersisted.getNetworkMask()) || IPUtils.isInNetwork(domainPersisted.getNetworkAddress(), domain.getNetworkAddress(), domain.getNetworkMask())) {
-						throw new DataValidationException("Domain with requested IP network already exists. "+ToStringBuilder.reflectionToString(domainPersisted));
+						throw new DataValidationException("Domain with requested IP network already exists. "+ObjectUtils.toString(domainPersisted));
 					}
 				}
 			}
@@ -54,7 +53,7 @@ public class TopologyService {
 				for(Domain domainPersisted : this.getDomains()) {
 					if(domainPersisted.getIpRangeStart() != null && domainPersisted.getIpRangeFinish() != null) {
 						if(IPUtils.isInRange(domain.getIpRangeStart(), domainPersisted.getIpRangeStart(), domainPersisted.getIpRangeFinish()) || IPUtils.isInRange(domain.getIpRangeFinish(), domainPersisted.getIpRangeStart(), domainPersisted.getIpRangeFinish())) {
-							throw new DataValidationException("Domain with requested IP range already exists. "+ToStringBuilder.reflectionToString(domainPersisted));
+							throw new DataValidationException("Domain with requested IP range already exists. "+ObjectUtils.toString(domainPersisted));
 						}
 					}
 				}

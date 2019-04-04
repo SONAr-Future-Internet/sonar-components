@@ -15,6 +15,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
 import br.ufu.facom.mehar.sonar.core.model.container.Container;
+import br.ufu.facom.mehar.sonar.core.util.ObjectUtils;
 
 @Component("sonar-cim")
 public class SonarCIMContainerManager implements ContainerManager{
@@ -28,7 +29,7 @@ public class SonarCIMContainerManager implements ContainerManager{
 
 	@Override
 	public Container run(String managerIp, Container container) {
-		logger.info(this.getClass().getCanonicalName() + " -> run");
+		logger.debug(this.getClass().getCanonicalName() + "Run container: "+ObjectUtils.toString(container));
 		
 		HttpHeaders headers = new HttpHeaders();
 		headers.set("Accept", MediaType.APPLICATION_JSON_VALUE);
@@ -44,7 +45,7 @@ public class SonarCIMContainerManager implements ContainerManager{
 
 	@Override
 	public Container stop(String managerIp, Container container) {
-		logger.info(this.getClass().getCanonicalName() + " -> stop");
+		logger.debug(this.getClass().getCanonicalName() + "Stop container: "+ObjectUtils.toString(container));
 		
 		HttpHeaders headers = new HttpHeaders();
 		headers.set("Accept", MediaType.APPLICATION_JSON_VALUE);
@@ -60,7 +61,7 @@ public class SonarCIMContainerManager implements ContainerManager{
 
 	@Override
 	public List<Container> get(String managerIp){
-		logger.info(this.getClass().getCanonicalName() + " -> get");
+		logger.debug(this.getClass().getCanonicalName() + "Get all containers on manager "+managerIp);
 
 		HttpHeaders headers = new HttpHeaders();
 		headers.set("Accept", MediaType.APPLICATION_JSON_VALUE);

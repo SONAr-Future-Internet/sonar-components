@@ -11,7 +11,7 @@ import br.ufu.facom.mehar.sonar.core.model.container.Container;
 import br.ufu.facom.mehar.sonar.core.model.container.ContainerStatus;
 
 public class DataTranslator {
-	public static Container convertDockerContainerToGenericContainer(com.spotify.docker.client.messages.Container dockerContainer, String server){
+	public static Container translate(com.spotify.docker.client.messages.Container dockerContainer, String server){
 		if(dockerContainer == null) {
 			return null;
 		}
@@ -54,13 +54,13 @@ public class DataTranslator {
 		return container;
 	}
 	
-	public static List<Container> convertDockerContainerToGenericContainer(List<com.spotify.docker.client.messages.Container> dockerContainerList, String server){
+	public static List<Container> translate(List<com.spotify.docker.client.messages.Container> dockerContainerList, String server){
 		if(dockerContainerList == null) {
 			return null;
 		}
 		List<Container> result = new ArrayList<Container>();
 		for(com.spotify.docker.client.messages.Container dockerContainer : dockerContainerList) {
-			result.add(DataTranslator.convertDockerContainerToGenericContainer(dockerContainer, server));
+			result.add(DataTranslator.translate(dockerContainer, server));
 		}
 		return result;
 	}

@@ -1,4 +1,4 @@
-package br.ufu.facom.mehar.sonar.cim.service;
+package br.ufu.facom.mehar.sonar.cim.manager;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
 
 import com.spotify.docker.client.DefaultDockerClient;
@@ -26,8 +27,8 @@ import br.ufu.facom.mehar.sonar.cim.exception.ContainerSearchException;
 import br.ufu.facom.mehar.sonar.cim.exception.ContainerServerConnectionException;
 import br.ufu.facom.mehar.sonar.cim.exception.UnsupportedMethodException;
 
-@Service
-public class DockerService {
+@Component("docker")
+public class DockerContainerManager implements ContainerManager{
 
 	private static final int MAX_STOP_TIME = 5;
 
@@ -57,6 +58,7 @@ public class DockerService {
 	/*
 	 * Run Container
 	 */
+	@Override
 	public Container runContainerById(String server, String containerId) {
 		DockerClient docker = null;
 		try {
@@ -81,6 +83,7 @@ public class DockerService {
 		}
 	}
 
+	@Override
 	public Container runContainer(String server, String fullImageName, String containerName,
 			Map<String, String> portMapping, Set<String> exposedPorts, List<String> env, Set<String> volumes,
 			List<String> entrypoint, List<String> cmd, Boolean autoDestroy) {
@@ -152,7 +155,7 @@ public class DockerService {
 	/*
 	 * Stop Container
 	 */
-
+	@Override
 	public void stopContainer(String server, String containerId, Boolean autoDestroy) {
 		DockerClient docker = null;
 		try {
@@ -180,6 +183,7 @@ public class DockerService {
 	/*
 	 * Get Containers
 	 */
+	@Override
 	public List<Container> getContainersByImage(String server, String fullImageName) {
 		List<Container> result = new ArrayList<Container>();
 		DockerClient docker = null;
@@ -205,6 +209,7 @@ public class DockerService {
 		return result;
 	}
 
+	@Override
 	public List<Container> getContainersByNamespace(String server, String namespace) {
 		List<Container> result = new ArrayList<Container>();
 		DockerClient docker = null;
@@ -226,6 +231,7 @@ public class DockerService {
 		return result;
 	}
 
+	@Override
 	public Container getContainerById(String server, String id) {
 		DockerClient docker = null;
 		try {
@@ -242,6 +248,7 @@ public class DockerService {
 		return null;
 	}
 
+	@Override
 	public Container getContainerByName(String server, String name) {
 		DockerClient docker = null;
 		try {
@@ -258,6 +265,7 @@ public class DockerService {
 		return null;
 	}
 
+	@Override
 	public List<Container> getContainers(String server) {
 		DockerClient docker = null;
 		try {
@@ -271,6 +279,7 @@ public class DockerService {
 		return new ArrayList<>();
 	}
 
+	@Override
 	public List<Container> getRunningContainers(String server) {
 		DockerClient docker = null;
 		try {

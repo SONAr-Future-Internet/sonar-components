@@ -6,12 +6,14 @@ import java.util.Map;
 import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import br.ufu.facom.mehar.sonar.cim.exception.ContainerAlreadyRunningException;
 import br.ufu.facom.mehar.sonar.cim.exception.ContainerInvalidException;
 import br.ufu.facom.mehar.sonar.cim.exception.ContainerMismatchException;
 import br.ufu.facom.mehar.sonar.cim.exception.ContainerNotFoundException;
+import br.ufu.facom.mehar.sonar.cim.manager.ContainerManager;
 import br.ufu.facom.mehar.sonar.cim.util.DataTranslator;
 import br.ufu.facom.mehar.sonar.core.model.container.Container;
 import br.ufu.facom.mehar.sonar.core.model.container.ContainerStatus;
@@ -19,7 +21,8 @@ import br.ufu.facom.mehar.sonar.core.model.container.ContainerStatus;
 @Service
 public class ContainerService {
 	@Autowired
-	private DockerService dockerService;
+	@Qualifier("docker")
+	private ContainerManager containerManager;
 	
 	@Autowired
 	private PortPoolService portPoolService;
@@ -85,29 +88,29 @@ public class ContainerService {
 	 * GET Containers in a server
 	 */
 	public List<Container> getRunningContainersByServer(String server) {
-		return DataTranslator.convertDockerContainerToGenericContainer(dockerService.getRunningContainers(server), server);
+		return DataTranslator.translate(containerManager.getRunningContainers(server), server);
 	}
 	
 	public List<Container> getContainersByServer(String server) {
-		return DataTranslator.convertDockerContainerToGenericContainer(dockerService.getContainers(server), server);
+		return DataTranslator.translate(containerManager.getContainers(server), server);
 	}
 
 	public List<Container> getContainersByServerNamespaceAndImage(String server, String namespace, String image) {
-		return DataTranslator.convertDockerContainerToGenericContainer(dockerService.getContainersByImage(server, Container.getImageNameWithNamespace(namespace, image)), server);
+		return DataTranslator.translate(containerManager.getContainersByImage(server, Container.getImageNameWithNamespace(namespace, image)), server);
 	}
 	
 	public List<Container> getContainersByServerAndNamespace(String server, String namespace) {
-		return DataTranslator.convertDockerContainerToGenericContainer(dockerService.getContainersByNamespace(server, namespace), server);
+		return DataTranslator.translate(containerManager.getContainersByNamespace(server, namespace), server);
 	}
 
 	public Container getContainerByServerAndContainerId(String server, String id) {
-		return DataTranslator.convertDockerContainerToGenericContainer(dockerService.getContainerById(server, id), server);
+		return DataTranslator.translate(containerManager.getContainerById(server, id), server);
 	}
 	
 	public Container getContainerByServerAndContainerIdOrName(String server, String idOrName) {
-		Container container =  DataTranslator.convertDockerContainerToGenericContainer(dockerService.getContainerById(server, idOrName), server);
+		Container container =  DataTranslator.translate(containerManager.getContainerById(server, idOrName), server);
 		if(container == null) {
-			return DataTranslator.convertDockerContainerToGenericContainer(dockerService.getContainerByName(server, idOrName), server);
+			return DataTranslator.translate(containerManager.getContainerByName(server, idOrName), server);
 		}
 		return container;
 	}
@@ -135,7 +138,7 @@ public class ContainerService {
 		
 	
 		if(containerId != null && !containerId.isEmpty()) {
-			Container alreadyCreatedContainer = DataTranslator.convertDockerContainerToGenericContainer(dockerService.getContainerById(server, containerId), server);
+			Container alreadyCreatedContainer = DataTranslator.translate(containerManager.getContainerById(server, containerId), server);
 			if(alreadyCreatedContainer == null) {
 				throw new ContainerNotFoundException("Can't find a container with id "+containerId+" in server "+server+".");
 			}else {
@@ -148,7 +151,7 @@ public class ContainerService {
 		}
 		
 		if(containerName != null && !containerName.isEmpty()) {
-			Container alreadyCreatedContainer = DataTranslator.convertDockerContainerToGenericContainer(dockerService.getContainerByName(server, containerName), server);
+			Container alreadyCreatedContainer = DataTranslator.translate(containerManager.getContainerByName(server, containerName), server);
 			if(alreadyCreatedContainer == null) {
 				throw new ContainerNotFoundException("Can't find a container with name "+containerName+" in server "+server+".");
 			}else {
@@ -161,7 +164,7 @@ public class ContainerService {
 		}
 		
 		if(singleton != null && Boolean.TRUE.equals(singleton)) {
-			List<Container> containers = DataTranslator.convertDockerContainerToGenericContainer(dockerService.getContainersByImage(server, fullImageName), server);
+			List<Container> containers = DataTranslator.translate(containerManager.getContainersByImage(server, fullImageName), server);
 			
 			if(containers != null && !containers.isEmpty()) {
 				for(Container alreadyCreatedContainer : containers) {
@@ -175,7 +178,7 @@ public class ContainerService {
 		}
 		
 		//Find Container with same port mapping
-		List<Container> containers = DataTranslator.convertDockerContainerToGenericContainer(dockerService.getContainersByImage(server, fullImageName), server);
+		List<Container> containers = DataTranslator.translate(containerManager.getContainersByImage(server, fullImageName), server);
 		if(containers != null && !containers.isEmpty()) {
 			for(Container alreadyCreatedContainer : containers) {
 				if(portMapping != null && !portMapping.isEmpty()) {
@@ -225,7 +228,7 @@ public class ContainerService {
 			}
 			
 			//Create And Run Container
-			Container runningContainer = DataTranslator.convertDockerContainerToGenericContainer(dockerService.runContainer(server, fullImageName, containerName, portMapping, exposedPorts, env, volumes, entrypoint, cmd, autoDestroy), server);
+			Container runningContainer = DataTranslator.translate(containerManager.runContainer(server, fullImageName, containerName, portMapping, exposedPorts, env, volumes, entrypoint, cmd, autoDestroy), server);
 			container = merge(container, runningContainer);
 
 			registryService.register(container);
@@ -251,7 +254,7 @@ public class ContainerService {
 	}
 
 	private Container runContainer(Container container, String server, String containerId) {
-		Container runningContainer =  DataTranslator.convertDockerContainerToGenericContainer(dockerService.runContainerById(server, containerId), server);
+		Container runningContainer =  DataTranslator.translate(containerManager.runContainerById(server, containerId), server);
 		
 		container = merge(container, runningContainer);
 
@@ -362,7 +365,7 @@ public class ContainerService {
 				throw new ContainerNotFoundException("Can't find a container with id "+container.getId()+" in server "+container.getServer()+".");
 			}else {
 				if(actualContainer.getStatus().equals(ContainerStatus.RUNNING_STATE)) {
-					dockerService.stopContainer(container.getServer(), container.getId(), container.getAutoDestroy());
+					containerManager.stopContainer(container.getServer(), container.getId(), container.getAutoDestroy());
 				}	
 					
 				if(Boolean.TRUE.equals(container.getAutoDestroy())){

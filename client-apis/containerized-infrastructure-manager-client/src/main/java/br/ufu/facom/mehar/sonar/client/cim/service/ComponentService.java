@@ -150,28 +150,29 @@ public class ComponentService {
 		}
 	}
 	
-	public Map<Component, Container> get(String managerIp){
-		Map<Component, Container> result = new HashMap<Component, Container>();
+	public Map<Component, List<Container>> get(String managerIp){
+		Map<Component, List<Container>> result = new HashMap<Component, List<Container>>();
 		
 		//Components loaded?
 		if(componentMap == null) {
 			throw new ComponentsNotLoadedException("There was a problem while loading sonar components... read log for more details.");
 		}
 		
-		Map<Container, Component> reverseComponentMap = new HashMap<Container, Component>();
-		for(String key : componentMap.keySet()) {
-			Component component = Component.getByKey(key);
-			if(component != null) {
-				reverseComponentMap.put(componentMap.get(key), component);
-			}
-		}
-		
+		//Get all components	
 		List<Container> containerList = containerManager.get(managerIp);
 		if(containerList != null && !containerList.isEmpty()) {
 			for(Container container : containerList) {
-				Component component = reverseComponentMap.get(container);
+				//Identify component
+				Component component = findComponent(container);
 				if(component != null) {
-					result.put(component, generateContainerInfo(container, componentMap.get(component), managerIp));
+					if(!result.containsKey(component)) {
+						result.put(component, new ArrayList<Container>());
+					}
+					
+					Container containerOnConfiguration = componentMap.get(component.getKey());
+					if(containerOnConfiguration != null) {
+						result.get(component).add(generateContainerInfo(container, containerOnConfiguration , managerIp));
+					}
 				}
 			}
 		}
@@ -179,17 +180,27 @@ public class ComponentService {
 		return result;
 	}
 
+	private Component findComponent(Container target) {
+		for(String componentKey : componentMap.keySet()) {
+			Container container = componentMap.get(componentKey);
+			if(container.equals(target)) {
+				return Component.getByKey(componentKey);
+			}
+		}
+		return null;
+	}
+
 	private Container generateContainerInfo(Container containerOnManager, Container containerOnConfiguration, String managerIp) {
 		Container result = ObjectUtils.clone(containerOnConfiguration);
 		
-		if("local".equals(containerOnConfiguration.getServer())) {
+		if("local".equals(containerOnManager.getServer())) {
 			result.setServer(managerIp);
 		}else {
-			result.setServer(containerOnConfiguration.getServer());
+			result.setServer(containerOnManager.getServer());
 		}
 		
-		result.setId(containerOnConfiguration.getId());
-		result.setStatus(containerOnConfiguration.getStatus());
+		result.setId(containerOnManager.getId());
+		result.setStatus(containerOnManager.getStatus());
 		
 		return result;
 	}
