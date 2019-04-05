@@ -26,6 +26,11 @@
 			<artifactId>sonar-model</artifactId>
 			<version>${project.version}</version>
 		</dependency>
+		<dependency>
+			<groupId>br.ufu.facom.mehar.sonar.core</groupId>
+			<artifactId>sonar-util</artifactId>
+			<version>${project.version}</version>
+		</dependency>
 		
 		<!-- Spring -->
 	    <dependency>
