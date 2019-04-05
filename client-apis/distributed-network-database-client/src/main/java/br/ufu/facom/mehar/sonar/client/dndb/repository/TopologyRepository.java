@@ -45,4 +45,5 @@ public interface TopologyRepository {
 	public List<Port> getPortsByIdElement(UUID idElement);
 	public Port getPortById(UUID idPort);
 	public Port getPortByMacAddress(String macAddress);
+	public List<Port> getPortsWithIP();
 }

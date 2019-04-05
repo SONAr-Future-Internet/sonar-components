@@ -20,6 +20,7 @@ import br.ufu.facom.mehar.sonar.client.dndb.repository.TopologyRepository;
 import br.ufu.facom.mehar.sonar.core.model.topology.Domain;
 import br.ufu.facom.mehar.sonar.core.model.topology.Element;
 import br.ufu.facom.mehar.sonar.core.model.topology.Port;
+import br.ufu.facom.mehar.sonar.core.util.ObjectUtils;
 
 @Repository
 public class CassandraTopologyRepository extends CassandraGenericRepository implements TopologyRepository {
@@ -37,7 +38,7 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 			}
 
 			Insert insertQuery = QueryBuilder.insertInto(KEYSPACE, DOMAIN_COLECTION)
-					.json(fromObject(domain, "elementList"));
+					.json(ObjectUtils.fromObject(domain, "elementList"));
 			session.execute(insertQuery);
 
 			return domain;
@@ -55,7 +56,7 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 			}
 
 			Insert insertQuery = QueryBuilder.insertInto(KEYSPACE, ELEMENT_COLECTION)
-					.json(fromObject(element, "domain", "portList"));
+					.json(ObjectUtils.fromObject(element, "domain", "portList"));
 			session.execute(insertQuery);
 
 			return element;
@@ -74,7 +75,7 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 			}
 
 			Insert insertQuery = QueryBuilder.insertInto(KEYSPACE, PORT_COLECTION)
-					.json(fromObject(port, "element", "remotePort"));
+					.json(ObjectUtils.fromObject(port, "element", "remotePort"));
 			session.execute(insertQuery);
 
 			return port;
@@ -285,7 +286,7 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 			
 			List<Domain> result = new ArrayList<Domain>();
 			for(Row r : rs.all()) {
-				result.add(toObject(r.getString(0), Domain.class));
+				result.add(ObjectUtils.toObject(r.getString(0), Domain.class));
 			}
 			
 			return result;
@@ -303,7 +304,7 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 			ResultSet rs = session.execute(select);
 			
 			for(Row r : rs.all()) {
-				return(toObject(r.getString(0), Domain.class));
+				return(ObjectUtils.toObject(r.getString(0), Domain.class));
 			}
 			
 			return null;
@@ -321,7 +322,7 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 			
 			List<Element> result = new ArrayList<Element>();
 			for(Row r : rs.all()) {
-				result.add(toObject(r.getString(0), Element.class));
+				result.add(ObjectUtils.toObject(r.getString(0), Element.class));
 			}
 			
 			return result;
@@ -340,7 +341,7 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 			
 			List<Element> result = new ArrayList<Element>();
 			for(Row r : rs.all()) {
-				result.add(toObject(r.getString(0), Element.class));
+				result.add(ObjectUtils.toObject(r.getString(0), Element.class));
 			}
 			
 			return result;
@@ -358,7 +359,7 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 			ResultSet rs = session.execute(select);
 			
 			for(Row r : rs.all()) {
-				return(toObject(r.getString(0), Element.class));
+				return(ObjectUtils.toObject(r.getString(0), Element.class));
 			}
 			
 			return null;
@@ -377,7 +378,7 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 			
 			List<Element> result = new ArrayList<Element>();
 			for(Row r : rs.all()) {
-				result.add(toObject(r.getString(0), Element.class));
+				result.add(ObjectUtils.toObject(r.getString(0), Element.class));
 			}
 			
 			return result;
@@ -396,7 +397,7 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 			
 			List<Element> result = new ArrayList<Element>();
 			for(Row r : rs.all()) {
-				result.add(toObject(r.getString(0), Element.class));
+				result.add(ObjectUtils.toObject(r.getString(0), Element.class));
 			}
 			
 			return result;
@@ -414,7 +415,7 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 			
 			List<Port> result = new ArrayList<Port>();
 			for(Row r : rs.all()) {
-				result.add(toObject(r.getString(0), Port.class));
+				result.add(ObjectUtils.toObject(r.getString(0), Port.class));
 			}
 			
 			return result;
@@ -433,7 +434,7 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 			
 			List<Port> result = new ArrayList<Port>();
 			for(Row r : rs.all()) {
-				result.add(toObject(r.getString(0), Port.class));
+				result.add(ObjectUtils.toObject(r.getString(0), Port.class));
 			}
 			
 			return result;
@@ -451,7 +452,7 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 			ResultSet rs = session.execute(select);
 			
 			for(Row r : rs.all()) {
-				return(toObject(r.getString(0), Port.class));
+				return(ObjectUtils.toObject(r.getString(0), Port.class));
 			}
 			
 			return null;
@@ -469,10 +470,29 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 			ResultSet rs = session.execute(select);
 			
 			for(Row r : rs.all()) {
-				return(toObject(r.getString(0), Port.class));
+				return(ObjectUtils.toObject(r.getString(0), Port.class));
 			}
 			
 			return null;
+		} finally {
+			close(session);
+		}
+	}
+
+	@Override
+	public List<Port> getPortsWithIP() {
+		Session session = session(KEYSPACE);
+		try {
+			Select.Where select = QueryBuilder.select().json().from(KEYSPACE, PORT_COLECTION)
+					.where(QueryBuilder.gt("ipAddress", ""));
+			ResultSet rs = session.execute(select);
+			
+			List<Port> result = new ArrayList<Port>();
+			for(Row r : rs.all()) {
+				result.add(ObjectUtils.toObject(r.getString(0), Port.class));
+			}
+			
+			return result;
 		} finally {
 			close(session);
 		}

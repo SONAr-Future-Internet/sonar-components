@@ -18,8 +18,8 @@ import org.springframework.http.client.support.BasicAuthenticationInterceptor;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.web.client.RestTemplate;
 
-import br.ufu.facom.mehar.sonar.client.api.event.amqp.Publisher;
-import br.ufu.facom.mehar.sonar.client.api.event.amqp.PublisherImpl;
+import br.ufu.facom.mehar.sonar.client.nem.service.EventService;
+import br.ufu.facom.mehar.sonar.client.nem.service.impl.rabbitmq.RabbitEventService;
 
 @Configuration
 public class AppConfig {
@@ -75,8 +75,8 @@ public class AppConfig {
 	}
 
 	@Bean
-	public Publisher publisher() {
-		return new PublisherImpl();
+	public EventService publisher() {
+		return new RabbitEventService();
 	}
 
 }

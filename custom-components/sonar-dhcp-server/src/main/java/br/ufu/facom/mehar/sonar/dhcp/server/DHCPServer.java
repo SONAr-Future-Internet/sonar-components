@@ -9,12 +9,14 @@ import java.util.Properties;
 
 import org.jboss.logging.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
+import br.ufu.facom.mehar.sonar.client.nem.configuration.SonarTopics;
+import br.ufu.facom.mehar.sonar.client.nem.service.EventService;
+import br.ufu.facom.mehar.sonar.core.model.topology.Port;
 import br.ufu.facom.mehar.sonar.core.util.IPUtils;
 import br.ufu.facom.mehar.sonar.dhcp.api.DHCPConstants;
 import br.ufu.facom.mehar.sonar.dhcp.api.DHCPCoreServer;
@@ -22,7 +24,6 @@ import br.ufu.facom.mehar.sonar.dhcp.api.DHCPOption;
 import br.ufu.facom.mehar.sonar.dhcp.api.DHCPPacket;
 import br.ufu.facom.mehar.sonar.dhcp.api.DHCPServerInitException;
 import br.ufu.facom.mehar.sonar.dhcp.api.DHCPServlet;
-import br.ufu.facom.mehar.sonar.dhcp.service.EventService;
 import br.ufu.facom.mehar.sonar.dhcp.service.PoolService;
 
 @Component
@@ -45,10 +46,10 @@ public class DHCPServer {
 	private String subnetMask;
 
 	@Autowired
-	private EventService eventService;
-
-	@Autowired
 	private PoolService poolService;
+	
+	@Autowired
+	private EventService eventService;
 
 	@EventListener(ApplicationReadyEvent.class)
 	public void run() {
@@ -76,7 +77,7 @@ public class DHCPServer {
 					logger.debug(request.toString());
 
 					String macAddress = request.getChaddrAsHex();
-					InetAddress offeredInetAddress = poolService.getIP(macAddress);
+					InetAddress offeredInetAddress = IPUtils.convertIPStringToInetAddress(poolService.getIP(macAddress));
 
 					logger.info("Discover from " + macAddress + " offered:" + offeredInetAddress);
 
@@ -134,8 +135,12 @@ public class DHCPServer {
 							IPUtils.convertIPStringToInetAddress(subnetMask)));
 
 					response.setOptions(options);
+					
+					Port port = new Port();
+					port.setMacAddress(macAddress);
+					port.setIpAddress(requestedAddress.getHostAddress());
 
-					eventService.publishNewIpConfiguredEvent(requestedAddress, macAddress, serverIP, new Date());
+					eventService.publish(SonarTopics.TOPIC_TOPOLOGY_PORT_IP_ASSIGNED, port);
 
 					return response;
 				}

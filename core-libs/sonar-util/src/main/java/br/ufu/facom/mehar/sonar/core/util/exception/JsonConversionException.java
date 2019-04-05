@@ -1,6 +1,6 @@
-package br.ufu.facom.mehar.sonar.client.dndb.exception;
+package br.ufu.facom.mehar.sonar.core.util.exception;
 
-public class JsonConversionException extends GenericDistributedNetworkDatabaseClientException {
+public class JsonConversionException extends SonarUtilException {
 
 	private static final long serialVersionUID = -2601039257523497614L;
 

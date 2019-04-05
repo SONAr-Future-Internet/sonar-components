@@ -26,12 +26,18 @@
 			<artifactId>sonar-model</artifactId>
 			<version>${project.version}</version>
 		</dependency>
+		
+		<!-- Spring -->
+	    <dependency>
+	      <groupId>org.springframework.boot</groupId>
+	      <artifactId>spring-boot-starter-web</artifactId>
+	      <scope>compile</scope>
+	    </dependency>
 
-		<!-- Spring Dependencies -->
-		<!-- https://mvnrepository.com/artifact/org.springframework.amqp/spring-rabbit -->
+		<!-- Rabbit-->
 		<dependency>
-			<groupId>org.springframework.amqp</groupId>
-			<artifactId>spring-rabbit</artifactId>
+  			<groupId>com.rabbitmq</groupId>
+  			<artifactId>amqp-client</artifactId>
 		</dependency>
 
 

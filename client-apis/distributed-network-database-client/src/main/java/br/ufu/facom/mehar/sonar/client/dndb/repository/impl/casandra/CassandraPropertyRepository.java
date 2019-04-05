@@ -15,6 +15,7 @@ import com.datastax.driver.core.querybuilder.Select;
 import br.ufu.facom.mehar.sonar.client.dndb.repository.PropertyRepository;
 import br.ufu.facom.mehar.sonar.core.model.property.ConfigurationProperty;
 import br.ufu.facom.mehar.sonar.core.model.property.DataProperty;
+import br.ufu.facom.mehar.sonar.core.util.ObjectUtils;
 
 @Repository
 public class CassandraPropertyRepository extends CassandraGenericRepository implements PropertyRepository {
@@ -31,7 +32,7 @@ public class CassandraPropertyRepository extends CassandraGenericRepository impl
 
 			List<ConfigurationProperty> result = new ArrayList<ConfigurationProperty>();
 			for (Row r : rs.all()) {
-				result.add(toObject(r.getString(0), ConfigurationProperty.class));
+				result.add(ObjectUtils.toObject(r.getString(0), ConfigurationProperty.class));
 			}
 
 			return result;
@@ -50,7 +51,7 @@ public class CassandraPropertyRepository extends CassandraGenericRepository impl
 
 			List<ConfigurationProperty> result = new ArrayList<ConfigurationProperty>();
 			for (Row r : rs.all()) {
-				result.add(toObject(r.getString(0), ConfigurationProperty.class));
+				result.add(ObjectUtils.toObject(r.getString(0), ConfigurationProperty.class));
 			}
 
 			return result;
@@ -67,7 +68,7 @@ public class CassandraPropertyRepository extends CassandraGenericRepository impl
 					.where(QueryBuilder.eq("group", group)).and(QueryBuilder.eq("key", key));
 			ResultSet rs = session.execute(select);
 
-			return toObject(rs.one().getString(0), ConfigurationProperty.class);
+			return ObjectUtils.toObject(rs.one().getString(0), ConfigurationProperty.class);
 
 		} finally {
 			close(session);
@@ -79,7 +80,7 @@ public class CassandraPropertyRepository extends CassandraGenericRepository impl
 		Session session = session(KEYSPACE);
 		try {
 
-			Insert insertQuery = QueryBuilder.insertInto(KEYSPACE, CONFIGURATION_COLECTION).json(fromObject(property));
+			Insert insertQuery = QueryBuilder.insertInto(KEYSPACE, CONFIGURATION_COLECTION).json(ObjectUtils.fromObject(property));
 
 			session.execute(insertQuery);
 
@@ -103,7 +104,7 @@ public class CassandraPropertyRepository extends CassandraGenericRepository impl
 
 			List<DataProperty> result = new ArrayList<DataProperty>();
 			for (Row r : rs.all()) {
-				result.add(toObject(r.getString(0), DataProperty.class));
+				result.add(ObjectUtils.toObject(r.getString(0), DataProperty.class));
 			}
 
 			return result;
@@ -122,7 +123,7 @@ public class CassandraPropertyRepository extends CassandraGenericRepository impl
 
 			List<DataProperty> result = new ArrayList<DataProperty>();
 			for (Row r : rs.all()) {
-				result.add(toObject(r.getString(0), DataProperty.class));
+				result.add(ObjectUtils.toObject(r.getString(0), DataProperty.class));
 			}
 
 			return result;
@@ -141,7 +142,7 @@ public class CassandraPropertyRepository extends CassandraGenericRepository impl
 
 			List<DataProperty> result = new ArrayList<DataProperty>();
 			for (Row r : rs.all()) {
-				result.add(toObject(r.getString(0), DataProperty.class));
+				result.add(ObjectUtils.toObject(r.getString(0), DataProperty.class));
 			}
 
 			return result;
@@ -161,7 +162,7 @@ public class CassandraPropertyRepository extends CassandraGenericRepository impl
 
 			List<DataProperty> result = new ArrayList<DataProperty>();
 			for (Row r : rs.all()) {
-				result.add(toObject(r.getString(0), DataProperty.class));
+				result.add(ObjectUtils.toObject(r.getString(0), DataProperty.class));
 			}
 
 			return result;
@@ -179,7 +180,7 @@ public class CassandraPropertyRepository extends CassandraGenericRepository impl
 					.and(QueryBuilder.eq("group", group)).and(QueryBuilder.eq("key", key));
 			ResultSet rs = session.execute(select);
 
-			return toObject(rs.one().getString(0), DataProperty.class);
+			return ObjectUtils.toObject(rs.one().getString(0), DataProperty.class);
 		} finally {
 			close(session);
 		}
@@ -190,7 +191,7 @@ public class CassandraPropertyRepository extends CassandraGenericRepository impl
 		Session session = session(KEYSPACE);
 		try {
 
-			Insert insertQuery = QueryBuilder.insertInto(KEYSPACE, DATA_COLECTION).json(fromObject(property));
+			Insert insertQuery = QueryBuilder.insertInto(KEYSPACE, DATA_COLECTION).json(ObjectUtils.fromObject(property));
 
 			session.execute(insertQuery);
 
