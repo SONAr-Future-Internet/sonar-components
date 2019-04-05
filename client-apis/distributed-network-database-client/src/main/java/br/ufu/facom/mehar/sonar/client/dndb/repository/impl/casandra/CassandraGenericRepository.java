@@ -2,6 +2,8 @@ package br.ufu.facom.mehar.sonar.client.dndb.repository.impl.casandra;
 
 import java.net.InetSocketAddress;
 
+import org.springframework.beans.factory.annotation.Autowired;
+
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.Cluster.Builder;
 import com.datastax.driver.core.Session;
@@ -13,12 +15,15 @@ public abstract class CassandraGenericRepository {
 	
 	private Cluster cluster;
 	
+	@Autowired
+	private DNDBConfiguration configuration;
+	
 	public void clusterStart() {
 		
 		Builder b =  Cluster.builder()
 				.withoutMetrics();
 		
-		for(String seedStr : DNDBConfiguration.getSeeds()) {
+		for(String seedStr : configuration.getSeeds()) {
 			String ip = seedStr.split(":",2)[0].trim();
 			String port = seedStr.split(":",2)[1].trim();
 			b.addContactPointsWithPorts(new InetSocketAddress(ip, Integer.parseInt(port)));

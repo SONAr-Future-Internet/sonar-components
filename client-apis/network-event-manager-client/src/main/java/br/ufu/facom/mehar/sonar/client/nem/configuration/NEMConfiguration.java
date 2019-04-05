@@ -13,11 +13,11 @@ public class NEMConfiguration {
 	private static String strategy = "";
 
 	//Getters
-	public static String[] getSeeds() {
+	public String[] getSeeds() {
 		return NEMConfiguration.seeds.split(",");
 	}
 	
-	public static String getStrategy() {
+	public String getStrategy() {
 		return NEMConfiguration.strategy;
 	}
 	

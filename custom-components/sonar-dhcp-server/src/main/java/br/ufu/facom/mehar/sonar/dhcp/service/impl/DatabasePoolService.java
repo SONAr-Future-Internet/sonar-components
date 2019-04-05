@@ -14,7 +14,7 @@ import br.ufu.facom.mehar.sonar.core.model.topology.Port;
 import br.ufu.facom.mehar.sonar.core.util.IPUtils;
 import br.ufu.facom.mehar.sonar.dhcp.service.PoolService;
 
-@Service
+@Service("database")
 public class DatabasePoolService implements PoolService{
 	private static String APPLICATION_NAME = "sonar-dhcp-server";
 	private static String INSTANCE_NAME = IPUtils.searchActiveInterfaceAddress().getAddress().getHostAddress();

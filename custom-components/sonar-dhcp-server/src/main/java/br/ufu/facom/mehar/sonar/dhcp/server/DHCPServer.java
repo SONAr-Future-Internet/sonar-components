@@ -9,6 +9,7 @@ import java.util.Properties;
 
 import org.jboss.logging.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
@@ -46,6 +47,7 @@ public class DHCPServer {
 	private String subnetMask;
 
 	@Autowired
+	@Qualifier("database")
 	private PoolService poolService;
 	
 	@Autowired

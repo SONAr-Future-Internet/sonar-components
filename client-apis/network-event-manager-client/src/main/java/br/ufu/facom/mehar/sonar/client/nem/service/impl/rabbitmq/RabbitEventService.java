@@ -102,7 +102,7 @@ public class RabbitEventService extends EventService {
 		ConnectionFactory factory = new ConnectionFactory();
 		
 		List<Address> addressList = new ArrayList<Address>();
-		for(String seedStr : NEMConfiguration.getSeeds()) {
+		for(String seedStr : configuration.getSeeds()) {
 			String ip = seedStr.split(":",2)[0].trim();
 			String port = seedStr.split(":",2)[1].trim();
 			addressList.add(new Address(ip, Integer.parseInt(port)));
@@ -111,7 +111,7 @@ public class RabbitEventService extends EventService {
 		try {
 			return factory.newConnection(addressList);
 		} catch (IOException | TimeoutException e) {
-			throw new ConnectionFailureException("Error connecting to rabbitmq using seeds:" + ObjectUtils.toString(NEMConfiguration.getSeeds()), e);
+			throw new ConnectionFailureException("Error connecting to rabbitmq using seeds:" + ObjectUtils.toString(configuration.getSeeds()), e);
 		}
 	}
 	

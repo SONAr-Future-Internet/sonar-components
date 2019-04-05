@@ -13,11 +13,11 @@ public class DNDBConfiguration {
 	private static String strategy = "";
 
 	//Getters
-	public static String[] getSeeds() {
+	public String[] getSeeds() {
 		return DNDBConfiguration.seeds.split(",");
 	}
 	
-	public static String getStrategy() {
+	public String getStrategy() {
 		return DNDBConfiguration.strategy;
 	}
 	

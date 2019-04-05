@@ -299,7 +299,7 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 	public Domain getDomainById(Domain idDomain) {
 		Session session = session(KEYSPACE);
 		try {
-			Select.Where select = QueryBuilder.select().json().from(KEYSPACE, DOMAIN_COLECTION)
+			Select.Where select = QueryBuilder.select().json().from(KEYSPACE, DOMAIN_COLECTION).allowFiltering()
 					.where(QueryBuilder.eq("idDomain", idDomain));;
 			ResultSet rs = session.execute(select);
 			
@@ -335,7 +335,7 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 	public List<Element> getElementsByIdDomain(UUID idDomain) {
 		Session session = session(KEYSPACE);
 		try {
-			Select.Where select = QueryBuilder.select().json().from(KEYSPACE, ELEMENT_COLECTION)
+			Select.Where select = QueryBuilder.select().json().from(KEYSPACE, ELEMENT_COLECTION).allowFiltering()
 					.where(QueryBuilder.eq("idDomain", idDomain));;
 			ResultSet rs = session.execute(select);
 			
@@ -354,7 +354,7 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 	public Element getElementById(UUID idElement) {
 		Session session = session(KEYSPACE);
 		try {
-			Select.Where select = QueryBuilder.select().json().from(KEYSPACE, ELEMENT_COLECTION)
+			Select.Where select = QueryBuilder.select().json().from(KEYSPACE, ELEMENT_COLECTION).allowFiltering()
 					.where(QueryBuilder.eq("idElement", idElement));;
 			ResultSet rs = session.execute(select);
 			
@@ -372,7 +372,7 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 	public List<Element> getElementByIPAddress(String address) {
 		Session session = session(KEYSPACE);
 		try {
-			Select.Where select = QueryBuilder.select().json().from(KEYSPACE, ELEMENT_COLECTION)
+			Select.Where select = QueryBuilder.select().json().from(KEYSPACE, ELEMENT_COLECTION).allowFiltering()
 					.where(QueryBuilder.in("managementIPAddressList", address));;
 			ResultSet rs = session.execute(select);
 			
@@ -391,7 +391,7 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 	public List<Element> getElementByHostname(String name) {
 		Session session = session(KEYSPACE);
 		try {
-			Select.Where select = QueryBuilder.select().json().from(KEYSPACE, ELEMENT_COLECTION)
+			Select.Where select = QueryBuilder.select().json().from(KEYSPACE, ELEMENT_COLECTION).allowFiltering()
 					.where(QueryBuilder.in("name", name));;
 			ResultSet rs = session.execute(select);
 			
@@ -428,7 +428,7 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 	public List<Port> getPortsByIdElement(UUID idElement) {
 		Session session = session(KEYSPACE);
 		try {
-			Select.Where select = QueryBuilder.select().json().from(KEYSPACE, PORT_COLECTION)
+			Select.Where select = QueryBuilder.select().json().from(KEYSPACE, PORT_COLECTION).allowFiltering()
 					.where(QueryBuilder.eq("idElement", idElement));;
 			ResultSet rs = session.execute(select);
 			
@@ -447,7 +447,7 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 	public Port getPortById(UUID idPort) {
 		Session session = session(KEYSPACE);
 		try {
-			Select.Where select = QueryBuilder.select().json().from(KEYSPACE, PORT_COLECTION)
+			Select.Where select = QueryBuilder.select().json().from(KEYSPACE, PORT_COLECTION).allowFiltering()
 					.where(QueryBuilder.eq("idPort", idPort));;
 			ResultSet rs = session.execute(select);
 			
@@ -465,7 +465,7 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 	public Port getPortByMacAddress(String macAddress) {
 		Session session = session(KEYSPACE);
 		try {
-			Select.Where select = QueryBuilder.select().json().from(KEYSPACE, PORT_COLECTION)
+			Select.Where select = QueryBuilder.select().json().from(KEYSPACE, PORT_COLECTION).allowFiltering()
 					.where(QueryBuilder.eq("macAddress", macAddress));;
 			ResultSet rs = session.execute(select);
 			
@@ -483,8 +483,10 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 	public List<Port> getPortsWithIP() {
 		Session session = session(KEYSPACE);
 		try {
-			Select.Where select = QueryBuilder.select().json().from(KEYSPACE, PORT_COLECTION)
+			Select.Where select = QueryBuilder.select().json().from(KEYSPACE, PORT_COLECTION).allowFiltering()
 					.where(QueryBuilder.gt("ipAddress", ""));
+			
+			
 			ResultSet rs = session.execute(select);
 			
 			List<Port> result = new ArrayList<Port>();

@@ -45,7 +45,7 @@ public class CassandraPropertyRepository extends CassandraGenericRepository impl
 	public List<ConfigurationProperty> getConfiguration(String group) {
 		Session session = session(KEYSPACE);
 		try {
-			Select.Where select = QueryBuilder.select().json().from(KEYSPACE, CONFIGURATION_COLECTION)
+			Select.Where select = QueryBuilder.select().json().from(KEYSPACE, CONFIGURATION_COLECTION).allowFiltering()
 					.where(QueryBuilder.eq("group", group));
 			ResultSet rs = session.execute(select);
 
@@ -64,7 +64,7 @@ public class CassandraPropertyRepository extends CassandraGenericRepository impl
 	public ConfigurationProperty getConfiguration(String group, String key) {
 		Session session = session(KEYSPACE);
 		try {
-			Select.Where select = QueryBuilder.select().json().from(KEYSPACE, CONFIGURATION_COLECTION)
+			Select.Where select = QueryBuilder.select().json().from(KEYSPACE, CONFIGURATION_COLECTION).allowFiltering()
 					.where(QueryBuilder.eq("group", group)).and(QueryBuilder.eq("key", key));
 			ResultSet rs = session.execute(select);
 
@@ -117,7 +117,7 @@ public class CassandraPropertyRepository extends CassandraGenericRepository impl
 	public List<DataProperty> getData(String application) {
 		Session session = session(KEYSPACE);
 		try {
-			Select.Where select = QueryBuilder.select().json().from(KEYSPACE, DATA_COLECTION)
+			Select.Where select = QueryBuilder.select().json().from(KEYSPACE, DATA_COLECTION).allowFiltering()
 					.where(QueryBuilder.eq("application", application));
 			ResultSet rs = session.execute(select);
 
@@ -136,7 +136,7 @@ public class CassandraPropertyRepository extends CassandraGenericRepository impl
 	public List<DataProperty> getData(String application, String instance) {
 		Session session = session(KEYSPACE);
 		try {
-			Select.Where select = QueryBuilder.select().json().from(KEYSPACE, DATA_COLECTION)
+			Select.Where select = QueryBuilder.select().json().from(KEYSPACE, DATA_COLECTION).allowFiltering()
 					.where(QueryBuilder.eq("application", application)).and(QueryBuilder.eq("instance", instance));
 			ResultSet rs = session.execute(select);
 
@@ -155,7 +155,7 @@ public class CassandraPropertyRepository extends CassandraGenericRepository impl
 	public List<DataProperty> getData(String application, String instance, String group) {
 		Session session = session(KEYSPACE);
 		try {
-			Select.Where select = QueryBuilder.select().json().from(KEYSPACE, DATA_COLECTION)
+			Select.Where select = QueryBuilder.select().json().from(KEYSPACE, DATA_COLECTION).allowFiltering()
 					.where(QueryBuilder.eq("application", application)).and(QueryBuilder.eq("instance", instance))
 					.and(QueryBuilder.eq("group", group));
 			ResultSet rs = session.execute(select);
@@ -175,7 +175,7 @@ public class CassandraPropertyRepository extends CassandraGenericRepository impl
 	public DataProperty getData(String application, String instance, String group, String key) {
 		Session session = session(KEYSPACE);
 		try {
-			Select.Where select = QueryBuilder.select().json().from(KEYSPACE, DATA_COLECTION)
+			Select.Where select = QueryBuilder.select().json().from(KEYSPACE, DATA_COLECTION).allowFiltering()
 					.where(QueryBuilder.eq("application", application)).and(QueryBuilder.eq("instance", instance))
 					.and(QueryBuilder.eq("group", group)).and(QueryBuilder.eq("key", key));
 			ResultSet rs = session.execute(select);
