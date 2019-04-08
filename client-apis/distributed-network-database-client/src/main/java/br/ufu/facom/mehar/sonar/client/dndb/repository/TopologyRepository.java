@@ -37,7 +37,7 @@ public interface TopologyRepository {
 	public List<Element> getElements();
 	public List<Element> getElementsByIdDomain(UUID idDomain);
 	public List<Element> getElementByHostname(String name);
-	public List<Element> getElementByIPAddress(String address);
+	public Element getElementByIPAddress(String address);
 	public Element getElementById(UUID idElement);
 	
 	//Port Queries

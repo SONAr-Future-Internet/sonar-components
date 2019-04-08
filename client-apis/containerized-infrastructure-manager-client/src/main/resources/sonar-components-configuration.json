@@ -34,8 +34,7 @@
 				"namespace": "meharsonar",	
 				"image":"sonar-dhcp-server",
 				"version":"latest",
-				"exposedPorts":["67"],
-				"portMapping":{"67":"67"},
+				"network": "host",
 				"autoDestroy":false,
 				"singleton":true
 	},

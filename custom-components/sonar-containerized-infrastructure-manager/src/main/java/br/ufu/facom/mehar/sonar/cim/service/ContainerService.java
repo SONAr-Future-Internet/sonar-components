@@ -135,6 +135,7 @@ public class ContainerService {
 		List<String> env = container.getEnv();
 		Set<String> exposedPorts = container.getExposedPorts();
 		Set<String> volumes = container.getVolumes();
+		String network = container.getNetwork();
 		
 	
 		if(containerId != null && !containerId.isEmpty()) {
@@ -228,7 +229,7 @@ public class ContainerService {
 			}
 			
 			//Create And Run Container
-			Container runningContainer = DataTranslator.translate(containerManager.runContainer(server, fullImageName, containerName, portMapping, exposedPorts, env, volumes, entrypoint, cmd, autoDestroy), server);
+			Container runningContainer = DataTranslator.translate(containerManager.runContainer(server, fullImageName, containerName, portMapping, exposedPorts, env, volumes, entrypoint, cmd, autoDestroy, network), server);
 			container = merge(container, runningContainer);
 
 			registryService.register(container);
@@ -366,6 +367,8 @@ public class ContainerService {
 			}else {
 				if(actualContainer.getStatus().equals(ContainerStatus.RUNNING_STATE)) {
 					containerManager.stopContainer(container.getServer(), container.getId(), container.getAutoDestroy());
+				}else {
+					containerManager.deleteContainer(container.getServer(), container.getId());
 				}	
 					
 				if(Boolean.TRUE.equals(container.getAutoDestroy())){

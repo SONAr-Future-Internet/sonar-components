@@ -25,6 +25,7 @@ public class Container implements Serializable{
 	private List<String> cmd;
 	private List<String> entrypoint;
 	private Set<String> volumes;
+	private String network;
 	
 	private ContainerStatus status;
 	
@@ -159,6 +160,14 @@ public class Container implements Serializable{
 
 	public void setAccessPort(Map<String, String> accessPort) {
 		this.accessPort = accessPort;
+	}
+	
+	public String getNetwork() {
+		return network;
+	}
+
+	public void setNetwork(String network) {
+		this.network = network;
 	}
 
 	@JsonIgnore

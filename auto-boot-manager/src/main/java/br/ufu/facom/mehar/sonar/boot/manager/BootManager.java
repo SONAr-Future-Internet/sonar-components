@@ -41,7 +41,7 @@ public class BootManager {
 	@Value("${cim.manager.port:8080}")
 	private String CIM_PORT;
 
-	@Value("${boot.manager.dhcp.enabled:false}")
+	@Value("${boot.manager.dhcp.enabled:true}")
 	private Boolean DHCP_ENABLED;
 	
 	@Value("${boot.manager.dndb.autocreate:true}")
@@ -54,7 +54,13 @@ public class BootManager {
 		logger.info("Booting network...");
 		
 		InterfaceAddress bindInterfaceAddress =  IPUtils.searchActiveInterfaceAddress();
+		if(bindInterfaceAddress == null || bindInterfaceAddress.getAddress() == null) {
+			logger.fatal("Cannot find a address to bind!");
+			return;
+		}
+		
 		logger.info("Using address: "+bindInterfaceAddress.getAddress().toString());
+		
 		// Query already created components
 		containerMap = componentService.get(CIM_IP);
 
@@ -69,16 +75,8 @@ public class BootManager {
 			logger.fatal("Unable to boot network without 'NetworkEventManager'.");
 			return;
 		}
-
-		Properties properties = new Properties();
-		String dndbEndpoint = findEndPoint(Component.DistributedNetworkDatabase, dndb, "main", bindInterfaceAddress.getAddress().toString());
-		String nemEndpoint = findEndPoint(Component.NetworkEventManager, nem, "main", bindInterfaceAddress.getAddress().toString());
-		properties.setProperty("DNDB_SEEDS", dndbEndpoint);
-		properties.setProperty("DNDB_STRATEGY", dndb.getImage());
-		properties.setProperty("NEM_SEEDS", nemEndpoint);
-		properties.setProperty("NEM_STRATEGY", nem.getImage());
-
-		prepareDatabase(dndbEndpoint, dndb.getImage());
+		
+		prepareDatabase("localhost:"+dndb.getAccessPort().get("main"), dndb.getImage());
 		
 		if(DNDB_AUTO_CREATE) {
 			if(!databaseBuilder.isBuilt()) {
@@ -88,8 +86,21 @@ public class BootManager {
 
 		// Verify and Run DHCP
 		if (DHCP_ENABLED) {
-			checkAndRunSingletonComponent(Component.DHCPServer, properties);
+			Properties propertiesDHCP = new Properties();
+			propertiesDHCP.setProperty("DNDB_SEEDS", findEndPoint(Component.DistributedNetworkDatabase, dndb, "main", "localhost"));
+			propertiesDHCP.setProperty("DNDB_STRATEGY", dndb.getImage());
+			propertiesDHCP.setProperty("NEM_SEEDS", findEndPoint(Component.NetworkEventManager, nem, "main", "localhost"));
+			propertiesDHCP.setProperty("NEM_STRATEGY", nem.getImage());
+			checkAndRunSingletonComponent(Component.DHCPServer, propertiesDHCP);
 		}
+
+		Properties properties = new Properties();
+		String dndbEndpoint = findEndPoint(Component.DistributedNetworkDatabase, dndb, "main", bindInterfaceAddress.getAddress().toString());
+		String nemEndpoint = findEndPoint(Component.NetworkEventManager, nem, "main", bindInterfaceAddress.getAddress().toString());
+		properties.setProperty("DNDB_SEEDS", dndbEndpoint);
+		properties.setProperty("DNDB_STRATEGY", dndb.getImage());
+		properties.setProperty("NEM_SEEDS", nemEndpoint);
+		properties.setProperty("NEM_STRATEGY", nem.getImage());
 
 		// checkAndRunComponent(Component.TopologySelfCollectorEntity, properties);
 	}
@@ -150,7 +161,7 @@ public class BootManager {
 				for (Container container : containerList) {
 					logger.info("| '" + component + "' is already created! Removing container with id " + container.getId()
 							+ "...");
-					container = componentService.deleteComponent(CIM_IP, component);
+					container = componentService.deleteComponent(CIM_IP, container.getId(), component);
 					if (ContainerStatus.REMOVED_STATE.equals(container.getStatus())) {
 						logger.info("| '" + component + "' removed!");
 					} else {

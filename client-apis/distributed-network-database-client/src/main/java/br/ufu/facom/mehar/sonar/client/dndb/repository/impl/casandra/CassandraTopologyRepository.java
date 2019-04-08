@@ -369,19 +369,18 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 	}
 
 	@Override
-	public List<Element> getElementByIPAddress(String address) {
+	public Element getElementByIPAddress(String address) {
 		Session session = session(KEYSPACE);
 		try {
 			Select.Where select = QueryBuilder.select().json().from(KEYSPACE, ELEMENT_COLECTION).allowFiltering()
 					.where(QueryBuilder.in("managementIPAddressList", address));;
 			ResultSet rs = session.execute(select);
 			
-			List<Element> result = new ArrayList<Element>();
 			for(Row r : rs.all()) {
-				result.add(ObjectUtils.toObject(r.getString(0), Element.class));
+				return(ObjectUtils.toObject(r.getString(0), Element.class));
 			}
 			
-			return result;
+			return null;
 		} finally {
 			close(session);
 		}

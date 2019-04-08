@@ -148,13 +148,36 @@ public class IPUtils {
 		}
 		return null;
 	}
+	
+	public static InterfaceAddress searchDockerInterfaceAddress() {
+		Enumeration<NetworkInterface> enumInterface;
+		try {
+			enumInterface = NetworkInterface.getNetworkInterfaces();
+
+			while (enumInterface.hasMoreElements()) {
+				NetworkInterface netInf = enumInterface.nextElement();
+
+				if (!netInf.isLoopback() && !netInf.isVirtual() && netInf.isUp() && netInf.getName().startsWith("docker")) {
+					for (InterfaceAddress interfaceAddress : netInf.getInterfaceAddresses()) {
+						InetAddress addressInf = interfaceAddress.getAddress();
+						if (addressInf instanceof Inet4Address && !addressInf.isLoopbackAddress()) {
+							return interfaceAddress;
+						}
+					}
+				}
+			}
+		} catch (SocketException e) {
+			throw new SonarUtilException("Error while detecting Server IP Address.", e);
+		}
+		return null;
+	}
 
 	public static String convertInetToIPString(InetAddress inetAddress) {
 		return inetAddress.getHostAddress();
 	}
 
 	public static String normalizeMAC(String macAddress) {
-		macAddress = macAddress.toUpperCase();
+		macAddress = macAddress.toLowerCase();
 		if(!macAddress.contains(":")) {
 			String newMacAddress = "";
 			for(int i=0; i< macAddress.length(); i=i+2) {

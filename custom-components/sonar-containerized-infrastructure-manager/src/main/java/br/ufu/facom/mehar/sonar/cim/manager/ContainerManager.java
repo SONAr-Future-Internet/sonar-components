@@ -12,7 +12,7 @@ public interface ContainerManager {
 
 	Container runContainer(String server, String fullImageName, String containerName, Map<String, String> portMapping,
 			Set<String> exposedPorts, List<String> env, Set<String> volumes, List<String> entrypoint, List<String> cmd,
-			Boolean autoDestroy);
+			Boolean autoDestroy, String network);
 
 	void stopContainer(String server, String containerId, Boolean autoDestroy);
 
@@ -27,5 +27,7 @@ public interface ContainerManager {
 	List<Container> getContainers(String server);
 
 	List<Container> getRunningContainers(String server);
+
+	void deleteContainer(String server, String containerId);
 
 }

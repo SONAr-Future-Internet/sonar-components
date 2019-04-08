@@ -3,6 +3,7 @@
 		[
 			{	"image":"auto-boot-manager",
 				"version":"latest",
+				"network": "host",
 				"autoDestroy":true,
 				"singleton":true
 			}

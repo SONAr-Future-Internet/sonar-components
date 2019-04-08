@@ -210,7 +210,7 @@ public class TopologyService {
 		return repository.getElementById(idElement);
 	}
 
-	public List<Element> getElementByIPAddress(String address) {
+	public Element getElementByIPAddress(String address) {
 		return repository.getElementByIPAddress(address);
 	}
 

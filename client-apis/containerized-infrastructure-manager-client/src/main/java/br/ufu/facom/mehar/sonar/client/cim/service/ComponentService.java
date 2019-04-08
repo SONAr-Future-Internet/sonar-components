@@ -102,19 +102,19 @@ public class ComponentService {
 		}
 	}
 	
-	public Container stopComponent(String managerIp, Component component){
-		return this.stopComponent(managerIp, component, "local");
+	public Container stopComponent(String managerIp, String idContainer, Component component){
+		return this.stopComponent(managerIp, idContainer, component, "local");
 	}
 	
-	public Container deleteComponent(String managerIp, Component component) {
-		return this.stopComponent(managerIp, component, "local", Boolean.TRUE);
+	public Container deleteComponent(String managerIp, String idContainer, Component component) {
+		return this.stopComponent(managerIp, idContainer, component, "local", Boolean.TRUE);
 	}
 	
-	public Container stopComponent(String managerIp, Component component, String server){
-		return this.stopComponent(managerIp, component, server, Boolean.FALSE);
+	public Container stopComponent(String managerIp, String idContainer, Component component, String server){
+		return this.stopComponent(managerIp, idContainer, component, server, Boolean.FALSE);
 	}
 	
-	public Container stopComponent(String managerIp, Component component, String server, Boolean forceAutoDelete){
+	public Container stopComponent(String managerIp, String idContainer, Component component, String server, Boolean forceAutoDelete){
 		//Components loaded?
 		if(componentMap == null) {
 			throw new ComponentsNotLoadedException("There was a problem while loading sonar components... read log for more details.");
@@ -131,6 +131,7 @@ public class ComponentService {
 		
 		//Setting 'server'
 		container.setServer(server);
+		container.setId(idContainer);
 		
 		if(forceAutoDelete) {
 			container.setAutoDestroy(Boolean.TRUE);
