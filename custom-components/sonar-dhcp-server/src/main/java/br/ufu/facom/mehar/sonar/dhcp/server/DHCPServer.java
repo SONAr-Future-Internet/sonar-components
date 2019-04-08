@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
+import org.springframework.core.BridgeMethodResolver;
 import org.springframework.stereotype.Component;
 
 import br.ufu.facom.mehar.sonar.client.nem.configuration.SonarTopics;
@@ -62,7 +63,7 @@ public class DHCPServer {
 
 			final InetAddress serverIP = bindInterfaceAddress.getAddress();
 			final InetAddress broadcast = bindInterfaceAddress.getBroadcast();
-
+			
 			final Properties dhcpProperties = new Properties();
 			dhcpProperties.setProperty(DHCPCoreServer.SERVER_ADDRESS, this.dhcpBindAddress);
 			dhcpProperties.setProperty(DHCPCoreServer.SERVER_THREADS, this.serverThreads);

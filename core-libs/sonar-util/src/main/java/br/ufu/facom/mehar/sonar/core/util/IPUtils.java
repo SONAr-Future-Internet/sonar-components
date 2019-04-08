@@ -134,7 +134,7 @@ public class IPUtils {
 			while (enumInterface.hasMoreElements()) {
 				NetworkInterface netInf = enumInterface.nextElement();
 
-				if (!netInf.isLoopback() && !netInf.isVirtual() && netInf.isUp()) {
+				if (!netInf.isLoopback() && !netInf.isVirtual() && netInf.isUp() && !netInf.getName().startsWith("docker")) {
 					for (InterfaceAddress interfaceAddress : netInf.getInterfaceAddresses()) {
 						InetAddress addressInf = interfaceAddress.getAddress();
 						if (addressInf instanceof Inet4Address && !addressInf.isLoopbackAddress()) {
@@ -151,5 +151,20 @@ public class IPUtils {
 
 	public static String convertInetToIPString(InetAddress inetAddress) {
 		return inetAddress.getHostAddress();
+	}
+
+	public static String normalizeMAC(String macAddress) {
+		macAddress = macAddress.toUpperCase();
+		if(!macAddress.contains(":")) {
+			String newMacAddress = "";
+			for(int i=0; i< macAddress.length(); i=i+2) {
+				if(!newMacAddress.isEmpty()) {
+					newMacAddress += ":";
+				}
+				newMacAddress += macAddress.substring(i, i+2);
+			}
+			return newMacAddress;
+		}
+		return macAddress;
 	}
 }

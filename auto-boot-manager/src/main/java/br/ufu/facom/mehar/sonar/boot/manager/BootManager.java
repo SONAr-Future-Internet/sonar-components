@@ -1,5 +1,6 @@
 package br.ufu.facom.mehar.sonar.boot.manager;
 
+import java.net.InterfaceAddress;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -20,6 +21,7 @@ import br.ufu.facom.mehar.sonar.client.dndb.configuration.DNDBConfiguration;
 import br.ufu.facom.mehar.sonar.client.dndb.repository.DatabaseBuilder;
 import br.ufu.facom.mehar.sonar.core.model.container.Container;
 import br.ufu.facom.mehar.sonar.core.model.container.ContainerStatus;
+import br.ufu.facom.mehar.sonar.core.util.IPUtils;
 import br.ufu.facom.mehar.sonar.core.util.ObjectUtils;
 
 @org.springframework.stereotype.Component
@@ -50,6 +52,9 @@ public class BootManager {
 	@EventListener(ApplicationReadyEvent.class)
 	public void run() {
 		logger.info("Booting network...");
+		
+		InterfaceAddress bindInterfaceAddress =  IPUtils.searchActiveInterfaceAddress();
+		logger.info("Using address: "+bindInterfaceAddress.getAddress().toString());
 		// Query already created components
 		containerMap = componentService.get(CIM_IP);
 
@@ -66,8 +71,8 @@ public class BootManager {
 		}
 
 		Properties properties = new Properties();
-		String dndbEndpoint = findEndPoint(Component.DistributedNetworkDatabase, dndb, "main");
-		String nemEndpoint = findEndPoint(Component.NetworkEventManager, nem, "main");
+		String dndbEndpoint = findEndPoint(Component.DistributedNetworkDatabase, dndb, "main", bindInterfaceAddress.getAddress().toString());
+		String nemEndpoint = findEndPoint(Component.NetworkEventManager, nem, "main", bindInterfaceAddress.getAddress().toString());
 		properties.setProperty("DNDB_SEEDS", dndbEndpoint);
 		properties.setProperty("DNDB_STRATEGY", dndb.getImage());
 		properties.setProperty("NEM_SEEDS", nemEndpoint);
@@ -99,7 +104,7 @@ public class BootManager {
 		while(!dndbUp) {
 			try {
 				//Sleep
-				Thread.sleep(1000);
+				Thread.sleep(2000);
 				
 				if(!databaseBuilder.isBuilt()) {
 					if(DNDB_AUTO_CREATE) {
@@ -116,12 +121,12 @@ public class BootManager {
 		}
 	}
 
-	private String findEndPoint(Component component, Container container, String accessPort) {
+	private String findEndPoint(Component component, Container container, String accessPort, String localServerAddress) {
 		String port = container.getAccessPort().get(accessPort);
 		if (port != null) {
 			if (container.getServer() != null && !container.getServer().isEmpty()) {
-				if(container.getServer().equals("local")) {
-					return "localhost:" + port;
+				if(container.getServer().equals("local") || container.getServer().equals("localhost")) {
+					return localServerAddress + ":" + port;
 				}else {
 					return container.getServer() + ":" + port;
 				}

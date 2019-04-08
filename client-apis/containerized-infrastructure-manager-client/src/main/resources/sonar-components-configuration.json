@@ -13,7 +13,7 @@
 				"namespace": "meharsonar",	
 				"image":"rabbitmq",
 				"version":"latest",
-				"accessPort": {"main": "5671"},
+				"accessPort": {"main": "5672"},
 				"exposedPorts":["4369", "5671", "5672", "25672"],
 				"portMapping":{"4369":"4369", "5671":"5671", "5672":"5672", "25672":"25672"},
 				"autoDestroy":false,

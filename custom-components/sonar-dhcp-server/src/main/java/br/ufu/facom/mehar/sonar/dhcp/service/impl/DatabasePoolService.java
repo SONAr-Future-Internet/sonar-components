@@ -49,8 +49,9 @@ public class DatabasePoolService implements PoolService{
 
 	@Override
 	public String getIP(String macAddress) {
-		String ip = this.memoryPoolService.getIP(macAddress);
-		propertyRepository.setData(APPLICATION_NAME, INSTANCE_NAME, GROUP, macAddress, ip);
+		String normalizedMacAddress = IPUtils.normalizeMAC(macAddress);
+		String ip = this.memoryPoolService.getIP(normalizedMacAddress);
+		propertyRepository.setData(APPLICATION_NAME, INSTANCE_NAME, GROUP, normalizedMacAddress, ip);
 		return ip;
 	}
 }
