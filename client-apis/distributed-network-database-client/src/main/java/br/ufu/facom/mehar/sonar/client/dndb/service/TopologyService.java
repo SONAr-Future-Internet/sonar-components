@@ -15,6 +15,7 @@ import br.ufu.facom.mehar.sonar.core.model.topology.Element;
 import br.ufu.facom.mehar.sonar.core.model.topology.Port;
 import br.ufu.facom.mehar.sonar.core.util.IPUtils;
 import br.ufu.facom.mehar.sonar.core.util.ObjectUtils;
+import br.ufu.facom.mehar.sonar.core.util.Pair;
 
 @Service
 public class TopologyService {
@@ -218,7 +219,7 @@ public class TopologyService {
 		return repository.getElementByHostname(address);
 	}
 
-	public List<Port> getPorts() {
+	public Set<Port> getPorts() {
 		return repository.getPorts();
 	}
 
@@ -230,7 +231,7 @@ public class TopologyService {
 		return repository.getPortByMacAddress(macAddress);
 	}
 
-	public List<Port> getPortByIdElement(UUID idElement) {
+	public Set<Port> getPortByIdElement(UUID idElement) {
 		return repository.getPortsByIdElement(idElement);
 	}
 
@@ -257,11 +258,23 @@ public class TopologyService {
 		return null;
 	}
 
-	public Element getElementByPortMacAddress(String macAddress) {
+	public Pair<Element,Port> getElementAndPortByPortMacAddress(String macAddress) {
 		Port port = repository.getPortByMacAddress(macAddress);
 		if (port != null) {
-			return repository.getElementById(port.getIdElement());
+			return new Pair<Element, Port>(repository.getElementById(port.getIdElement()), port);
 		}
 		return null;
+	}
+	
+	public Pair<Element, Port> getElementAndPortByPortIPAddress(String ip) {
+		Port port = repository.getPortByIP(ip);
+		if (port != null) {
+			return new Pair<Element, Port>(repository.getElementById(port.getIdElement()), port);
+		}
+		return null;
+	}
+
+	public Port getPortByIP(String ip) {
+		return repository.getPortByIP(ip);
 	}
 }

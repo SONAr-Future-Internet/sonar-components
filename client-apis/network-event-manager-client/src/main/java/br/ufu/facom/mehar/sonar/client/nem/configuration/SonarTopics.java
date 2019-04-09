@@ -11,6 +11,9 @@ public class SonarTopics {
 	public static final String TOPIC_TOPOLOGY_PORT_REMOVED = "sonar.topology.port.removed";
 	public static final String TOPIC_TOPOLOGY_PORT_CHANGED = "sonar.topology.port.changed";
 	public static final String TOPIC_TOPOLOGY_PORT_IP_ASSIGNED = "sonar.topology.port.ipAssigned";
+	public static final String TOPIC_TOPOLOGY_LINKS = "sonar.topology.links.*";
+	public static final String TOPIC_TOPOLOGY_LINKS_CHANGED = "sonar.topology.links.changed";
+	
 	
 	public static final String TOPIC_METRICS = "sonar.metrics.#";
 	public static final String TOPIC_METRICS_ELEMENT = "sonar.metrics.element.*";
@@ -22,4 +25,9 @@ public class SonarTopics {
 	public static final String TOPIC_METRICS_FLOW = "sonar.metrics.flow.*";
 	public static final String TOPIC_METRICS_FLOW_INFO = "sonar.metrics.flow.info";
 	public static final String TOPIC_METRICS_FLOW_WARN = "sonar.metrics.flow.warn";
+	
+	public static final String TOPIC_SERVICE = "sonar.service.*";
+	public static final String TOPIC_SERVICE_ADDED = "sonar.service.added";
+	public static final String TOPIC_SERVICE_REMOVED = "sonar.service.added";
+	public static final String TOPIC_SERVICE_CHANGED = "sonar.service.added";
 }

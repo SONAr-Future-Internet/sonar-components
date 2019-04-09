@@ -1,7 +1,9 @@
 package br.ufu.facom.mehar.sonar.client.dndb.repository.impl.casandra;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 import org.springframework.stereotype.Repository;
@@ -406,13 +408,13 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 	}
 
 	@Override
-	public List<Port> getPorts() {
+	public Set<Port> getPorts() {
 		Session session = session(KEYSPACE);
 		try {
 			Select select = QueryBuilder.select().json().from(KEYSPACE, PORT_COLECTION);
 			ResultSet rs = session.execute(select);
 			
-			List<Port> result = new ArrayList<Port>();
+			Set<Port> result = new HashSet<Port>();
 			for(Row r : rs.all()) {
 				result.add(ObjectUtils.toObject(r.getString(0), Port.class));
 			}
@@ -424,14 +426,14 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 	}
 
 	@Override
-	public List<Port> getPortsByIdElement(UUID idElement) {
+	public Set<Port> getPortsByIdElement(UUID idElement) {
 		Session session = session(KEYSPACE);
 		try {
 			Select.Where select = QueryBuilder.select().json().from(KEYSPACE, PORT_COLECTION).allowFiltering()
 					.where(QueryBuilder.eq("idElement", idElement));;
 			ResultSet rs = session.execute(select);
 			
-			List<Port> result = new ArrayList<Port>();
+			Set<Port> result = new HashSet<Port>();
 			for(Row r : rs.all()) {
 				result.add(ObjectUtils.toObject(r.getString(0), Port.class));
 			}
@@ -479,7 +481,7 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 	}
 
 	@Override
-	public List<Port> getPortsWithIP() {
+	public Set<Port> getPortsWithIP() {
 		Session session = session(KEYSPACE);
 		try {
 			Select.Where select = QueryBuilder.select().json().from(KEYSPACE, PORT_COLECTION).allowFiltering()
@@ -488,12 +490,30 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 			
 			ResultSet rs = session.execute(select);
 			
-			List<Port> result = new ArrayList<Port>();
+			Set<Port> result = new HashSet<Port>();
 			for(Row r : rs.all()) {
 				result.add(ObjectUtils.toObject(r.getString(0), Port.class));
 			}
 			
 			return result;
+		} finally {
+			close(session);
+		}
+	}
+
+	@Override
+	public Port getPortByIP(String ip) {
+		Session session = session(KEYSPACE);
+		try {
+			Select.Where select = QueryBuilder.select().json().from(KEYSPACE, PORT_COLECTION).allowFiltering()
+					.where(QueryBuilder.eq("ipAddress", ip));;
+			ResultSet rs = session.execute(select);
+			
+			for(Row r : rs.all()) {
+				return ObjectUtils.toObject(r.getString(0), Port.class);
+			}
+			
+			return null;
 		} finally {
 			close(session);
 		}

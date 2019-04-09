@@ -1,6 +1,7 @@
 package br.ufu.facom.mehar.sonar.client.dndb.repository;
 
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 import br.ufu.facom.mehar.sonar.core.model.topology.Domain;
@@ -41,9 +42,10 @@ public interface TopologyRepository {
 	public Element getElementById(UUID idElement);
 	
 	//Port Queries
-	public List<Port> getPorts();
-	public List<Port> getPortsByIdElement(UUID idElement);
+	public Set<Port> getPorts();
+	public Set<Port> getPortsByIdElement(UUID idElement);
 	public Port getPortById(UUID idPort);
 	public Port getPortByMacAddress(String macAddress);
-	public List<Port> getPortsWithIP();
+	public Set<Port> getPortsWithIP();
+	public Port getPortByIP(String ip);
 }

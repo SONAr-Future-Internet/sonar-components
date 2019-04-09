@@ -14,10 +14,9 @@ public class Element {
 
 	// Name / Hostname
 	private Long name;
-	
+
 	// Type of Element
 	private String typeElement;
-
 
 	// Management IPs
 	private Set<String> managementIPAddressList;
@@ -38,10 +37,10 @@ public class Element {
 
 	// ManyToOne (Element -> Domain)
 	private transient Domain domain;
-	
+
 	// OneToMany Mapping (Element -> Ports)
 	private Set<Port> portList;
-	
+
 	// Types Enumeration as Constants
 	public static final String TYPE_DEVICE = "DEVICE";
 	public static final String TYPE_HOST = "HOST";
@@ -124,8 +123,6 @@ public class Element {
 		this.lastDicoveredSource = lastDicoveredSource;
 	}
 
-	
-
 	public Double getClock() {
 		return clock;
 	}
@@ -189,5 +186,4 @@ public class Element {
 	public void setDomain(Domain domain) {
 		this.domain = domain;
 	}
-
 }

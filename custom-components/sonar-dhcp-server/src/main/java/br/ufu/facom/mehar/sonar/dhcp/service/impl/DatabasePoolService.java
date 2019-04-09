@@ -1,6 +1,7 @@
 package br.ufu.facom.mehar.sonar.dhcp.service.impl;
 
 import java.util.List;
+import java.util.Set;
 
 import javax.annotation.PostConstruct;
 
@@ -37,7 +38,7 @@ public class DatabasePoolService implements PoolService{
 			memoryPoolService.getBusyIPs().add(dataproperty.getValue());
 		}
 		
-		List<Port> portList = topologyRepository.getPortsWithIP();
+		Set<Port> portList = topologyRepository.getPortsWithIP();
 		for(Port port : portList) {
 			if(port.getIpAddress() != null) {
 				memoryPoolService.getMacToIp().put(port.getMacAddress(), port.getIpAddress());
