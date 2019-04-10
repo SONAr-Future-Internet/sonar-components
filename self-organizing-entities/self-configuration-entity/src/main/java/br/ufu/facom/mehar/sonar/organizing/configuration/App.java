@@ -10,6 +10,6 @@ import org.springframework.context.annotation.ComponentScan;
 public class App 
 {
     public static void main( String[] args ){
-    	new SpringApplicationBuilder(App.class).web(WebApplicationType.REACTIVE).run(args);
+    	new SpringApplicationBuilder(App.class).web(WebApplicationType.NONE).run(args);
     }
 }

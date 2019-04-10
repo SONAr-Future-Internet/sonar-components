@@ -375,7 +375,7 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 		Session session = session(KEYSPACE);
 		try {
 			Select.Where select = QueryBuilder.select().json().from(KEYSPACE, ELEMENT_COLECTION).allowFiltering()
-					.where(QueryBuilder.in("managementIPAddressList", address));;
+					.where(QueryBuilder.contains("managementIPAddressList", address));;
 			ResultSet rs = session.execute(select);
 			
 			for(Row r : rs.all()) {
@@ -393,7 +393,7 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 		Session session = session(KEYSPACE);
 		try {
 			Select.Where select = QueryBuilder.select().json().from(KEYSPACE, ELEMENT_COLECTION).allowFiltering()
-					.where(QueryBuilder.in("name", name));;
+					.where(QueryBuilder.contains("name", name));;
 			ResultSet rs = session.execute(select);
 			
 			List<Element> result = new ArrayList<Element>();

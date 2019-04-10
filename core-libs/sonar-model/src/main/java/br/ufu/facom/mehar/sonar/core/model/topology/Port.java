@@ -21,8 +21,9 @@ public class Port {
 	private String ipAddress;
 
 	// Remote Identification
+	private String remoteHostname;
 	private String remoteIfId;
-	private String remoteName;
+	private String remoteIfName;
 	private String remoteMacAddress;
 	private String remoteIpAddress;
 
@@ -104,13 +105,7 @@ public class Port {
 		this.remoteIfId = remoteIfId;
 	}
 
-	public String getRemoteName() {
-		return remoteName;
-	}
 
-	public void setRemoteName(String remoteName) {
-		this.remoteName = remoteName;
-	}
 
 	public String getRemoteMacAddress() {
 		return remoteMacAddress;
@@ -159,4 +154,22 @@ public class Port {
 	public void setRemotePort(Port remotePort) {
 		this.remotePort = remotePort;
 	}
+
+	public String getRemoteIfName() {
+		return remoteIfName;
+	}
+
+	public void setRemoteIfName(String remoteIfName) {
+		this.remoteIfName = remoteIfName;
+	}
+
+	public String getRemoteHostname() {
+		return remoteHostname;
+	}
+
+	public void setRemoteHostname(String remoteHostname) {
+		this.remoteHostname = remoteHostname;
+	}
+	
+	
 }

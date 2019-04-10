@@ -18,6 +18,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -48,7 +49,7 @@ public class DiscoveryService {
 	
 	@Autowired
 	private LldpDiscoverManager lldpDiscoverManager;
-	
+		
 	@Value("${topology.scoe.discovery.element.updateInterval:600000}")
 	private Integer elementUpdateInterval;
 	
@@ -187,61 +188,63 @@ public class DiscoveryService {
 			ExecutorService taskExecutor = Executors.newFixedThreadPool(4);
 			final CountingLatch latch = new CountingLatch(0);
 			while(latch.getCount() > 0 || !ipsToDiscovery.isEmpty()) {
-				final String currentIp = ipsToDiscovery.pop();
-				latch.countUp();
-				taskExecutor.execute(new Runnable() {
-					@Override
-					public void run() {
-						Element element = lldpDiscoverManager.discover(currentIp);
-						if(element != null) {
-							Element elementPersisted = null;
-							Set<Port> notSavedPorts = new HashSet<Port>();
-							for(Port port : element.getPortList()) {
-								//Save Or Update
-								Port portPersisted = macToIp.get(port.getMacAddress());
-								if(portPersisted != null) {
-									merge(portPersisted, port);
-									if(elementPersisted != null) {
-										elementPersisted = idToElement.get(portPersisted.getIdElement());
+				while(!ipsToDiscovery.isEmpty()) {
+					final String currentIp = ipsToDiscovery.pop();
+					latch.countUp();
+					taskExecutor.execute(new Runnable() {
+						@Override
+						public void run() {
+							Element element = lldpDiscoverManager.discover(currentIp);
+							if(element != null) {
+								Element elementPersisted = null;
+								Set<Port> notSavedPorts = new HashSet<Port>();
+								for(Port port : element.getPortList()) {
+									//Save Or Update
+									Port portPersisted = macToIp.get(port.getMacAddress());
+									if(portPersisted != null) {
+										merge(portPersisted, port);
+										if(elementPersisted != null) {
+											elementPersisted = idToElement.get(portPersisted.getIdElement());
+										}
+									}else {
+										notSavedPorts.add(port);
 									}
-								}else {
-									notSavedPorts.add(port);
+									
+									//Add neigbors to stack
+									if(port.getRemoteIpAddress() != null) {
+										String ipNeighbor = port.getRemoteIpAddress();
+										if(!ipsDiscovered.contains(ipNeighbor)) {
+											ipsDiscovered.add(ipNeighbor);
+											ipsToDiscovery.push(ipNeighbor);
+										}
+									}
 								}
 								
-								//Add neigbors to stack
-								if(port.getRemoteIpAddress() != null) {
-									String ipNeighbor = port.getRemoteIpAddress();
-									if(!ipsDiscovered.contains(ipNeighbor)) {
-										ipsDiscovered.add(ipNeighbor);
-										ipsToDiscovery.push(ipNeighbor);
+								//Save or Update Element
+								if(elementPersisted != null) {
+									setDiscoveryFields(elementPersisted, new Date(), instance, "DFS", "LLDP" );
+									merge(elementPersisted, element);
+									for(Port port : notSavedPorts) {
+										port.setIdElement(elementPersisted.getIdElement());
+										save(port);
 									}
+								}else {
+									setDiscoveryFields(element, new Date(), instance, "DFS", "LLDP" );
+									saveCascade(element);
 								}
-							}
-							
-							//Save or Update Element
-							if(elementPersisted != null) {
-								setDiscoveryFields(elementPersisted, new Date(), instance, "DFS", "LLDP" );
-								merge(elementPersisted, element);
-								for(Port port : notSavedPorts) {
-									port.setIdElement(elementPersisted.getIdElement());
-									save(port);
-								}
-							}else {
-								setDiscoveryFields(element, new Date(), instance, "DFS", "LLDP" );
-								saveCascade(element);
 							}
 						}
-					}
-				});
-			}
-			
-			try {
-				if(latch.getCount() > 0 || !ipsToDiscovery.isEmpty()) {
-					logger.info("Waiting... "+ latch.getCount()+" discovery tasks running and "+ipsToDiscovery.size()+" devices to discovery.");
-					Thread.sleep(1000);
+					});
 				}
-			} catch (InterruptedException e) {
-				e.printStackTrace();
+			
+				try {
+					if(latch.getCount() > 0 || !ipsToDiscovery.isEmpty()) {
+						logger.info("Waiting... "+ latch.getCount()+" discovery tasks running and "+ipsToDiscovery.size()+" devices to discovery.");
+						Thread.sleep(1000);
+					}
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
 			}
 			
 			taskExecutor.shutdown();
@@ -278,52 +281,53 @@ public class DiscoveryService {
 			ExecutorService taskExecutor = Executors.newFixedThreadPool(4);
 			final CountingLatch latch = new CountingLatch(0);
 			while(latch.getCount() > 0 || !ipsToDiscovery.isEmpty()) {
-				final String currentIp = ipsToDiscovery.pop();
-				latch.countUp();
-				taskExecutor.execute(new Runnable() {
-					@Override
-					public void run() {
-						Element element = lldpDiscoverManager.discover(currentIp);
-						if(element != null) {
-							Element elementPersisted = null;
-							Set<Port> notSavedPorts = new HashSet<Port>();
-							for(Port port : element.getPortList()) {
-								//Save Or Update
-								Port portPersisted = macToIp.get(port.getMacAddress());
-								if(portPersisted != null) {
-									merge(portPersisted, port);
-									if(elementPersisted != null) {
-										elementPersisted = idToElement.get(portPersisted.getIdElement());
+				while(!ipsToDiscovery.isEmpty()) {
+					final String currentIp = ipsToDiscovery.pop();
+					latch.countUp();
+					taskExecutor.execute(new Runnable() {
+						@Override
+						public void run() {
+							Element element = lldpDiscoverManager.discover(currentIp);
+							if(element != null) {
+								Element elementPersisted = null;
+								Set<Port> notSavedPorts = new HashSet<Port>();
+								for(Port port : element.getPortList()) {
+									//Save Or Update
+									Port portPersisted = macToIp.get(port.getMacAddress());
+									if(portPersisted != null) {
+										merge(portPersisted, port);
+										if(elementPersisted != null) {
+											elementPersisted = idToElement.get(portPersisted.getIdElement());
+										}
+									}else {
+										notSavedPorts.add(port);
+									}
+								}
+								
+								//Save or Update Element
+								if(elementPersisted != null) {
+									setDiscoveryFields(elementPersisted, new Date(), instance, "Flooding", "LLDP" );
+									merge(elementPersisted, element);
+									for(Port port : notSavedPorts) {
+										port.setIdElement(elementPersisted.getIdElement());
+										save(port);
 									}
 								}else {
-									notSavedPorts.add(port);
+									setDiscoveryFields(element, new Date(), instance, "Flooding", "LLDP" );
+									saveCascade(element);
 								}
-							}
-							
-							//Save or Update Element
-							if(elementPersisted != null) {
-								setDiscoveryFields(elementPersisted, new Date(), instance, "Flooding", "LLDP" );
-								merge(elementPersisted, element);
-								for(Port port : notSavedPorts) {
-									port.setIdElement(elementPersisted.getIdElement());
-									save(port);
-								}
-							}else {
-								setDiscoveryFields(element, new Date(), instance, "Flooding", "LLDP" );
-								saveCascade(element);
 							}
 						}
-					}
-				});
-			}
-			
-			try {
-				if(latch.getCount() > 0 || !ipsToDiscovery.isEmpty()) {
-					logger.info("Waiting... "+ latch.getCount()+" discovery tasks running and "+ipsToDiscovery.size()+" devices to discovery.");
-					Thread.sleep(1000);
+					});
 				}
-			} catch (InterruptedException e) {
-				e.printStackTrace();
+				try {
+					if(latch.getCount() > 0 || !ipsToDiscovery.isEmpty()) {
+						logger.info("Waiting... "+ latch.getCount()+" discovery tasks running and "+ipsToDiscovery.size()+" devices to discovery.");
+						Thread.sleep(1000);
+					}
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
 			}
 			
 			taskExecutor.shutdown();
@@ -356,52 +360,54 @@ public class DiscoveryService {
 			ExecutorService taskExecutor = Executors.newFixedThreadPool(4);
 			final CountingLatch latch = new CountingLatch(0);
 			while(latch.getCount() > 0 || !ipsToDiscovery.isEmpty()) {
-				final String currentIp = ipsToDiscovery.pop();
-				latch.countUp();
-				taskExecutor.execute(new Runnable() {
-					@Override
-					public void run() {
-						Element element = lldpDiscoverManager.discover(currentIp);
-						if(element != null) {
-							Element elementPersisted = null;
-							Set<Port> notSavedPorts = new HashSet<Port>();
-							for(Port port : element.getPortList()) {
-								//Save Or Update
-								Port portPersisted = macToIp.get(port.getMacAddress());
-								if(portPersisted != null) {
-									merge(portPersisted, port);
-									if(elementPersisted != null) {
-										elementPersisted = idToElement.get(portPersisted.getIdElement());
+				while(!ipsToDiscovery.isEmpty()) {
+					final String currentIp = ipsToDiscovery.pop();
+					latch.countUp();
+					taskExecutor.execute(new Runnable() {
+						@Override
+						public void run() {
+							Element element = lldpDiscoverManager.discover(currentIp);
+							if(element != null) {
+								Element elementPersisted = null;
+								Set<Port> notSavedPorts = new HashSet<Port>();
+								for(Port port : element.getPortList()) {
+									//Save Or Update
+									Port portPersisted = macToIp.get(port.getMacAddress());
+									if(portPersisted != null) {
+										merge(portPersisted, port);
+										if(elementPersisted != null) {
+											elementPersisted = idToElement.get(portPersisted.getIdElement());
+										}
+									}else {
+										notSavedPorts.add(port);
+									}
+								}
+								
+								//Save or Update Element
+								if(elementPersisted != null) {
+									setDiscoveryFields(elementPersisted, new Date(), instance, "ExpiredTime", "LLDP" );
+									merge(elementPersisted, element);
+									for(Port port : notSavedPorts) {
+										port.setIdElement(elementPersisted.getIdElement());
+										save(port);
 									}
 								}else {
-									notSavedPorts.add(port);
+									setDiscoveryFields(element, new Date(), instance, "ExpiredTime", "LLDP" );
+									saveCascade(element);
 								}
-							}
-							
-							//Save or Update Element
-							if(elementPersisted != null) {
-								setDiscoveryFields(elementPersisted, new Date(), instance, "ExpiredTime", "LLDP" );
-								merge(elementPersisted, element);
-								for(Port port : notSavedPorts) {
-									port.setIdElement(elementPersisted.getIdElement());
-									save(port);
-								}
-							}else {
-								setDiscoveryFields(element, new Date(), instance, "ExpiredTime", "LLDP" );
-								saveCascade(element);
 							}
 						}
-					}
-				});
-			}
-			
-			try {
-				if(latch.getCount() > 0 || !ipsToDiscovery.isEmpty()) {
-					logger.info("Waiting... "+ latch.getCount()+" discovery tasks running and "+ipsToDiscovery.size()+" devices to discovery.");
-					Thread.sleep(1000);
+					});
 				}
-			} catch (InterruptedException e) {
-				e.printStackTrace();
+			
+				try {
+					if(latch.getCount() > 0 || !ipsToDiscovery.isEmpty()) {
+						logger.info("Waiting... "+ latch.getCount()+" discovery tasks running and "+ipsToDiscovery.size()+" devices to discovery.");
+						Thread.sleep(1000);
+					}
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
 			}
 			
 			taskExecutor.shutdown();
@@ -536,8 +542,13 @@ public class DiscoveryService {
 			changed = true;
 		}
 
-		if(port.getRemoteName() != null && ( portPersisted.getRemoteName() == null && !port.getRemoteName().equals(portPersisted.getRemoteName() ) )) {
-			portPersisted.setRemoteName(port.getRemoteName());
+		if(port.getRemoteHostname() != null && ( portPersisted.getRemoteHostname() == null && !port.getRemoteHostname().equals(portPersisted.getRemoteHostname() ) )) {
+			portPersisted.setRemoteHostname(port.getRemoteHostname());
+			changed = true;
+		}
+		
+		if(port.getRemoteIfName() != null && ( portPersisted.getRemoteIfName() == null && !port.getRemoteIfName().equals(portPersisted.getRemoteIfName() ) )) {
+			portPersisted.setRemoteIfName(port.getRemoteIfName());
 			changed = true;
 		}
 		

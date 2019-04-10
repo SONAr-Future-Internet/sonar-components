@@ -1,6 +1,7 @@
 package br.ufu.facom.mehar.sonar.collectors.topology.manager.lldp;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -21,26 +22,35 @@ import org.snmp4j.transport.DefaultUdpTransportMapping;
 import org.snmp4j.util.DefaultPDUFactory;
 import org.snmp4j.util.TreeEvent;
 import org.snmp4j.util.TreeUtils;
+import org.springframework.stereotype.Component;
+
+import com.google.common.collect.Sets;
 
 import br.ufu.facom.mehar.sonar.core.model.topology.Element;
+import br.ufu.facom.mehar.sonar.core.model.topology.Port;
+import br.ufu.facom.mehar.sonar.core.util.IPUtils;
 import br.ufu.facom.mehar.sonar.core.util.ObjectUtils;
 
+@Component
 public class LldpDiscoverManager {
 	private Logger logger = Logger.getLogger(LldpDiscoverManager.class);
 
 	private static final String LLDP_MIB = ".1.0.8802.1.1.2.1"; //http://www.mibdepot.com/cgi-bin/getmib3.cgi?win=mib_a&r=cisco&f=LLDP-MIB-V1SMI.my&v=v1&t=tree
 	
 	private static final String LLDP_MIB_REMOTE = LLDP_MIB+ ".4";
-	private static final String LLDP_MIB_lldpRemSysName = LLDP_MIB_REMOTE+".1.1.9"; //hostname
-	private static final String LLDP_MIB_lldpRemPortDesc = LLDP_MIB_REMOTE+".1.1.8"; //if-desc
-	private static final String LLDP_MIB_lldpRemPortId = LLDP_MIB_REMOTE+".1.1.7"; //if-mac
-	private static final String LLDP_MIB_lldpRemManAddrIfId = LLDP_MIB_REMOTE+".2.1.4"; //management-address and ifid
+	private static final String LLDP_MIB_lldpRemHostname = LLDP_MIB_REMOTE+".1.1.9"; //hostname
+	private static final String LLDP_MIB_lldpRemPortIfName = LLDP_MIB_REMOTE+".1.1.8"; //if-desc
+	private static final String LLDP_MIB_lldpRemPortIfId = LLDP_MIB_REMOTE+".1.1.6"; //if-id
+	private static final String LLDP_MIB_lldpRemPortMac = LLDP_MIB_REMOTE+".1.1.7"; //if-mac
+	private static final String LLDP_MIB_lldpRemAddress = LLDP_MIB_REMOTE+".2.1.4"; //address
+	private static final String LLDP_MIB_lldpRemAddressIPv4Sufix = "1.4"; //ipv4
 	
 	private static final String LLDP_MIB_LOCAL = LLDP_MIB+ ".3";
-	private static final String LLDP_MIB_lldpLocSysName = LLDP_MIB_LOCAL+".3.0"; //hostname
-	private static final String LLDP_MIB_lldpLocPortDesc = LLDP_MIB_LOCAL+".7.1.4"; //if-desc
-	private static final String LLDP_MIB_lldpLocPortId = LLDP_MIB_LOCAL+".7.1.3"; //if-mac
-	private static final String LLDP_MIB_lldpLocManAddrIfId = LLDP_MIB_LOCAL+".8.1.5"; //management-address and ifid
+	private static final String LLDP_MIB_lldpLocHostame = LLDP_MIB_LOCAL+".3.0"; //hostname
+	private static final String LLDP_MIB_lldpLocPortIfName = LLDP_MIB_LOCAL+".7.1.4"; //if-desc
+	private static final String LLDP_MIB_lldpLocPortMac = LLDP_MIB_LOCAL+".7.1.3"; //if-mac
+	private static final String LLDP_MIB_lldpLocAddress = LLDP_MIB_LOCAL+".8.1.5"; //address
+	private static final String LLDP_MIB_lldpLocAddressIPv4 = LLDP_MIB_lldpLocAddress+".1.4"; //ipv4
 	
 	
 	public Element discover(String ip) {
@@ -53,49 +63,179 @@ public class LldpDiscoverManager {
 
 		
 		try {
-			Element element = new Element();
-			if(element.getManagementIPAddressList() == null) {
-				element.setManagementIPAddressList(new HashSet<String>());
-			}
+			logger.info("Discovering "+ip);
 			
 			// LLDP-MIB : 
 	        Map<String, String> lldpInfo = doWalk(LLDP_MIB, target);
-	        System.out.println("Element: "+ip);
+	        if(lldpInfo == null || lldpInfo.isEmpty()) {
+	        	logger.info(ip+" discovery failed!");
+	        	return null;
+	        }
+	        
+	        Element element = new Element();
+			if(element.getManagementIPAddressList() == null) {
+				element.setManagementIPAddressList(Sets.newHashSet(ip));
+			}
+	        
+	        HashMap<String, Port> portMap = new HashMap<String, Port>();
+	        
+	        
 	        for (Map.Entry<String, String> entry : lldpInfo.entrySet()) {
 	        	if(entry.getKey().startsWith(LLDP_MIB_REMOTE)) {
-	        		System.out.println(entry.getKey().substring(LLDP_MIB_REMOTE.length())+" -> "+entry.getValue());
+	        		//logger.debug(entry.getKey().substring(LLDP_MIB_REMOTE.length())+" -> "+entry.getValue());
 	        		
-	        		if(entry.getKey().startsWith(LLDP_MIB_lldpRemSysName)) {
-	        			System.out.println(" RemSysName :: " + entry.getKey().substring(LLDP_MIB_lldpRemSysName.length())+" :: "+entry.getValue());
+	        		if(entry.getKey().startsWith(LLDP_MIB_lldpRemHostname)) {
+	        			String remoteIdentification = entry.getKey().substring(LLDP_MIB_lldpRemHostname.length()+1);
+	        			String[] remoteIdentificationParts = remoteIdentification.split("\\.");
+	        			if(remoteIdentificationParts.length == 3) {
+	        				String ifId = remoteIdentificationParts[1];
+	        	        			
+    	        			if(!portMap.containsKey(ifId)) {
+    	        				portMap.put(ifId, new Port());
+    	        			}
+	        	        			
+    	        			//setting remote hostname
+    	        			portMap.get(ifId).setRemoteHostname(entry.getValue());
+	        			}
+	        			logger.debug(" RemHostname :: " + entry.getKey().substring(LLDP_MIB_lldpRemHostname.length()+1)+" :: "+entry.getValue());
 	        		}
-	        		if(entry.getKey().startsWith(LLDP_MIB_lldpRemPortDesc)) {
-	        			System.out.println(" RemPortDesc :: " + entry.getKey().substring(LLDP_MIB_lldpRemPortDesc.length())+" :: "+entry.getValue());
+	        		if(entry.getKey().startsWith(LLDP_MIB_lldpRemPortIfId)) {
+	        			String remoteIdentification = entry.getKey().substring(LLDP_MIB_lldpRemPortIfId.length()+1);
+	        			String[] remoteIdentificationParts = remoteIdentification.split("\\.");
+	        			if(remoteIdentificationParts.length == 3) {
+	        				String ifId = remoteIdentificationParts[1];
+	        	        			
+    	        			if(!portMap.containsKey(ifId)) {
+    	        				portMap.put(ifId, new Port());
+    	        			}
+	        	        			
+    	        			//setting remote port id
+    	        			portMap.get(ifId).setRemoteIfId(entry.getValue());
+	        			}
+	        			logger.debug(" RemoteIfId :: " + entry.getKey().substring(LLDP_MIB_lldpRemHostname.length()+1)+" :: "+entry.getValue());
 	        		}
-	        		if(entry.getKey().startsWith(LLDP_MIB_lldpRemPortId)) {
-	        			System.out.println(" RemPortId :: " + entry.getKey().substring(LLDP_MIB_lldpRemPortId.length())+" :: "+entry.getValue());
+	        		if(entry.getKey().startsWith(LLDP_MIB_lldpRemPortIfName)) {
+	        			String remoteIdentification = entry.getKey().substring(LLDP_MIB_lldpRemHostname.length()+1);
+	        			String[] remoteIdentificationParts = remoteIdentification.split("\\.");
+	        			if(remoteIdentificationParts.length == 3) {
+	        				String ifId = remoteIdentificationParts[1];
+	        	        			
+    	        			if(!portMap.containsKey(ifId)) {
+    	        				portMap.put(ifId, new Port());
+    	        			}
+	        	        			
+    	        			//setting remote port name
+    	        			portMap.get(ifId).setRemoteIfName(entry.getValue());
+	        			}
+	        			logger.debug(" RemoteIfName :: " + entry.getKey().substring(LLDP_MIB_lldpRemPortIfName.length()+1)+" :: "+entry.getValue());
 	        		}
-	        		if(entry.getKey().startsWith(LLDP_MIB_lldpRemManAddrIfId)) {
-	        			System.out.println(" RemManAddrIfId :: " + entry.getKey().substring(LLDP_MIB_lldpRemManAddrIfId.length())+" :: "+entry.getValue());
+	        		if(entry.getKey().startsWith(LLDP_MIB_lldpRemPortMac)) {
+	        			String remoteIdentification = entry.getKey().substring(LLDP_MIB_lldpRemPortMac.length()+1);
+	        			String[] remoteIdentificationParts = remoteIdentification.split("\\.");
+	        			if(remoteIdentificationParts.length == 3) {
+	        				String ifId = remoteIdentificationParts[1];
+	        	        			
+    	        			if(!portMap.containsKey(ifId)) {
+    	        				portMap.put(ifId, new Port());
+    	        			}
+	        	        			
+    	        			//setting remote port mac
+    	        			portMap.get(ifId).setRemoteMacAddress(entry.getValue());
+	        			}
+	        			logger.debug(" RemPortMac :: " + entry.getKey().substring(LLDP_MIB_lldpRemPortMac.length()+1)+" :: "+entry.getValue());
+	        		}
+	        		if(entry.getKey().startsWith(LLDP_MIB_lldpRemAddress)) {
+	        			String remoteIdentification = entry.getKey().substring(LLDP_MIB_lldpRemHostname.length()+1);
+	        			String[] remoteIdentificationParts = remoteIdentification.split("\\.");
+	        			if(remoteIdentificationParts.length >= 9) {
+	        				if( LLDP_MIB_lldpRemAddressIPv4Sufix.equals( remoteIdentificationParts[3]+"."+remoteIdentificationParts[4] )) {
+	        					String ifId = remoteIdentificationParts[1];
+        	        			
+	    	        			if(!portMap.containsKey(ifId)) {
+	    	        				portMap.put(ifId, new Port());
+	    	        			}
+		        	        			
+	    	        			//setting remote port mac
+	    	        			portMap.get(ifId).setRemoteIpAddress(remoteIdentificationParts[remoteIdentificationParts.length-4] + "." + remoteIdentificationParts[remoteIdentificationParts.length-3] + "." + remoteIdentificationParts[remoteIdentificationParts.length-2] + "." + remoteIdentificationParts[remoteIdentificationParts.length-1]);
+	        				}
+	        			}
+	        			logger.debug(" RemAddress :: " + entry.getKey().substring(LLDP_MIB_lldpRemAddress.length()+1)+" :: "+entry.getValue());
 	        		}
 	        	}
 	        	
 	        	if(entry.getKey().startsWith(LLDP_MIB_LOCAL)) {
-	        		System.out.println(entry.getKey().substring(LLDP_MIB_LOCAL.length())+" -> "+entry.getValue());
+//	        		logger.debug(entry.getKey().substring(LLDP_MIB_LOCAL.length())+" -> "+entry.getValue());
 	        		
-	        		if(entry.getKey().startsWith(LLDP_MIB_lldpLocSysName)) {
-	        			System.out.println(" LocSysName :: " + entry.getKey().substring(LLDP_MIB_lldpLocSysName.length())+" :: "+entry.getValue());
+	        		if(entry.getKey().startsWith(LLDP_MIB_lldpLocHostame)) {
+	        			element.setName( entry.getValue() );
+	        			logger.debug(" LocHostame :: "+entry.getValue());
 	        		}
-	        		if(entry.getKey().startsWith(LLDP_MIB_lldpLocPortDesc)) {
-	        			System.out.println(" LocPortDesc :: " + entry.getKey().substring(LLDP_MIB_lldpLocPortDesc.length())+" :: "+entry.getValue());
+	        		if(entry.getKey().startsWith(LLDP_MIB_lldpLocPortIfName)) {
+	        			String ifId = entry.getKey().substring(LLDP_MIB_lldpLocPortIfName.length()+1);
+	        			if(!portMap.containsKey(ifId)) {
+	        				portMap.put(ifId, new Port());
+	        			}
+	        			
+	        			//setting local port id
+	        			portMap.get(ifId).setIfId(ifId);
+	        			
+	        			//setting local port name
+	        			portMap.get(ifId).setIfName(entry.getValue());
+	        			logger.debug(" LocPortIfName :: " + entry.getKey().substring(LLDP_MIB_lldpLocPortIfName.length()+1)+" :: "+entry.getValue());
 	        		}
-	        		if(entry.getKey().startsWith(LLDP_MIB_lldpLocPortId)) {
-	        			System.out.println(" LocPortId :: " + entry.getKey().substring(LLDP_MIB_lldpLocPortId.length())+" :: "+entry.getValue());
+	        		if(entry.getKey().startsWith(LLDP_MIB_lldpLocPortMac)) {
+	        			String ifId = entry.getKey().substring(LLDP_MIB_lldpLocPortMac.length()+1);
+	        			if(!portMap.containsKey(ifId)) {
+	        				portMap.put(ifId, new Port());
+	        			}
+	        			
+	        			//setting local port id
+	        			portMap.get(ifId).setIfId(ifId);
+	        			
+	        			//setting local port mac
+	        			portMap.get(ifId).setMacAddress(IPUtils.normalizeMAC(entry.getValue()));
+	        			logger.debug(" LocPortMac :: " + entry.getKey().substring(LLDP_MIB_lldpLocPortMac.length()+1)+" :: "+entry.getValue());
 	        		}
-	        		if(entry.getKey().startsWith(LLDP_MIB_lldpLocManAddrIfId)) {
-	        			System.out.println(" LocManAddrIfId :: " + entry.getKey().substring(LLDP_MIB_lldpLocManAddrIfId.length())+" :: "+entry.getValue());
+	        		if(entry.getKey().startsWith(LLDP_MIB_lldpLocAddressIPv4)) {
+	        			String ifId = entry.getValue();
+	        			if(!portMap.containsKey(ifId)) {
+	        				portMap.put(ifId, new Port());
+	        			}
+	        			
+	        			//setting local port id
+	        			portMap.get(ifId).setIfId(ifId);
+	        			
+	        			//setting local port ip
+	        			String[] valueRaw = entry.getKey().substring(LLDP_MIB_lldpLocAddressIPv4.length()+1).split("\\.");
+	        			if(valueRaw.length >= 4) {
+	        				portMap.get(ifId).setIpAddress(valueRaw[valueRaw.length-4] + "." + valueRaw[valueRaw.length-3] + "." + valueRaw[valueRaw.length-2] + "." + valueRaw[valueRaw.length-1]);
+	        			}
+	        			logger.debug(" LocAddressIPv4 :: " + entry.getKey().substring(LLDP_MIB_lldpLocAddressIPv4.length()+1)+" :: "+entry.getValue());
 	        		}
 	        	}
 			}
+	        
+	        if(logger.isDebugEnabled()) {
+	        	logger.debug("Element "+element.getName()+" ("+element.getManagementIPAddressList()+") discovered...");
+		        for(String key : portMap.keySet()) {
+		        	logger.debug(
+		        			String.format("[%-5s]\t%-8s\t%-12s\t%-20s\t%-15s\t<--->\t%-20s\t%-8s\t%-12s\t%-20s\t%-15s",	        			
+		        			key,
+		        			portMap.get(key).getIfId(),
+		        			portMap.get(key).getIfName(),
+		        			portMap.get(key).getMacAddress(),
+		        			portMap.get(key).getIpAddress(),
+		        			portMap.get(key).getRemoteHostname(),
+		        			portMap.get(key).getRemoteIfId(),
+		        			portMap.get(key).getRemoteIfName(),
+		        			portMap.get(key).getRemoteMacAddress(),
+		        			portMap.get(key).getRemoteIpAddress()) );
+		        }
+	        }
+	        
+	        element.setPortList(new HashSet<Port>(portMap.values()));
+	        
+	        logger.info(ip+" discovery concluded!");
 	        
 	        return element;
 		} catch (IOException e) {
@@ -146,7 +286,9 @@ public class LldpDiscoverManager {
 	
 	public static void main(String[] args) {
 		LldpDiscoverManager lldp = new LldpDiscoverManager();
-		Element element = lldp.discover("192.168.1.1");
-		System.out.println(ObjectUtils.toString(element));
+		Element element = lldp.discover("192.168.0.7");
+		if(element != null) {
+			System.out.println(ObjectUtils.toString(element));
+		}
 	}
 }

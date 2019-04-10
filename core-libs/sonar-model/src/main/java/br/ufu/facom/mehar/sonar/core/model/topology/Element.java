@@ -13,7 +13,7 @@ public class Element {
 	private UUID idDomain;
 
 	// Name / Hostname
-	private Long name;
+	private String name;
 
 	// Type of Element
 	private String typeElement;
@@ -75,11 +75,11 @@ public class Element {
 		this.typeElement = typeElement;
 	}
 
-	public Long getName() {
+	public String getName() {
 		return name;
 	}
 
-	public void setName(Long name) {
+	public void setName(String name) {
 		this.name = name;
 	}
 

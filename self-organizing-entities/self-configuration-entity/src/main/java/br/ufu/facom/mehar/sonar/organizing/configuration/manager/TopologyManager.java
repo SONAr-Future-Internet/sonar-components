@@ -3,6 +3,7 @@ package br.ufu.facom.mehar.sonar.organizing.configuration.manager;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.stereotype.Component;
 
 import br.ufu.facom.mehar.sonar.client.nem.action.NetworkEventAction;
@@ -14,10 +15,12 @@ public class TopologyManager {
 	@Autowired
 	EventService eventService;
 	
+	@Autowired
+    private TaskExecutor taskExecutor;
+	
 	@EventListener(ApplicationReadyEvent.class)
 	public void listenToTopologyLinkUpdateEvents() {
-		System.out.println("OI!");
-		new Thread(new Runnable() {
+		taskExecutor.execute(new Runnable() {
 			@Override
 			public void run() {
 				eventService.subscribe(SonarTopics.TOPIC_TOPOLOGY_LINKS_CHANGED, new NetworkEventAction() {
@@ -27,12 +30,12 @@ public class TopologyManager {
 					}
 				});
 			}
-		}).start();
+		});
 	}
 	
 	@EventListener(ApplicationReadyEvent.class)
 	public void listenToElementEvents() {
-		new Thread(new Runnable() {
+		taskExecutor.execute(new Runnable() {
 			@Override
 			public void run() {
 				eventService.subscribe(SonarTopics.TOPIC_TOPOLOGY_ELEMENT, new NetworkEventAction() {
@@ -42,6 +45,6 @@ public class TopologyManager {
 					}
 				});
 			}
-		}).start();
+		});
 	}
 }

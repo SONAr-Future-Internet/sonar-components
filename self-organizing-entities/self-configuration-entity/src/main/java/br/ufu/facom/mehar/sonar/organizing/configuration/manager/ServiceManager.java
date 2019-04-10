@@ -3,6 +3,7 @@ package br.ufu.facom.mehar.sonar.organizing.configuration.manager;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.stereotype.Component;
 
 import br.ufu.facom.mehar.sonar.client.nem.action.NetworkEventAction;
@@ -13,12 +14,14 @@ import br.ufu.facom.mehar.sonar.client.nem.service.EventService;
 public class ServiceManager {
 	
 	@Autowired
-	EventService eventService;
+	private EventService eventService;
+	
+	@Autowired
+    private TaskExecutor taskExecutor;
 	
 	@EventListener(ApplicationReadyEvent.class)
 	public void listenToServiceManagementEvents() {
-		System.out.println("OI!");
-		new Thread(new Runnable() {
+		taskExecutor.execute(new Runnable() {
 			@Override
 			public void run() {
 				eventService.subscribe(SonarTopics.TOPIC_SERVICE, new NetworkEventAction() {
@@ -28,6 +31,6 @@ public class ServiceManager {
 					}
 				});
 			}
-		}).start();
+		});
 	}
 }
