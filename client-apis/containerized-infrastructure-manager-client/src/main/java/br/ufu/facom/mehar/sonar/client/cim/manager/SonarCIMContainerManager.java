@@ -2,7 +2,8 @@ package br.ufu.facom.mehar.sonar.client.cim.manager;
 
 import java.util.List;
 
-import org.jboss.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
@@ -19,7 +20,7 @@ import br.ufu.facom.mehar.sonar.core.util.ObjectUtils;
 
 @Component("sonar-cim")
 public class SonarCIMContainerManager implements ContainerManager{
-	Logger logger = Logger.getLogger(SonarCIMContainerManager.class);
+	Logger logger = LoggerFactory.getLogger(SonarCIMContainerManager.class);
 	
 	@Value("${cim.manager.port:8080}")
 	private String SONAR_CIM_PORT;

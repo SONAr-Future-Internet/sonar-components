@@ -277,4 +277,8 @@ public class TopologyService {
 	public Port getPortByIP(String ip) {
 		return repository.getPortByIP(ip);
 	}
+
+	public Set<Port> getPortsByRemoteIdElement(UUID idElement) {
+		return repository.getPortsByRemoteIdElement(idElement);
+	}
 }

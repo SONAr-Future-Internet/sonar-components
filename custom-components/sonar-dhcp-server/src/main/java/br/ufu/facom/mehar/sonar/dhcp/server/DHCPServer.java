@@ -4,16 +4,15 @@ import java.net.InetAddress;
 import java.net.InterfaceAddress;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Date;
 import java.util.Properties;
 
-import org.jboss.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
-import org.springframework.core.BridgeMethodResolver;
 import org.springframework.stereotype.Component;
 
 import br.ufu.facom.mehar.sonar.client.nem.configuration.SonarTopics;
@@ -30,7 +29,7 @@ import br.ufu.facom.mehar.sonar.dhcp.service.PoolService;
 
 @Component
 public class DHCPServer {
-	Logger logger = Logger.getLogger(DHCPServer.class);
+	Logger logger = LoggerFactory.getLogger(DHCPServer.class);
 
 	@Value("${dhcp.bindAddress:0.0.0.0:67}")
 	private String dhcpBindAddress;
@@ -171,7 +170,7 @@ public class DHCPServer {
 			}, dhcpProperties);
 			new Thread(server).start();
 		} catch (DHCPServerInitException e) {
-			logger.fatal("DHCP Server init failure", e);
+			logger.error("DHCP Server init failure", e);
 		}
 	}
 }

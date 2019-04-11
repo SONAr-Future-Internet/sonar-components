@@ -1,6 +1,7 @@
 package br.ufu.facom.mehar.sonar.organizing.configuration.manager;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.task.TaskExecutor;
@@ -17,6 +18,7 @@ public class ServiceManager {
 	private EventService eventService;
 	
 	@Autowired
+	@Qualifier("taskScheduler")
     private TaskExecutor taskExecutor;
 	
 	@EventListener(ApplicationReadyEvent.class)

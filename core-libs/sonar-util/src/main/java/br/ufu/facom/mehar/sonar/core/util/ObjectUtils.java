@@ -2,6 +2,7 @@ package br.ufu.facom.mehar.sonar.core.util;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.text.SimpleDateFormat;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -11,6 +12,8 @@ import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.util.StdDateFormat;
 
 import br.ufu.facom.mehar.sonar.core.util.exception.JsonConversionException;
 import br.ufu.facom.mehar.sonar.core.util.exception.ObjectCloneException;
@@ -20,6 +23,8 @@ public class ObjectUtils {
 	static {
 		objectMapper.setSerializationInclusion(Include.NON_NULL);
 		objectMapper.configure(MapperFeature.ACCEPT_CASE_INSENSITIVE_PROPERTIES, true);
+		objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+		objectMapper.setDateFormat(new SimpleDateFormat("yyyy-MM-dd HH:mm:ssZ"));
 	}
 	
 	@SuppressWarnings("unchecked")

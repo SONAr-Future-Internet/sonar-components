@@ -518,4 +518,38 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 			close(session);
 		}
 	}
+
+	@Override
+	public Set<Port> getPortsByRemoteIdElement(UUID idElement) {
+		Session session = session(KEYSPACE);
+		try {
+			//Select Ports
+			Select.Where selectPorts = QueryBuilder.select().json().from(KEYSPACE, PORT_COLECTION).allowFiltering()
+					.where(QueryBuilder.eq("idElement", idElement));
+			
+			ResultSet rs = session.execute(selectPorts);
+			
+			Set<UUID> ports = new HashSet<UUID>();
+			for(Row r : rs.all()) {
+				ports.add(ObjectUtils.toObject(r.getString(0), Port.class).getIdPort());
+			}
+			
+			
+			//Sellect Remote Ports
+			Select.Where select = QueryBuilder.select().json().from(KEYSPACE, PORT_COLECTION).allowFiltering()
+					.where(QueryBuilder.in("remoteIdPort", ports));;
+			
+			rs = session.execute(select);
+					
+			Set<Port> result = new HashSet<Port>();
+			for(Row r : rs.all()) {
+				result.add(ObjectUtils.toObject(r.getString(0), Port.class));
+			}
+			
+			return result;
+			
+		} finally {
+			close(session);
+		}
+	}
 }

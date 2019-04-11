@@ -7,7 +7,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.snmp4j.CommunityTarget;
 import org.snmp4j.Snmp;
 import org.snmp4j.Target;
@@ -26,14 +27,14 @@ import org.springframework.stereotype.Component;
 
 import com.google.common.collect.Sets;
 
+import br.ufu.facom.mehar.sonar.collectors.topology.service.DiscoveryService;
 import br.ufu.facom.mehar.sonar.core.model.topology.Element;
 import br.ufu.facom.mehar.sonar.core.model.topology.Port;
 import br.ufu.facom.mehar.sonar.core.util.IPUtils;
-import br.ufu.facom.mehar.sonar.core.util.ObjectUtils;
 
 @Component
 public class LldpDiscoverManager {
-	private Logger logger = Logger.getLogger(LldpDiscoverManager.class);
+	private Logger logger = LoggerFactory.getLogger(LldpDiscoverManager.class);
 
 	private static final String LLDP_MIB = ".1.0.8802.1.1.2.1"; //http://www.mibdepot.com/cgi-bin/getmib3.cgi?win=mib_a&r=cisco&f=LLDP-MIB-V1SMI.my&v=v1&t=tree
 	
@@ -63,14 +64,14 @@ public class LldpDiscoverManager {
 
 		
 		try {
-			logger.info("Discovering "+ip);
-			
 			// LLDP-MIB : 
 	        Map<String, String> lldpInfo = doWalk(LLDP_MIB, target);
 	        if(lldpInfo == null || lldpInfo.isEmpty()) {
-	        	logger.info(ip+" discovery failed!");
+	        	logger.info("LLDP Discover failed: "+ip);
 	        	return null;
 	        }
+	        
+	        logger.info("LLDP Discover: "+ip);
 	        
 	        Element element = new Element();
 			if(element.getManagementIPAddressList() == null) {
@@ -235,8 +236,6 @@ public class LldpDiscoverManager {
 	        
 	        element.setPortList(new HashSet<Port>(portMap.values()));
 	        
-	        logger.info(ip+" discovery concluded!");
-	        
 	        return element;
 		} catch (IOException e) {
 			logger.info("Unable to connect to "+ip);
@@ -282,13 +281,5 @@ public class LldpDiscoverManager {
 		snmp.close();
 
 		return result;
-	}
-	
-	public static void main(String[] args) {
-		LldpDiscoverManager lldp = new LldpDiscoverManager();
-		Element element = lldp.discover("192.168.0.7");
-		if(element != null) {
-			System.out.println(ObjectUtils.toString(element));
-		}
 	}
 }

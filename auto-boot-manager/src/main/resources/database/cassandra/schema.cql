@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS topology.element (
 	disk BIGINT,
 	cost DECIMAL,
 	energy DECIMAL,
-	lastDicoveredAt TIMESTAMP,
+	lastDicoveredAt TEXT,
 	lastDicoveredBy TEXT,
 	lastDicoveredMethod TEXT,
 	lastDicoveredSource TEXT );

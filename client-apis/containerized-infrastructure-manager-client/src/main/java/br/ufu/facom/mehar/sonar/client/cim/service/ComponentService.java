@@ -8,7 +8,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
-import org.jboss.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
@@ -27,7 +28,7 @@ import br.ufu.facom.mehar.sonar.core.util.ObjectUtils;
 
 @Service
 public class ComponentService {
-	private Logger logger = Logger.getLogger(ComponentService.class);
+	private Logger logger = LoggerFactory.getLogger(ComponentService.class);
 
 	@Autowired
 	@Qualifier("sonar-cim")
@@ -44,7 +45,7 @@ public class ComponentService {
 		try {
 			componentMap =  objectMapper.readValue(file, new TypeReference<Map<String, Container>>(){});
 		} catch (IOException e) {
-			logger.fatal("Unable to load sonar components descriptor file : 'sonar-components-configuration.json' in resources.", e);
+			logger.error("Unable to load sonar components descriptor file : 'sonar-components-configuration.json' in resources.", e);
 		}
 	}
 	

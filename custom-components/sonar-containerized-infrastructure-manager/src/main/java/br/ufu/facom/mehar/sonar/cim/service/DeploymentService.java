@@ -4,7 +4,8 @@ import java.io.File;
 import java.io.IOException;
 
 import org.apache.commons.lang.builder.ReflectionToStringBuilder;
-import org.jboss.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -19,7 +20,7 @@ import br.ufu.facom.mehar.sonar.core.model.container.Registry;
 
 @Service
 public class DeploymentService {
-	private Logger logger = Logger.getLogger(DeploymentService.class);
+	private Logger logger = LoggerFactory.getLogger(DeploymentService.class);
 
 	@Autowired
 	private ContainerService containerService;
