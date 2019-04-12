@@ -27,7 +27,6 @@ import org.springframework.stereotype.Component;
 
 import com.google.common.collect.Sets;
 
-import br.ufu.facom.mehar.sonar.collectors.topology.service.DiscoveryService;
 import br.ufu.facom.mehar.sonar.core.model.topology.Element;
 import br.ufu.facom.mehar.sonar.core.model.topology.Port;
 import br.ufu.facom.mehar.sonar.core.util.IPUtils;
@@ -141,7 +140,7 @@ public class LldpDiscoverManager {
     	        			}
 	        	        			
     	        			//setting remote port mac
-    	        			portMap.get(ifId).setRemoteMacAddress(entry.getValue());
+    	        			portMap.get(ifId).setRemoteMacAddress( IPUtils.normalizeMAC(entry.getValue()) );
 	        			}
 	        			logger.debug(" RemPortMac :: " + entry.getKey().substring(LLDP_MIB_lldpRemPortMac.length()+1)+" :: "+entry.getValue());
 	        		}
@@ -156,7 +155,7 @@ public class LldpDiscoverManager {
 	    	        				portMap.put(ifId, new Port());
 	    	        			}
 		        	        			
-	    	        			//setting remote port mac
+	    	        			//setting remote port ip
 	    	        			portMap.get(ifId).setRemoteIpAddress(remoteIdentificationParts[remoteIdentificationParts.length-4] + "." + remoteIdentificationParts[remoteIdentificationParts.length-3] + "." + remoteIdentificationParts[remoteIdentificationParts.length-2] + "." + remoteIdentificationParts[remoteIdentificationParts.length-1]);
 	        				}
 	        			}
@@ -194,7 +193,7 @@ public class LldpDiscoverManager {
 	        			portMap.get(ifId).setIfId(ifId);
 	        			
 	        			//setting local port mac
-	        			portMap.get(ifId).setMacAddress(IPUtils.normalizeMAC(entry.getValue()));
+	        			portMap.get(ifId).setMacAddress( IPUtils.normalizeMAC(entry.getValue() ));
 	        			logger.debug(" LocPortMac :: " + entry.getKey().substring(LLDP_MIB_lldpLocPortMac.length()+1)+" :: "+entry.getValue());
 	        		}
 	        		if(entry.getKey().startsWith(LLDP_MIB_lldpLocAddressIPv4)) {

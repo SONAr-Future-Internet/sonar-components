@@ -19,10 +19,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-
-import com.google.common.collect.Sets;
 
 import br.ufu.facom.mehar.sonar.client.dndb.service.TopologyService;
 import br.ufu.facom.mehar.sonar.client.nem.action.NetworkEventAction;
@@ -59,16 +56,24 @@ public class DiscoveryService {
 	@Value("${topology.scoe.discovery.strategy.flooding.last:192.168.0.254}")
 	private String floodingIntervalLast;
 
-	private String instance = "tscoe";
+	private String INSTANCE_DISCOVERY = "tscoe";
 	{
 		InterfaceAddress interfaceAddress = IPUtils.searchActiveInterfaceAddress();
 		if (interfaceAddress != null && interfaceAddress.getAddress() != null) {
-			instance += "-" + interfaceAddress.getAddress().toString();
+			INSTANCE_DISCOVERY += "-" + interfaceAddress.getAddress().getHostAddress();
 		}
 	}
+	
+	private static final String METHOD_IP_ASSIGN = "IP Assign";
+	private static final String METHOD_DFS = "Depth-First Search";
+	private static final String METHOD_FLOODING = "Flooding";
+	private static final String METHOD_EXPIRATION = "Expiration";
+	
+	private static final String SOURCE_LLDP = "LLDP";
+	private static final String SOURCE_DHCP = "DHCP";
 
 	/**
-	 * Schedule and Listerner
+	 * Schedulers and Listerners
 	 */
 	@EventListener(ApplicationReadyEvent.class)
 	public void listenToEvents() throws InterruptedException {
@@ -79,216 +84,128 @@ public class DiscoveryService {
 				String ip = portEvent.getIpAddress();
 				String mac = IPUtils.normalizeMAC(portEvent.getMacAddress());
 
+				// find element and port using mac
 				Pair<Element, Port> pairByMac = topologyService.getElementAndPortByPortMacAddress(mac);
+				Element elementByMac = null;
+				Port portByMac = null;
+				if(pairByMac != null) {
+					elementByMac = pairByMac.getFirst();
+					portByMac = pairByMac.getSecond();
+				}
+
+				// find element and port using ip
 				Pair<Element, Port> pairByIp = topologyService.getElementAndPortByPortIPAddress(ip);
+				Element elementByIP = null;
+				Port portByIPort = null;
+				if(pairByIp != null) {
+					elementByIP = pairByIp.getFirst();
+					portByIPort = pairByIp.getSecond();
+				}
+				
 
-				if ((pairByMac == null || pairByMac.getFirst() == null)
-						&& (pairByIp == null || pairByIp.getFirst() == null)) {
-					// New assignment
-					Element element = new Element();
-					element.setManagementIPAddressList(Sets.newHashSet(ip));
-					element.setPortList(Sets.newHashSet(portEvent));
-					discoverByIPAssignment(element);
+				//if new element (not found element with ip or mac)
+				if (elementByIP == null && elementByMac == null) {
+					
+					logger.info("Discovering network elements using 'IP Assignment Event'...");
+					
+					discover(ip, METHOD_IP_ASSIGN);
+					
+					logger.info("Discovery using 'IP Assignment Event' concluded!");
 				} else {
-					if (pairByIp != null && pairByMac != null && pairByIp.getFirst() != null
-							&& pairByMac.getFirst() != null) {
-						if (pairByMac.getFirst().equals(pairByIp.getFirst())) {
-							// Reassignment
-							// Do nothing! Just wait for the normal discovery schedule.
+					// element found with ip and mac at same time...
+					if (elementByIP != null && elementByMac != null) {
+						
+						// and they are equals
+						if (elementByMac.equals(elementByIP)) {
+							// this is a reassignment of ip, so:
+							// do nothing! Just wait for the normal discovery schedule.
 						} else {
-							// Assignment conflict
+							// but they are not equals... we found a conflict!
+							
+							// remove ip on element found with the same ip
+							elementByIP.getManagementIPAddressList().remove(ip);
+							portByIPort.setIpAddress(ip);
 
-							// Remove old IP assignment
-							if (pairByMac.getSecond().getIpAddress() != null) {
-								if (pairByMac.getFirst().getManagementIPAddressList() != null) {
-									pairByMac.getFirst().getManagementIPAddressList()
-											.remove(pairByMac.getSecond().getIpAddress());
+							// remove old ip (if exists) configured on the port with the same mac
+							if (portByMac.getIpAddress() != null) {
+								if (elementByMac.getManagementIPAddressList() != null) {
+									elementByMac.getManagementIPAddressList().remove(portByMac.getIpAddress());
 								}
 							}
-
-							// Remove conflict IP assignment
-							pairByMac.getFirst().getManagementIPAddressList().remove(ip);
-							pairByMac.getSecond().setIpAddress(null);
-
-							// Set new assignment
-							if (pairByMac.getFirst().getManagementIPAddressList() == null) {
-								pairByMac.getFirst().setManagementIPAddressList(new HashSet<String>());
+							
+							// set ip on port with related mac
+							if (elementByMac.getManagementIPAddressList() == null) {
+								elementByMac.setManagementIPAddressList(new HashSet<String>());
 							}
-							pairByMac.getFirst().getManagementIPAddressList().add(ip);
-							pairByMac.getSecond().setIpAddress(ip);
+							elementByMac.getManagementIPAddressList().add(ip);
+							portByMac.setIpAddress(ip);
 
-							// Set Discovery Fields
-							setDiscoveryFields(pairByIp.getFirst(), new Date(), instance, "IP-ASSIGNMENT", "DHCP");
-							setDiscoveryFields(pairByMac.getFirst(), new Date(), instance, "IP-ASSIGNMENT", "DHCP");
+							// set 'update discovery info' of both elements
+							setDiscoveryFields(elementByIP, new Date(), INSTANCE_DISCOVERY, METHOD_IP_ASSIGN, SOURCE_DHCP);
+							setDiscoveryFields(elementByMac, new Date(), INSTANCE_DISCOVERY, METHOD_IP_ASSIGN, SOURCE_DHCP);
 
-							// Update (but not discovery)
-							update(pairByIp.getFirst());
-							update(pairByMac.getFirst());
-							update(pairByIp.getSecond());
-							update(pairByMac.getSecond());
-
+							// update both element with ip and element with mac (and also the related ports)
+							update(elementByIP);
+							update(elementByMac);
+							update(portByIPort);
+							update(portByMac);
 						}
 					} else {
-						if (pairByMac != null && pairByIp.getFirst() != null
-								&& (pairByIp == null || pairByIp.getFirst() != null)) {
-							// Assignment to an already created element
-							// Set new assignment
-							if (pairByMac.getFirst().getManagementIPAddressList() == null) {
-								pairByMac.getFirst().setManagementIPAddressList(new HashSet<String>());
+						// if an element was found with the mac but not with ip (already created element) 
+						if (elementByMac != null && elementByIP == null) {
+							
+							// remove old ip (if exists) configured on the port with the same mac
+							if (portByMac.getIpAddress() != null) {
+								if (elementByMac.getManagementIPAddressList() != null) {
+									elementByMac.getManagementIPAddressList().remove(portByMac.getIpAddress());
+								}
 							}
-							pairByMac.getFirst().getManagementIPAddressList().add(ip);
-							pairByMac.getSecond().setIpAddress(ip);
+							
+							// set ip on port with related mac
+							if (elementByMac.getManagementIPAddressList() == null) {
+								elementByMac.setManagementIPAddressList(new HashSet<String>());
+							}
+							elementByMac.getManagementIPAddressList().add(ip);
+							portByMac.setIpAddress(ip);
 
 							// Set Discovery Fields
-							setDiscoveryFields(pairByMac.getFirst(), new Date(), instance, "IP-ASSIGNMENT", "DHCP");
+							setDiscoveryFields(elementByMac, new Date(), INSTANCE_DISCOVERY, "IP-ASSIGNMENT", "DHCP");
 
 							// Update (but not discovery)
-							update(pairByMac.getFirst());
-							update(pairByMac.getSecond());
+							update(elementByMac);
+							update(portByMac);
 						} else {
-							// Assignment to an already created element not discovery yet
-							// Do nothing! Just wait for the normal discovery schedule.
+							// if an element with the ip was found but not with the mac
+							
+							logger.info("Discovering network elements using 'IP Assignment Event'...");
+							
+							discover(ip, METHOD_IP_ASSIGN);
+							
+							logger.info("Discovery using 'IP Assignment Event' concluded!");
 						}
 					}
 				}
 			}
+
 		});
 	}
-
-	@Scheduled(fixedDelayString = "${topology.scoe.discovery.strategy.bfs.interval:600000}")
+	
+	//@Scheduled(fixedDelayString = "${topology.scoe.discovery.strategy.bfs.interval:600000}")
 	public void discoveryDFS() throws InterruptedException {
-		logger.info("Discovering network elements using 'Depth-First Search' with local server as root...");
-
-		final Set<Port> portsToRemove = new HashSet<Port>();
-		final Set<String> ipsToRemove = new HashSet<String>();
-
 		InterfaceAddress interfaceAddress = IPUtils.searchActiveInterfaceAddress();
 		if (interfaceAddress != null && interfaceAddress.getAddress() != null) {
-			String rootIp = interfaceAddress.getAddress().toString();
-			Element element = topologyService.getElementByIPAddress(rootIp);
-			if (element == null) {
-				element = new Element();
-				element.setTypeElement(Element.TYPE_SERVER);
-				element.setManagementIPAddressList(Sets.newHashSet(rootIp));
-			}
-
-			final Map<String, Port> macToPort = new HashMap<String, Port>();
-			final Map<UUID, Set<Port>> idElementToPortSet = new HashMap<UUID, Set<Port>>();
-			for (Port p : topologyService.getPorts()) {
-				macToPort.put(p.getMacAddress(), p);
-
-				if (!idElementToPortSet.containsKey(p.getIdElement())) {
-					idElementToPortSet.put(p.getIdElement(), Sets.newHashSet(p));
-				} else {
-					idElementToPortSet.get(p.getIdElement()).add(p);
-				}
-
-			}
-
-			final Map<UUID, Element> idToElement = new HashMap<UUID, Element>();
-			for (Element e : topologyService.getElements()) {
-				idToElement.put(e.getIdElement(), e);
-			}
-
-			// DFS starting from server
-			final Stack<String> ipsToDiscovery = new Stack<String>();
-			final Set<String> ipsDiscovered = new HashSet<String>();
-
-			// Root of DFS
-			ipsToDiscovery.push(element.getManagementIPAddressList().iterator().next());
-			ipsDiscovered.add(element.getManagementIPAddressList().iterator().next());
-
-			ExecutorService taskExecutor = Executors.newFixedThreadPool(4);
-			final CountingLatch latch = new CountingLatch(0);
-			while (latch.getCount() > 0 || !ipsToDiscovery.isEmpty()) {
-				while (!ipsToDiscovery.isEmpty()) {
-					final String currentIp = ipsToDiscovery.pop();
-					latch.countUp();
-					taskExecutor.execute(new Runnable() {
-						@Override
-						public void run() {
-							try {
-								Element element = lldpDiscoverManager.discover(currentIp);
-								if (element != null) {
-									Set<String> currentPortMacs = new HashSet<String>();
-									Element elementPersisted = null;
-									Set<Port> notSavedPorts = new HashSet<Port>();
-									for (Port port : element.getPortList()) {
-										currentPortMacs.add(port.getMacAddress());
-										// Save Or Update
-										Port portPersisted = macToPort.get(port.getMacAddress());
-										if (portPersisted != null) {
-											merge(portPersisted, port);
-											if (elementPersisted == null) {
-												elementPersisted = idToElement.get(portPersisted.getIdElement());
-											}
-										} else {
-											notSavedPorts.add(port);
-										}
-									}
-
-									// Save or Update Element
-									if (elementPersisted != null) {
-										setDiscoveryFields(elementPersisted, new Date(), instance, "ExpiredTime",
-												"LLDP");
-										merge(elementPersisted, element);
-										for (Port port : notSavedPorts) {
-											port.setIdElement(elementPersisted.getIdElement());
-											save(port);
-										}
-
-										for (Port port : idElementToPortSet.get(elementPersisted.getIdElement())) {
-											if (!currentPortMacs.contains(port.getMacAddress())) {
-												portsToRemove.add(port);
-											}
-										}
-									} else {
-										setDiscoveryFields(element, new Date(), instance, "ExpiredTime", "LLDP");
-										saveCascade(element);
-									}
-								} else {
-									ipsToRemove.add(currentIp);
-								}
-							} finally {
-								latch.countDown();
-							}
-						}
-					});
-				}
-
-				try {
-					if (latch.getCount() > 0 || !ipsToDiscovery.isEmpty()) {
-						logger.debug("Waiting... " + latch.getCount() + " discovery tasks running and "
-								+ ipsToDiscovery.size() + " devices to discovery.");
-						Thread.sleep(1000);
-					}
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}
-			}
-
-			taskExecutor.shutdown();
-		}
-
-		// Updating Topology
-		Set<Port> portsChanged = new HashSet<Port>();
-		portsChanged.addAll(removePorts(portsToRemove));
-		portsChanged.addAll(linkElements());
-		portsChanged.addAll(removeElements(ipsToRemove));
-
-		if (!portsChanged.isEmpty()) {
-			eventService.publish(SonarTopics.TOPIC_TOPOLOGY_LINKS_CHANGED, portsChanged);
-		}
+			String rootIp = interfaceAddress.getAddress().getHostAddress();
+			
+			logger.info("Discovering network elements using 'Depth-First Search' with local server as root...");
+			
+			discover(rootIp, METHOD_DFS);
 		
-		logger.info("Discovery using 'Depth-First Search' concluded!");
+			logger.info("Discovery using 'Depth-First Search' concluded!");
+		}
 	}
 
-	@Scheduled(fixedDelayString = "${topology.scoe.discovery.strategy.flooding.interval:60000000}", initialDelayString = "${topology.scoe.discovery.strategy.flooding.interval:60000000}")
+	//@Scheduled(fixedDelayString = "${topology.scoe.discovery.strategy.flooding.interval:60000000}", initialDelayString = "${topology.scoe.discovery.strategy.flooding.interval:60000000}")
 	public void discoveryFlooding() throws InterruptedException {
-		logger.info("Discovering network elements using 'Flooding' with interval "+floodingIntervalFirst+"-"+floodingIntervalLast+"...");
-
-		final Set<Port> portsToRemove = new HashSet<Port>();
-		final Set<String> ipsToRemove = new HashSet<String>();
 		final Stack<String> ipsToDiscovery = new Stack<String>();
 		String ip = floodingIntervalFirst;
 
@@ -298,325 +215,365 @@ public class DiscoveryService {
 		}
 
 		if (!ipsToDiscovery.isEmpty()) {
-			final Map<String, Port> macToPort = new HashMap<String, Port>();
-			final Map<UUID, Set<Port>> idElementToPortSet = new HashMap<UUID, Set<Port>>();
-			for (Port p : topologyService.getPorts()) {
-				macToPort.put(p.getMacAddress(), p);
-
-				if (!idElementToPortSet.containsKey(p.getIdElement())) {
-					idElementToPortSet.put(p.getIdElement(), Sets.newHashSet(p));
-				} else {
-					idElementToPortSet.get(p.getIdElement()).add(p);
-				}
-
-			}
-
-			final Map<UUID, Element> idToElement = new HashMap<UUID, Element>();
-			for (Element e : topologyService.getElements()) {
-				idToElement.put(e.getIdElement(), e);
-			}
-
-			ExecutorService taskExecutor = Executors.newFixedThreadPool(4);
-			final CountingLatch latch = new CountingLatch(0);
-			while (latch.getCount() > 0 || !ipsToDiscovery.isEmpty()) {
-				while (!ipsToDiscovery.isEmpty()) {
-					final String currentIp = ipsToDiscovery.pop();
-					latch.countUp();
-					taskExecutor.execute(new Runnable() {
-						@Override
-						public void run() {
-							try {
-								Element element = lldpDiscoverManager.discover(currentIp);
-								if (element != null) {
-									Set<String> currentPortMacs = new HashSet<String>();
-									Element elementPersisted = null;
-									Set<Port> notSavedPorts = new HashSet<Port>();
-									for (Port port : element.getPortList()) {
-										currentPortMacs.add(port.getMacAddress());
-										// Save Or Update
-										Port portPersisted = macToPort.get(port.getMacAddress());
-										if (portPersisted != null) {
-											merge(portPersisted, port);
-											if (elementPersisted == null) {
-												elementPersisted = idToElement.get(portPersisted.getIdElement());
-											}
-										} else {
-											notSavedPorts.add(port);
-										}
-									}
-
-									// Save or Update Element
-									if (elementPersisted != null) {
-										setDiscoveryFields(elementPersisted, new Date(), instance, "ExpiredTime",
-												"LLDP");
-										merge(elementPersisted, element);
-										for (Port port : notSavedPorts) {
-											port.setIdElement(elementPersisted.getIdElement());
-											save(port);
-										}
-
-										for (Port port : idElementToPortSet.get(elementPersisted.getIdElement())) {
-											if (!currentPortMacs.contains(port.getMacAddress())) {
-												portsToRemove.add(port);
-											}
-										}
-									} else {
-										setDiscoveryFields(element, new Date(), instance, "ExpiredTime", "LLDP");
-										saveCascade(element);
-									}
-								} else {
-									ipsToRemove.add(currentIp);
-								}
-							} finally {
-								latch.countDown();
-							}
-						}
-
-					});
-				}
-				try {
-					if (latch.getCount() > 0 || !ipsToDiscovery.isEmpty()) {
-						logger.debug("Waiting... " + latch.getCount() + " discovery tasks running and "
-								+ ipsToDiscovery.size() + " devices to discovery.");
-						Thread.sleep(1000);
-					}
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}
-			}
-
-			taskExecutor.shutdown();
+			
+			logger.info("Discovering network elements using 'Flooding' with interval "+floodingIntervalFirst+"-"+floodingIntervalLast+"...");
+			
+			discover(ipsToDiscovery, METHOD_FLOODING);
+			
+			logger.info("Discovery using 'Flooding' concluded!");
 		}
-
-		// Updating Topology
-		Set<Port> portsChanged = new HashSet<Port>();
-		portsChanged.addAll(removePorts(portsToRemove));
-		portsChanged.addAll(linkElements());
-		portsChanged.addAll(removeElements(ipsToRemove));
-
-		if (!portsChanged.isEmpty()) {
-			eventService.publish(SonarTopics.TOPIC_TOPOLOGY_LINKS_CHANGED, portsChanged);
-		}
-		logger.info("Discovery using 'Flooding' concluded!");
+		
 	}
 
-	@Scheduled(fixedDelayString = "${topology.scoe.discovery.element.updateInterval:600000}", initialDelayString = "${topology.scoe.discovery.element.updateInterval:600000}")
+	//@Scheduled(fixedDelayString = "${topology.scoe.discovery.element.updateInterval:600000}", initialDelayString = "${topology.scoe.discovery.element.updateInterval:600000}")
 	public void updateElements() throws InterruptedException {
-		logger.info("Discovering network elements using 'Expiration' with interval "+elementUpdateInterval+" in millis...");
-
-		final Set<String> ipsToRemove = new HashSet<String>();
-		final Set<Port> portsToRemove = new HashSet<Port>();
 		final Stack<String> ipsToDiscovery = new Stack<String>();
-		final Map<UUID, Element> idToElement = new HashMap<UUID, Element>();
 		for (Element element : topologyService.getElements()) {
-			idToElement.put(element.getIdElement(), element);
 			if (shouldUpdate(element)) {
 				ipsToDiscovery.add(element.getManagementIPAddressList().iterator().next());
 			}
 		}
 
 		if (!ipsToDiscovery.isEmpty()) {
-			final Map<String, Port> macToPort = new HashMap<String, Port>();
-			final Map<UUID, Set<Port>> idElementToPortSet = new HashMap<UUID, Set<Port>>();
-			for (Port p : topologyService.getPorts()) {
-				macToPort.put(p.getMacAddress(), p);
+			logger.info("Discovering network elements using 'Expiration' with interval "+elementUpdateInterval+" in millis...");
+			
+			discover(ipsToDiscovery, METHOD_EXPIRATION);
 
-				if (!idElementToPortSet.containsKey(p.getIdElement())) {
-					idElementToPortSet.put(p.getIdElement(), Sets.newHashSet(p));
-				} else {
-					idElementToPortSet.get(p.getIdElement()).add(p);
-				}
-
-			}
-
-			final ExecutorService taskExecutor = Executors.newFixedThreadPool(4);
-			final CountingLatch latch = new CountingLatch(0);
-			while (latch.getCount() > 0 || !ipsToDiscovery.isEmpty()) {
-				while (!ipsToDiscovery.isEmpty()) {
-					final String currentIp = ipsToDiscovery.pop();
-					latch.countUp();
-					taskExecutor.execute(new Runnable() {
-						@Override
-						public void run() {
-							try {
-								Element element = lldpDiscoverManager.discover(currentIp);
-								if (element != null) {
-									Set<String> currentPortMacs = new HashSet<String>();
-									Element elementPersisted = null;
-									Set<Port> notSavedPorts = new HashSet<Port>();
-									for (Port port : element.getPortList()) {
-										currentPortMacs.add(port.getMacAddress());
-										// Save Or Update
-										Port portPersisted = macToPort.get(port.getMacAddress());
-										if (portPersisted != null) {
-											merge(portPersisted, port);
-											if (elementPersisted == null) {
-												elementPersisted = idToElement.get(portPersisted.getIdElement());
-											}
-										} else {
-											notSavedPorts.add(port);
-										}
-									}
-
-									// Save or Update Element
-									if (elementPersisted != null) {
-										setDiscoveryFields(elementPersisted, new Date(), instance, "ExpiredTime",
-												"LLDP");
-										merge(elementPersisted, element);
-										for (Port port : notSavedPorts) {
-											port.setIdElement(elementPersisted.getIdElement());
-											save(port);
-										}
-
-										for (Port port : idElementToPortSet.get(elementPersisted.getIdElement())) {
-											if (!currentPortMacs.contains(port.getMacAddress())) {
-												portsToRemove.add(port);
-											}
-										}
-									} else {
-										setDiscoveryFields(element, new Date(), instance, "ExpiredTime", "LLDP");
-										saveCascade(element);
-									}
-								} else {
-									ipsToRemove.add(currentIp);
-								}
-							} finally {
-								latch.countDown();
-							}
-						}
-					});
-				}
-
-				try {
-					if (latch.getCount() > 0 || !ipsToDiscovery.isEmpty()) {
-						logger.debug("Waiting... " + latch.getCount() + " discovery tasks running and "
-								+ ipsToDiscovery.size() + " devices to discovery.");
-						Thread.sleep(1000);
-					}
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}
-			}
-
-			taskExecutor.shutdown();
+			logger.info("Discovery using 'Expiration' concluded!");
 		}
-
-		// Updating Topology
-		Set<Port> portsChanged = new HashSet<Port>();
-		portsChanged.addAll(removePorts(portsToRemove));
-		portsChanged.addAll(linkElements());
-		portsChanged.addAll(removeElements(ipsToRemove));
-
-		if (!portsChanged.isEmpty()) {
-			eventService.publish(SonarTopics.TOPIC_TOPOLOGY_LINKS_CHANGED, portsChanged);
-		}
-
-		logger.info("Discovery using 'Expiration' concluded!");
 	}
 
-	private void discoverByIPAssignment(Element element) {
-		logger.info("Discovering network elements using 'IP Assignment Event'...");
 
-		Element discoveredElement = lldpDiscoverManager
-				.discover(element.getManagementIPAddressList().iterator().next());
-		if (discoveredElement != null) {
-			// If Discovery fails, save the basic element representation.
-			discoveredElement = element;
+	/**
+	 * CRUD
+	 */
+	private Element saveCascade(Element element) {
+		setElementType(element);
+		Element elementSaved = topologyService.save(element);
+		for (Port port : element.getPortList()) {
+			port.setIdElement(elementSaved.getIdElement());
+			topologyService.save(port);
 		}
-
-		setDiscoveryFields(discoveredElement, new Date(), instance, "IP-ASSIGNMENT", "LLDP");
-
-		Element savedElement = save(discoveredElement);
-		eventService.publish(SonarTopics.TOPIC_TOPOLOGY_ELEMENT_ADDED, savedElement);
-		for (Port port : discoveredElement.getPortList()) {
-			port.setIdElement(savedElement.getIdElement());
-			save(port);
-			eventService.publish(SonarTopics.TOPIC_TOPOLOGY_PORT_ADDED, port);
+		eventService.publish(SonarTopics.TOPIC_TOPOLOGY_ELEMENT_ADDED, elementSaved);
+		return element;
+	}
+	
+	private Set<Port> removeCascade(Element persistedElement) {
+		Set<Port> linkPortsChanged = new HashSet<Port>();
+		
+		Set<Port> persistedPorts = getPortsByIdElement(persistedElement.getIdElement());
+		if( persistedPorts != null && !persistedPorts.isEmpty()) {
+			for(Port portRemoved : persistedPorts) {
+				if(portRemoved.getRemoteIpAddress() != null || portRemoved.getRemoteMacAddress() != null) {
+					//Port linked being removed
+					linkPortsChanged.add(portRemoved);
+				}
+				remove(portRemoved);
+			}
 		}
-
-		// Updating Topology
-		Set<Port> portsChanged = new HashSet<Port>();
-		portsChanged.addAll(linkElements());
-
-		if (!portsChanged.isEmpty()) {
-			eventService.publish(SonarTopics.TOPIC_TOPOLOGY_LINKS_CHANGED, portsChanged);
+		topologyService.deleteElementById(persistedElement.getIdElement());
+		eventService.publish(SonarTopics.TOPIC_TOPOLOGY_ELEMENT_REMOVED, persistedElement);
+		
+		return linkPortsChanged;
+	}
+	
+	private Set<Port> mergeCascade(Element persistedElement, Element discoveredElement) {
+		Set<Port> linkPortsChanged = new HashSet<Port>();
+		boolean elementChanged = false;
+		
+		//Verify all attributes
+		if (discoveredElement.getClock() != null
+				&& (persistedElement.getClock() == null || !discoveredElement.getClock().equals(persistedElement.getClock()))) {
+			persistedElement.setClock(discoveredElement.getClock());
+			elementChanged = true;
+		}
+		if (discoveredElement.getCores() != null
+				&& (persistedElement.getCores() == null || !discoveredElement.getCores().equals(persistedElement.getCores()))) {
+			persistedElement.setCores(discoveredElement.getCores());
+			elementChanged = true;
+		}
+		if (discoveredElement.getCost() != null
+				&& (persistedElement.getCost() == null || !discoveredElement.getCost().equals(persistedElement.getCost()))) {
+			persistedElement.setCost(discoveredElement.getCost());
+			elementChanged = true;
+		}
+		if (discoveredElement.getDisk() != null
+				&& (persistedElement.getDisk() == null || !discoveredElement.getDisk().equals(persistedElement.getDisk()))) {
+			persistedElement.setDisk(discoveredElement.getDisk());
+			elementChanged = true;
+		}
+		if (discoveredElement.getEnergy() != null && (persistedElement.getEnergy() == null
+				|| !discoveredElement.getEnergy().equals(persistedElement.getEnergy()))) {
+			persistedElement.setEnergy(discoveredElement.getEnergy());
+			elementChanged = true;
+		}
+		if (discoveredElement.getMemory() != null && (persistedElement.getMemory() == null
+				|| !discoveredElement.getMemory().equals(persistedElement.getMemory()))) {
+			persistedElement.setMemory(discoveredElement.getMemory());
+			elementChanged = true;
+		}
+		if (discoveredElement.getName() != null
+				&& (persistedElement.getName() == null || !discoveredElement.getName().equals(persistedElement.getName()))) {
+			persistedElement.setName(discoveredElement.getName());
+			elementChanged = true;
+		}
+		if (discoveredElement.getTypeElement() != null && (persistedElement.getTypeElement() == null
+				|| !discoveredElement.getTypeElement().equals(persistedElement.getTypeElement()))) {
+			persistedElement.setTypeElement(discoveredElement.getTypeElement());
+			elementChanged = true;
+		}
+		if (discoveredElement.getManagementIPAddressList() != null && (persistedElement.getManagementIPAddressList() == null
+				|| !discoveredElement.getManagementIPAddressList().equals(persistedElement.getManagementIPAddressList()))) {
+			persistedElement.getManagementIPAddressList().addAll(discoveredElement.getManagementIPAddressList());
+			elementChanged = true;
 		}
 		
-		logger.info("Discovery using 'IP Assignment Event' concluded!");
+		Set<Port> persistedPorts = getPortsByIdElement(persistedElement.getIdElement());
+		if( persistedPorts == null ) {
+			persistedPorts = new HashSet<Port>();
+		}
+		
+		Map<String, Port> mapPersistedPort = new HashMap<String, Port>();
+		Set<Port> portsRemoved = new HashSet<Port>();
+		for(Port persistedPort : persistedPorts) {
+			mapPersistedPort.put(persistedPort.getMacAddress(), persistedPort);
+			portsRemoved.add(persistedPort);
+		}
+		
+		for(Port discoveredPort : discoveredElement.getPortList()) {
+			// update port
+			if(mapPersistedPort.containsKey(discoveredPort.getMacAddress())) {
+				Port persistedPort = mapPersistedPort.get(discoveredPort.getMacAddress());
+				
+				portsRemoved.remove(persistedPort);
+				
+				boolean portChanged = false;
+				if (discoveredPort.getBandwidth() != null && (persistedPort.getBandwidth() == null
+						&& !discoveredPort.getBandwidth().equals(persistedPort.getBandwidth()))) {
+					persistedPort.setBandwidth(discoveredPort.getBandwidth());
+					portChanged = true;
+				}
+				if (discoveredPort.getIfId() != null
+						&& (persistedPort.getIfId() == null && !discoveredPort.getIfId().equals(persistedPort.getIfId()))) {
+					persistedPort.setIfId(discoveredPort.getIfId());
+					portChanged = true;
+				}
+				if (discoveredPort.getIfName() != null
+						&& (persistedPort.getIfName() == null && !discoveredPort.getIfName().equals(persistedPort.getIfName()))) {
+					persistedPort.setIfName(discoveredPort.getIfName());
+					portChanged = true;
+				}
+				if (discoveredPort.getIpAddress() != null && (persistedPort.getIpAddress() == null
+						&& !discoveredPort.getIpAddress().equals(persistedPort.getIpAddress()))) {
+					persistedPort.setIpAddress(discoveredPort.getIpAddress());
+					portChanged = true;
+				}
+				if (discoveredPort.getMacAddress() != null && (persistedPort.getMacAddress() == null
+						&& !discoveredPort.getMacAddress().equals(persistedPort.getMacAddress()))) {
+					persistedPort.setMacAddress(discoveredPort.getMacAddress());
+					portChanged = true;
+				}
+				if (discoveredPort.getRemoteIfId() != null && (persistedPort.getRemoteIfId() == null
+						&& !discoveredPort.getRemoteIfId().equals(persistedPort.getRemoteIfId()))) {
+					persistedPort.setRemoteIfId(discoveredPort.getRemoteIfId());
+					portChanged = true;
+				}
+				if (discoveredPort.getRemoteIpAddress() != null && (persistedPort.getRemoteIpAddress() == null
+						&& !discoveredPort.getRemoteIpAddress().equals(persistedPort.getRemoteIpAddress()))) {
+					persistedPort.setRemoteIpAddress(discoveredPort.getRemoteIpAddress());
+					portChanged = true;
+				}
+				if (discoveredPort.getRemoteMacAddress() != null && (persistedPort.getRemoteMacAddress() == null
+						&& !discoveredPort.getRemoteMacAddress().equals(persistedPort.getRemoteMacAddress()))) {
+					persistedPort.setRemoteMacAddress(discoveredPort.getRemoteMacAddress());
+					portChanged = true;
+				}
+				if (discoveredPort.getRemoteHostname() != null && (persistedPort.getRemoteHostname() == null
+						&& !discoveredPort.getRemoteHostname().equals(persistedPort.getRemoteHostname()))) {
+					persistedPort.setRemoteHostname(discoveredPort.getRemoteHostname());
+					portChanged = true;
+				}
+				if (discoveredPort.getRemoteIfName() != null && (persistedPort.getRemoteIfName() == null
+						&& !discoveredPort.getRemoteIfName().equals(persistedPort.getRemoteIfName()))) {
+					persistedPort.setRemoteIfName(discoveredPort.getRemoteIfName());
+					portChanged = true;
+				}
+				
+				if (portChanged) {
+					update(persistedPort);
+				}
+			}else {
+				discoveredPort.setIdElement(persistedElement.getIdElement());
+				save(discoveredPort);
+			}
+		}
+		
+		for(Port portRemoved : portsRemoved) {
+			if(portRemoved.getRemoteIpAddress() != null || portRemoved.getRemoteMacAddress() != null) {
+				//Port linked being removed
+				linkPortsChanged.add(portRemoved);
+			}
+			remove(portRemoved);
+		}
+		
+		if(elementChanged) {
+			update(discoveredElement);
+		}
+		
+		return linkPortsChanged;
+	}
+	
+	private Port update(Port port) {
+		Port portSaved = topologyService.update(port);
+		eventService.publish(SonarTopics.TOPIC_TOPOLOGY_PORT_CHANGED, portSaved);
+		return portSaved;
+	}
+
+	private Element update(Element element) {
+		Element elementSaved = topologyService.update(element);
+		eventService.publish(SonarTopics.TOPIC_TOPOLOGY_ELEMENT_CHANGED, elementSaved);
+		return elementSaved;
+	}
+	
+	private Port save(Port port) {
+		Port portSaved = topologyService.save(port);
+		eventService.publish(SonarTopics.TOPIC_TOPOLOGY_PORT_ADDED, portSaved);
+		return portSaved;
+	}
+
+	private void remove(Port port) {
+		topologyService.delete(port);
+		eventService.publish(SonarTopics.TOPIC_TOPOLOGY_PORT_REMOVED, port);
+	}
+	
+	/**
+	 * Query data from cache or database
+	 */
+	private Set<Port> getPortsByIdElement(UUID idElement) {
+		return topologyService.getPortsByIdElement(idElement); 
+	}
+	private Element getElementByIP(String currentIp) {
+		return topologyService.getElementByIPAddress(currentIp);
+	}
+	
+	private Element getElementById(UUID idElement) {
+		return topologyService.getElementById(idElement);
+	}
+
+	private Port getPortByMac(String macAddress) {
+		return topologyService.getPortByMacAddress(macAddress);
 	}
 
 	/**
-	 * Remove and Link
+	 * Main Logic
 	 */
 
-	private Set<Port> removePorts(Set<Port> portsToRemove) {
-		logger.info("-> "+portsToRemove.size()+" ports removed!");
-		Set<Port> portsChanged = new HashSet<Port>();
-
-		Map<UUID, Port> idToPort = new HashMap<UUID, Port>();
-		for (Port port : topologyService.getPorts()) {
-			idToPort.put(port.getIdPort(), port);
-		}
-
-		for (Port port : portsToRemove) {
-			if (port.getRemoteIdPort() != null) {
-				if (idToPort.containsKey(port.getRemoteIdPort())) {
-					Port remotePort = idToPort.get(port.getRemoteIdPort());
-					remotePort.setRemoteIdPort(null);
-					portsChanged.add(remotePort);
-					update(remotePort);
-				}
-			}
-			remove(port);
-		}
-
-		return portsChanged;
+	private void discover(final String ip, final String method) {
+		final Stack<String> ipsToDiscovery = new Stack<String>();
+		ipsToDiscovery.add(ip);
+		this.discover(ipsToDiscovery, method);
 	}
-
-	private Set<Port> removeElements(Set<String> ipsToRemove) {
-		logger.info("-> "+ipsToRemove.size()+" ips to removed (if exists)!");
-
-		Set<Port> portsChanged = new HashSet<Port>();
-
-		Map<UUID, Element> elementsRemoved = new HashMap<UUID, Element>();
-
-		for (Element element : topologyService.getElements()) {
-			for (String ipAddress : element.getManagementIPAddressList()) {
-				if (ipsToRemove.contains(ipAddress)) {
-					elementsRemoved.put(element.getIdElement(), element);
-				}
-			}
-		}
-
-		for (Element element : elementsRemoved.values()) {
-			// Remove References
-			Set<Port> neighborPorts = topologyService.getPortsByRemoteIdElement(element.getIdElement());
-			if (neighborPorts != null && !neighborPorts.isEmpty()) {
-				for (Port port : neighborPorts) {
-					// If neighbor will be removed too..
-					if (elementsRemoved.containsKey(port.getIdElement())) {
-						// do nothing yet
-					} else {
-						port.setRemoteHostname(null);
-						port.setRemoteIdPort(null);
-						port.setRemoteIfId(null);
-						port.setRemoteIfName(null);
-						port.setRemoteIpAddress(null);
-						port.setRemoteMacAddress(null);
-						port.setRemotePort(null);
-
-						update(port);
+	
+	private void discover(final Stack<String> ipsToDiscovery, final String method) {
+		final ExecutorService taskExecutor = Executors.newFixedThreadPool(4);
+		final CountingLatch latch = new CountingLatch(0);
+		final Set<Port> linkPortsChanged = new HashSet<Port>();
+		final Set<String> ipsDiscovered = new HashSet<String>();
+		
+		// while there is ip's to discovery or there is a discovery running
+		while (latch.getCount() > 0 || !ipsToDiscovery.isEmpty()) {
+			if (!ipsToDiscovery.isEmpty()) {
+				
+				// get current IP of stack, countUp the task and add to set of already discovery ips
+				final String currentIp = ipsToDiscovery.pop();
+				ipsDiscovered.add(currentIp);
+				latch.countUp();
+				
+				// run discovery task
+				taskExecutor.execute(new Runnable() {
+					@Override
+					public void run() {
+						try {
+							// discover current ip
+							Element discoveredElement = lldpDiscoverManager.discover(currentIp);
+							
+							// find element already persisted
+							Element persistedElement = getElementByIP(currentIp);
+							
+							// if discovery worked
+							if(discoveredElement != null) {
+								// set update data
+								setDiscoveryFields(discoveredElement, new Date(), INSTANCE_DISCOVERY, method, SOURCE_LLDP);
+								
+								// and element is already persisted
+								if(persistedElement != null) {
+									linkPortsChanged.addAll( mergeCascade(persistedElement, discoveredElement) );
+								}else {
+									// if not persisted
+									saveCascade(discoveredElement);
+								}
+								
+								//add neighbors considering the method
+								switch(method) {
+									case METHOD_FLOODING: 
+										break;//don't add neighbors
+									case METHOD_EXPIRATION: 
+										break;//don't add neighbors
+									case METHOD_DFS:
+										for(String ipNeighbor : getNeighbors(discoveredElement)) {
+											if(!ipsDiscovered.contains(ipNeighbor) && !ipsToDiscovery.contains(ipNeighbor)) {
+												ipsToDiscovery.add(ipNeighbor);
+											}
+										}
+										break;
+									case METHOD_IP_ASSIGN:
+										for(String ipNeighbor : getNeighbors(discoveredElement)) {
+											if(!ipsDiscovered.contains(ipNeighbor) && !ipsToDiscovery.contains(ipNeighbor)) {
+												Element neighborPersisted = getElementByIP(ipNeighbor);
+												if(neighborPersisted == null) {
+													ipsToDiscovery.add(ipNeighbor);
+												}
+											}
+										}
+										break;
+								}
+							}else {
+								// if discovery not worked...
+								// but there is a persisted element 
+								if(persistedElement != null) {
+									linkPortsChanged.addAll( removeCascade(persistedElement) );
+								}else {
+									// and there isn't a persisted element, so...
+									// do nothing!
+								}
+							}
+						} finally {
+							latch.countDown();
+						}
 					}
-				}
+				});
 			}
 
-			// Remove Element
-			removeCascade(element);
+			try {
+				if (latch.getCount() > 0 || !ipsToDiscovery.isEmpty()) {
+					logger.debug("Waiting... " + latch.getCount() + " discovery tasks running and "
+							+ ipsToDiscovery.size() + " devices to discovery.");
+					Thread.sleep(1000);
+				}
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
+		
+		// Updating Topology
+		linkPortsChanged.addAll(linkElements());
+		if (!linkPortsChanged.isEmpty()) {
+			eventService.publish(SonarTopics.TOPIC_TOPOLOGY_LINKS_CHANGED, linkPortsChanged);
 		}
 
-		return portsChanged;
+		taskExecutor.shutdown();
 	}
-
+	
 	private Set<Port> linkElements() {
 		Map<String, Port> macToPort = new HashMap<String, Port>();
 		Set<Port> portsChanged = new HashSet<Port>();
@@ -644,222 +601,43 @@ public class DiscoveryService {
 						update(remotePort);
 					}
 				} else {
-					logger.warn("Unable to find port with macAddress: " + port.getRemoteMacAddress()
+					logger.debug("Unable to find port with macAddress: " + port.getRemoteMacAddress()
 							+ " linked to port: " + ObjectUtils.toString(port));
 				}
 			}
 		}
-
-		logger.info("-> "+portsChanged.size()+" link ports changed!");
+		
+		if(!portsChanged.isEmpty()) {
+			logger.info("-> "+portsChanged.size()+" link ports changed!");
+		}
 
 		return portsChanged;
 	}
-
-	/**
-	 * Set Discovery Fields
-	 */
-	private Element setDiscoveryFields(Element element, Date lastDicoveredAt, String lastDicoveredBy,
-			String lastDicoveredMethod, String lastDicoveredSource) {
-		element.setLastDicoveredAt(lastDicoveredAt);
-		element.setLastDicoveredBy(lastDicoveredBy);
-		element.setLastDicoveredMethod(lastDicoveredMethod);
-		element.setLastDicoveredSource(lastDicoveredSource);
-		return element;
-	}
-
-	/**
-	 * Save/Update/Delete/Merge
-	 */
-	private void merge(Port portPersisted, Port port) {
-		boolean changed = false;
-
-		if (port.getBandwidth() != null && (portPersisted.getBandwidth() == null
-				&& !port.getBandwidth().equals(portPersisted.getBandwidth()))) {
-			portPersisted.setBandwidth(port.getBandwidth());
-			changed = true;
-		}
-
-		if (port.getIfId() != null
-				&& (portPersisted.getIfId() == null && !port.getIfId().equals(portPersisted.getIfId()))) {
-			portPersisted.setIfId(port.getIfId());
-			changed = true;
-		}
-
-		if (port.getIfName() != null
-				&& (portPersisted.getIfName() == null && !port.getIfName().equals(portPersisted.getIfName()))) {
-			portPersisted.setIfName(port.getIfName());
-			changed = true;
-		}
-
-		if (port.getIpAddress() != null && (portPersisted.getIpAddress() == null
-				&& !port.getIpAddress().equals(portPersisted.getIpAddress()))) {
-			portPersisted.setIpAddress(port.getIpAddress());
-			changed = true;
-		}
-
-		if (port.getMacAddress() != null && (portPersisted.getMacAddress() == null
-				&& !port.getMacAddress().equals(portPersisted.getMacAddress()))) {
-			portPersisted.setMacAddress(port.getMacAddress());
-			changed = true;
-		}
-
-		if (port.getRemoteIfId() != null && (portPersisted.getRemoteIfId() == null
-				&& !port.getRemoteIfId().equals(portPersisted.getRemoteIfId()))) {
-			portPersisted.setRemoteIfId(port.getRemoteIfId());
-			changed = true;
-		}
-
-		if (port.getRemoteIpAddress() != null && (portPersisted.getRemoteIpAddress() == null
-				&& !port.getRemoteIpAddress().equals(portPersisted.getRemoteIpAddress()))) {
-			portPersisted.setRemoteIpAddress(port.getRemoteIpAddress());
-			changed = true;
-		}
-
-		if (port.getRemoteMacAddress() != null && (portPersisted.getRemoteMacAddress() == null
-				&& !port.getRemoteMacAddress().equals(portPersisted.getRemoteMacAddress()))) {
-			portPersisted.setRemoteMacAddress(port.getRemoteMacAddress());
-			changed = true;
-		}
-
-		if (port.getRemoteHostname() != null && (portPersisted.getRemoteHostname() == null
-				&& !port.getRemoteHostname().equals(portPersisted.getRemoteHostname()))) {
-			portPersisted.setRemoteHostname(port.getRemoteHostname());
-			changed = true;
-		}
-
-		if (port.getRemoteIfName() != null && (portPersisted.getRemoteIfName() == null
-				&& !port.getRemoteIfName().equals(portPersisted.getRemoteIfName()))) {
-			portPersisted.setRemoteIfName(port.getRemoteIfName());
-			changed = true;
-		}
-
-		if (changed) {
-			this.update(portPersisted);
-		}
-	}
-
-	private void merge(Element elementPersisted, Element element) {
-		boolean changed = false;
-		if (element.getClock() != null
-				&& (elementPersisted.getClock() == null || !element.getClock().equals(elementPersisted.getClock()))) {
-			elementPersisted.setClock(element.getClock());
-			changed = true;
-		}
-
-		if (element.getCores() != null
-				&& (elementPersisted.getCores() == null || !element.getCores().equals(elementPersisted.getCores()))) {
-			elementPersisted.setCores(element.getCores());
-			changed = true;
-		}
-
-		if (element.getCost() != null
-				&& (elementPersisted.getCost() == null || !element.getCost().equals(elementPersisted.getCost()))) {
-			elementPersisted.setCost(element.getCost());
-			changed = true;
-		}
-
-		if (element.getDisk() != null
-				&& (elementPersisted.getDisk() == null || !element.getDisk().equals(elementPersisted.getDisk()))) {
-			elementPersisted.setDisk(element.getDisk());
-			changed = true;
-		}
-
-		if (element.getEnergy() != null && (elementPersisted.getEnergy() == null
-				|| !element.getEnergy().equals(elementPersisted.getEnergy()))) {
-			elementPersisted.setEnergy(element.getEnergy());
-			changed = true;
-		}
-
-		if (element.getMemory() != null && (elementPersisted.getMemory() == null
-				|| !element.getMemory().equals(elementPersisted.getMemory()))) {
-			elementPersisted.setMemory(element.getMemory());
-			changed = true;
-		}
-
-		if (element.getName() != null
-				&& (elementPersisted.getName() == null || !element.getName().equals(elementPersisted.getName()))) {
-			elementPersisted.setName(element.getName());
-			changed = true;
-		}
-
-		if (element.getTypeElement() != null && (elementPersisted.getTypeElement() == null
-				|| !element.getTypeElement().equals(elementPersisted.getTypeElement()))) {
-			elementPersisted.setTypeElement(element.getTypeElement());
-			changed = true;
-		}
-
-		if (element.getManagementIPAddressList() != null && (elementPersisted.getManagementIPAddressList() == null
-				|| !element.getManagementIPAddressList().equals(elementPersisted.getManagementIPAddressList()))) {
-			elementPersisted.getManagementIPAddressList().addAll(element.getManagementIPAddressList());
-			changed = true;
-		}
-
-		if (changed) {
-			this.update(elementPersisted);
-		}
-	}
-
-	private Element saveCascade(Element element) {
-		setElementType(element);
-		Element elementSaved = topologyService.save(element);
-		for (Port port : element.getPortList()) {
-			port.setIdElement(elementSaved.getIdElement());
-			topologyService.save(port);
-		}
-		eventService.publish(SonarTopics.TOPIC_TOPOLOGY_ELEMENT_ADDED, elementSaved);
-		return element;
-	}
-
-	private void removeCascade(Element element) {
-		topologyService.deletePortByIdElement(element.getIdElement());
-		topologyService.deleteElementById(element.getIdElement());
-		eventService.publish(SonarTopics.TOPIC_TOPOLOGY_ELEMENT_REMOVED, element);
-	}
-
-	private void remove(Port port) {
-		topologyService.delete(port);
-		eventService.publish(SonarTopics.TOPIC_TOPOLOGY_PORT_REMOVED, port);
-	}
-
-	private Port save(Port port) {
-		Port portSaved = topologyService.save(port);
-		eventService.publish(SonarTopics.TOPIC_TOPOLOGY_PORT_ADDED, portSaved);
-		return portSaved;
-	}
-
-	private Port update(Port port) {
-		Port portSaved = topologyService.update(port);
-		eventService.publish(SonarTopics.TOPIC_TOPOLOGY_PORT_CHANGED, portSaved);
-		return portSaved;
-	}
-
-	private Element update(Element element) {
-		Element elementSaved = topologyService.update(element);
-		eventService.publish(SonarTopics.TOPIC_TOPOLOGY_ELEMENT_CHANGED, elementSaved);
-		return elementSaved;
-	}
-
-	private Element save(Element element) {
-		setElementType(element);
-		Element elementSaved = topologyService.save(element);
-		eventService.publish(SonarTopics.TOPIC_TOPOLOGY_ELEMENT_ADDED, elementSaved);
-		return elementSaved;
-	}
-
-	private void setElementType(Element element) {
-		// Temporary solution: TODO fix this setElementType
-		if (element.getName() != null && element.getName().startsWith("sw")) {
-			element.setTypeElement(Element.TYPE_DEVICE);
-		} else {
-			if (element.getName() != null
-					&& (element.getName().startsWith("nfvi") || element.getName().startsWith("nfci"))) {
-				element.setTypeElement(Element.TYPE_SERVER);
-			} else {
-				element.setTypeElement(Element.TYPE_HOST);
+	
+	private Set<String> getNeighbors(Element discoveredElement) {
+		Set<String> neighbors = new HashSet<String>();
+		for(Port port : discoveredElement.getPortList()) {
+			if(port.getRemoteIpAddress() != null) {
+				neighbors.add(port.getRemoteIpAddress());
+			}else {
+				if(port.getRemoteMacAddress() != null) {
+					Port remotePort = getPortByMac(port.getMacAddress());
+					if(remotePort != null) {
+						if(remotePort.getIpAddress() != null) {
+							neighbors.add(remotePort.getIpAddress());
+						}else {
+							Element element = getElementById(remotePort.getIdElement());
+							if(element != null) {
+								neighbors.add(element.getManagementIPAddressList().iterator().next());
+							}
+						}
+					}
+				}
 			}
 		}
+		return neighbors;
 	}
-
+	
 	/**
 	 * Util
 	 */
@@ -874,5 +652,28 @@ public class DiscoveryService {
 		now.setTime(new Date());
 
 		return now.before(whenUpdate);
+	}
+	
+	private void setElementType(Element element) {
+		// Temporary solution: TODO fix this setElementType
+		if (element.getName() != null && element.getName().startsWith("sw")) {
+			element.setTypeElement(Element.TYPE_DEVICE);
+		} else {
+			if (element.getName() != null
+					&& (element.getName().startsWith("nfvi") || element.getName().startsWith("nfci"))) {
+				element.setTypeElement(Element.TYPE_SERVER);
+			} else {
+				element.setTypeElement(Element.TYPE_HOST);
+			}
+		}
+	}
+	
+	private Element setDiscoveryFields(Element element, Date lastDicoveredAt, String lastDicoveredBy,
+			String lastDicoveredMethod, String lastDicoveredSource) {
+		element.setLastDicoveredAt(lastDicoveredAt);
+		element.setLastDicoveredBy(lastDicoveredBy);
+		element.setLastDicoveredMethod(lastDicoveredMethod);
+		element.setLastDicoveredSource(lastDicoveredSource);
+		return element;
 	}
 }

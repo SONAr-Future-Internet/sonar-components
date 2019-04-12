@@ -231,7 +231,7 @@ public class TopologyService {
 		return repository.getPortByMacAddress(macAddress);
 	}
 
-	public Set<Port> getPortByIdElement(UUID idElement) {
+	public Set<Port> getPortsByIdElement(UUID idElement) {
 		return repository.getPortsByIdElement(idElement);
 	}
 

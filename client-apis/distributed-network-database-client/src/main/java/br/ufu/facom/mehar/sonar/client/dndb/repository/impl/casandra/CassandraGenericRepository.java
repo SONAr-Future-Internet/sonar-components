@@ -33,7 +33,9 @@ public abstract class CassandraGenericRepository {
 	}
 	
 	public void clusterFinish() {
-		cluster.close();
+		if(cluster != null) {
+			cluster.close();
+		}
 		cluster = null;
 	}
 	
@@ -63,7 +65,9 @@ public abstract class CassandraGenericRepository {
 	
 	
 	protected void close(Session session) {
-		session.close();
+		if(session != null) {
+			session.close();
+		}
 		
 		clusterFinish();
 	}
