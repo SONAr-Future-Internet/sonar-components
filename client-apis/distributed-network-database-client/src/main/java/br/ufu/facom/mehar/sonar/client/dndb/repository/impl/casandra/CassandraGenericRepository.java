@@ -2,6 +2,10 @@ package br.ufu.facom.mehar.sonar.client.dndb.repository.impl.casandra;
 
 import java.net.InetSocketAddress;
 
+import javax.annotation.PreDestroy;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import com.datastax.driver.core.Cluster;
@@ -13,7 +17,9 @@ import br.ufu.facom.mehar.sonar.client.dndb.configuration.DNDBConfiguration;
 
 public abstract class CassandraGenericRepository {
 	
-	private Cluster cluster;
+	private static final Logger logger = LoggerFactory.getLogger(CassandraGenericRepository.class);
+	
+	private static volatile Cluster cluster;
 	
 	@Autowired
 	private DNDBConfiguration configuration;
@@ -32,7 +38,7 @@ public abstract class CassandraGenericRepository {
 		cluster = b.build();
 	}
 	
-	public void clusterFinish() {
+	public static void clusterFinish() {
 		if(cluster != null) {
 			cluster.close();
 		}
@@ -40,20 +46,12 @@ public abstract class CassandraGenericRepository {
 	}
 	
 	public Session session() {
-		return this.session(null);
-	}
-	
-	public Session session(String keystore) {
 		try {
 			if(cluster == null) {
 				clusterStart();
 			}
 			
-			if(keystore != null) {
-				return cluster.connect(keystore);
-			}else {
-				return cluster.connect();
-			}
+			return cluster.connect();
 		}catch(NoHostAvailableException e) {
 			if(cluster != null && !cluster.isClosed()) {
 				cluster.close();
@@ -63,12 +61,17 @@ public abstract class CassandraGenericRepository {
 		}
 	}
 	
-	
 	protected void close(Session session) {
 		if(session != null) {
 			session.close();
 		}
 		
+//		clusterFinish();
+	}
+	
+	@PreDestroy
+	private void finish() {
+		logger.debug("Closing connection to RabbitMQ!");
 		clusterFinish();
 	}
 }

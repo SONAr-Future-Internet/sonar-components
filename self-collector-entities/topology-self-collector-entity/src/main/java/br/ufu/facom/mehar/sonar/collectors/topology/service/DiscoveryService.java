@@ -19,6 +19,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import br.ufu.facom.mehar.sonar.client.dndb.service.TopologyService;
@@ -55,6 +56,12 @@ public class DiscoveryService {
 
 	@Value("${topology.scoe.discovery.strategy.flooding.last:192.168.0.254}")
 	private String floodingIntervalLast;
+	
+	@Value("${topology.scoe.discovery.strategy.timeout:10000}")
+	private String timeoutInterval;
+	
+	@Value("${topology.scoe.discovery.strategy.join:10000}")
+	private String joinInterval;
 
 	private String INSTANCE_DISCOVERY = "tscoe";
 	{
@@ -67,7 +74,8 @@ public class DiscoveryService {
 	private static final String METHOD_IP_ASSIGN = "IP Assign";
 	private static final String METHOD_DFS = "Depth-First Search";
 	private static final String METHOD_FLOODING = "Flooding";
-	private static final String METHOD_EXPIRATION = "Expiration";
+	private static final String METHOD_TIMEOUT = "Timeout";
+	private static final String METHOD_JOIN = "Join";
 	
 	private static final String SOURCE_LLDP = "LLDP";
 	private static final String SOURCE_DHCP = "DHCP";
@@ -190,7 +198,7 @@ public class DiscoveryService {
 		});
 	}
 	
-	//@Scheduled(fixedDelayString = "${topology.scoe.discovery.strategy.bfs.interval:600000}")
+	@Scheduled(fixedDelayString = "${topology.scoe.discovery.strategy.dfs.interval:600000}")
 	public void discoveryDFS() throws InterruptedException {
 		InterfaceAddress interfaceAddress = IPUtils.searchActiveInterfaceAddress();
 		if (interfaceAddress != null && interfaceAddress.getAddress() != null) {
@@ -204,7 +212,7 @@ public class DiscoveryService {
 		}
 	}
 
-	//@Scheduled(fixedDelayString = "${topology.scoe.discovery.strategy.flooding.interval:60000000}", initialDelayString = "${topology.scoe.discovery.strategy.flooding.interval:60000000}")
+	@Scheduled(fixedDelayString = "${topology.scoe.discovery.strategy.flooding.interval:60000000}", initialDelayString = "${topology.scoe.discovery.strategy.flooding.interval:60000000}")
 	public void discoveryFlooding() throws InterruptedException {
 		final Stack<String> ipsToDiscovery = new Stack<String>();
 		String ip = floodingIntervalFirst;
@@ -225,7 +233,7 @@ public class DiscoveryService {
 		
 	}
 
-	//@Scheduled(fixedDelayString = "${topology.scoe.discovery.element.updateInterval:600000}", initialDelayString = "${topology.scoe.discovery.element.updateInterval:600000}")
+	@Scheduled(fixedDelayString = "${topology.scoe.discovery.strategy.timeout:10000}", initialDelayString = "${topology.scoe.discovery.strategy.timeout:10000}")
 	public void updateElements() throws InterruptedException {
 		final Stack<String> ipsToDiscovery = new Stack<String>();
 		for (Element element : topologyService.getElements()) {
@@ -235,11 +243,29 @@ public class DiscoveryService {
 		}
 
 		if (!ipsToDiscovery.isEmpty()) {
-			logger.info("Discovering network elements using 'Expiration' with interval "+elementUpdateInterval+" in millis...");
+			logger.info("Discovering network elements using 'Timeout' with interval "+timeoutInterval+" in millis...");
 			
-			discover(ipsToDiscovery, METHOD_EXPIRATION);
+			discover(ipsToDiscovery, METHOD_TIMEOUT);
 
-			logger.info("Discovery using 'Expiration' concluded!");
+			logger.info("Discovery using 'Timeout' concluded!");
+		}
+	}
+	
+	@Scheduled(fixedDelayString = "${topology.scoe.discovery.strategy.join:5000}", initialDelayString = "${topology.scoe.discovery.strategy.join:5000}")
+	public void verifyIsolated() throws InterruptedException {
+		final Stack<String> ipsToDiscovery = new Stack<String>();
+		for (Element element : topologyService.getElements()) {
+			if(getNeighbors(element).isEmpty()) {
+				ipsToDiscovery.add(element.getManagementIPAddressList().iterator().next());
+			}
+		}
+
+		if (!ipsToDiscovery.isEmpty()) {
+			logger.info("Discovering network elements using 'Join' with interval "+joinInterval+" in millis...");
+			
+			discover(ipsToDiscovery, METHOD_TIMEOUT);
+
+			logger.info("Discovery using 'Timeout' concluded!");
 		}
 	}
 
@@ -517,7 +543,7 @@ public class DiscoveryService {
 								switch(method) {
 									case METHOD_FLOODING: 
 										break;//don't add neighbors
-									case METHOD_EXPIRATION: 
+									case METHOD_TIMEOUT: 
 										break;//don't add neighbors
 									case METHOD_DFS:
 										for(String ipNeighbor : getNeighbors(discoveredElement)) {
@@ -527,6 +553,16 @@ public class DiscoveryService {
 										}
 										break;
 									case METHOD_IP_ASSIGN:
+										for(String ipNeighbor : getNeighbors(discoveredElement)) {
+											if(!ipsDiscovered.contains(ipNeighbor) && !ipsToDiscovery.contains(ipNeighbor)) {
+												Element neighborPersisted = getElementByIP(ipNeighbor);
+												if(neighborPersisted == null) {
+													ipsToDiscovery.add(ipNeighbor);
+												}
+											}
+										}
+										break;
+									case METHOD_JOIN:
 										for(String ipNeighbor : getNeighbors(discoveredElement)) {
 											if(!ipsDiscovered.contains(ipNeighbor) && !ipsToDiscovery.contains(ipNeighbor)) {
 												Element neighborPersisted = getElementByIP(ipNeighbor);
@@ -614,9 +650,13 @@ public class DiscoveryService {
 		return portsChanged;
 	}
 	
-	private Set<String> getNeighbors(Element discoveredElement) {
+	private Set<String> getNeighbors(Element element) {
 		Set<String> neighbors = new HashSet<String>();
-		for(Port port : discoveredElement.getPortList()) {
+		if(element.getPortList() == null || element.getPortList().isEmpty()) {
+			element.setPortList(getPortsByIdElement(element.getIdElement()));
+		}
+		
+		for(Port port : element.getPortList()) {
 			if(port.getRemoteIpAddress() != null) {
 				neighbors.add(port.getRemoteIpAddress());
 			}else {
@@ -626,9 +666,9 @@ public class DiscoveryService {
 						if(remotePort.getIpAddress() != null) {
 							neighbors.add(remotePort.getIpAddress());
 						}else {
-							Element element = getElementById(remotePort.getIdElement());
-							if(element != null) {
-								neighbors.add(element.getManagementIPAddressList().iterator().next());
+							Element remoteElement = getElementById(remotePort.getIdElement());
+							if(remoteElement != null) {
+								neighbors.add(remoteElement.getManagementIPAddressList().iterator().next());
 							}
 						}
 					}

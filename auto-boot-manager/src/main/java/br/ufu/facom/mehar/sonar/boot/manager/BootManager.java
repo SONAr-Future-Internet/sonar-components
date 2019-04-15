@@ -20,6 +20,7 @@ import br.ufu.facom.mehar.sonar.client.cim.Component;
 import br.ufu.facom.mehar.sonar.client.cim.service.ComponentService;
 import br.ufu.facom.mehar.sonar.client.dndb.configuration.DNDBConfiguration;
 import br.ufu.facom.mehar.sonar.client.dndb.repository.DatabaseBuilder;
+import br.ufu.facom.mehar.sonar.client.dndb.repository.impl.casandra.CassandraGenericRepository;
 import br.ufu.facom.mehar.sonar.core.model.container.Container;
 import br.ufu.facom.mehar.sonar.core.model.container.ContainerStatus;
 import br.ufu.facom.mehar.sonar.core.util.IPUtils;
@@ -65,6 +66,7 @@ public class BootManager {
 		// Query already created components
 		containerMap = componentService.get(CIM_IP);
 
+		//RUN DNDB, NEM and SDN Controller
 		Container dndb = checkAndRunComponent(Component.DistributedNetworkDatabase);
 		if (dndb == null) {
 			logger.error("Unable to boot network without 'DistributedNetworkDatabase'.");
@@ -76,9 +78,18 @@ public class BootManager {
 			logger.error("Unable to boot network without 'NetworkEventManager'.");
 			return;
 		}
+		
+//		Container sdn = checkAndRunComponent(Component.SDNController);
+//		if (sdn == null) {
+//			logger.error("Unable to boot network without 'SDNController'.");
+//			return;
+//		}
 
+		//Wait for Database
+		try {
 		prepareDatabase("localhost:" + dndb.getAccessPort().get("main"), dndb.getImage());
 
+		//Create Database (id it doesn't exist)
 		if (DNDB_AUTO_CREATE) {
 			if (!databaseBuilder.isBuilt()) {
 				databaseBuilder.buildOrAlter();
@@ -88,26 +99,31 @@ public class BootManager {
 		// Verify and Run DHCP
 		if (DHCP_ENABLED) {
 			Properties propertiesDHCP = new Properties();
-			propertiesDHCP.setProperty("DNDB_SEEDS",
-					findEndPoint(Component.DistributedNetworkDatabase, dndb, "main", "localhost"));
+			propertiesDHCP.setProperty("DNDB_SEEDS", findEndPoint(Component.DistributedNetworkDatabase, dndb, "main", "localhost"));
 			propertiesDHCP.setProperty("DNDB_STRATEGY", dndb.getImage());
-			propertiesDHCP.setProperty("NEM_SEEDS",
-					findEndPoint(Component.NetworkEventManager, nem, "main", "localhost"));
+			propertiesDHCP.setProperty("NEM_SEEDS", findEndPoint(Component.NetworkEventManager, nem, "main", "localhost"));
 			propertiesDHCP.setProperty("NEM_STRATEGY", nem.getImage());
 			checkAndRunSingletonComponent(Component.DHCPServer, propertiesDHCP);
 		}
 
+		//Create Initial Properties
 		Properties properties = new Properties();
-		String dndbEndpoint = findEndPoint(Component.DistributedNetworkDatabase, dndb, "main",
-				bindInterfaceAddress.getAddress().toString());
-		String nemEndpoint = findEndPoint(Component.NetworkEventManager, nem, "main",
-				bindInterfaceAddress.getAddress().toString());
-		properties.setProperty("DNDB_SEEDS", dndbEndpoint);
+		properties.setProperty("DNDB_SEEDS", findEndPoint(Component.DistributedNetworkDatabase, dndb, "main", bindInterfaceAddress.getAddress().toString()));
+		properties.setProperty("NEM_SEEDS", findEndPoint(Component.NetworkEventManager, nem, "main", bindInterfaceAddress.getAddress().toString()));
+//		properties.setProperty("SDN_SOUTH_SEEDS", findEndPoint(Component.SDNController, sdn, "south", bindInterfaceAddress.getAddress().toString()));
+//		properties.setProperty("SDN_NORTH_SEEDS", findEndPoint(Component.SDNController, sdn, "north", bindInterfaceAddress.getAddress().toString()));
 		properties.setProperty("DNDB_STRATEGY", dndb.getImage());
-		properties.setProperty("NEM_SEEDS", nemEndpoint);
 		properties.setProperty("NEM_STRATEGY", nem.getImage());
+//		properties.setProperty("SDN_STRATEGY", sdn.getImage());
 
 		// checkAndRunComponent(Component.TopologySelfCollectorEntity, properties);
+		} finally {
+			finish();
+		}
+	}
+
+	private void finish() {
+		CassandraGenericRepository.clusterFinish();
 	}
 
 	private void prepareDatabase(String endpoint, String strategy) {

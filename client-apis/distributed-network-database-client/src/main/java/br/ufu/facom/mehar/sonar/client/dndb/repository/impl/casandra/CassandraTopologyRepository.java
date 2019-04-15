@@ -33,7 +33,7 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 
 	@Override
 	public Domain save(Domain domain) {
-		Session session = session(KEYSPACE);
+		Session session = session();
 		try {
 			if (domain.getIdDomain() == null) {
 				domain.setIdDomain(UUIDs.random());
@@ -51,7 +51,7 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 
 	@Override
 	public Element save(Element element) {
-		Session session = session(KEYSPACE);
+		Session session = session();
 		try {
 			if (element.getIdElement() == null) {
 				element.setIdElement(UUIDs.random());
@@ -70,7 +70,7 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 
 	@Override
 	public Port save(Port port) {
-		Session session = session(KEYSPACE);
+		Session session = session();
 		try {
 			if (port.getIdPort() == null) {
 				port.setIdPort(UUIDs.random());
@@ -88,7 +88,7 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 
 	@Override
 	public Domain update(Domain domain) {
-		Session session = session(KEYSPACE);
+		Session session = session();
 		try {
 			this.delete(domain);
 			return this.save(domain);
@@ -99,7 +99,7 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 
 	@Override
 	public Element update(Element element) {
-		Session session = session(KEYSPACE);
+		Session session = session();
 		try {
 			this.delete(element);
 			return this.save(element);
@@ -110,7 +110,7 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 
 	@Override
 	public Port update(Port port) {
-		Session session = session(KEYSPACE);
+		Session session = session();
 		try {
 			this.delete(port);
 			return this.save(port);
@@ -121,7 +121,7 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 
 	@Override
 	public Boolean delete(Domain domain) {
-		Session session = session(KEYSPACE);
+		Session session = session();
 		try {
 			Delete.Where delete = QueryBuilder.delete().from(KEYSPACE, DOMAIN_COLECTION)
 					.where(QueryBuilder.eq("idDomain", domain.getIdDomain()));
@@ -135,7 +135,7 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 
 	@Override
 	public Boolean delete(Element element) {
-		Session session = session(KEYSPACE);
+		Session session = session();
 		try {
 			Delete.Where delete = QueryBuilder.delete().from(KEYSPACE, ELEMENT_COLECTION)
 					.where(QueryBuilder.eq("idElement", element.getIdElement()));
@@ -149,7 +149,7 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 
 	@Override
 	public Boolean delete(Port port) {
-		Session session = session(KEYSPACE);
+		Session session = session();
 		try {
 			Delete.Where delete = QueryBuilder.delete().from(KEYSPACE, PORT_COLECTION)
 					.where(QueryBuilder.eq("idPort", port.getIdPort()));
@@ -164,7 +164,7 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 	
 	@Override
 	public Boolean deleteDomains() {
-		Session session = session(KEYSPACE);
+		Session session = session();
 		try {
 			Truncate truncate = QueryBuilder.truncate(KEYSPACE, DOMAIN_COLECTION);
 			
@@ -178,7 +178,7 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 
 	@Override
 	public Boolean deleteElements() {
-		Session session = session(KEYSPACE);
+		Session session = session();
 		try {
 			Truncate truncate = QueryBuilder.truncate(KEYSPACE, ELEMENT_COLECTION);
 			
@@ -192,7 +192,7 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 	
 	@Override
 	public Boolean deletePorts() {
-		Session session = session(KEYSPACE);
+		Session session = session();
 		try {
 			Truncate truncate = QueryBuilder.truncate(KEYSPACE, PORT_COLECTION);
 			
@@ -206,7 +206,7 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 	
 	@Override
 	public Boolean deleteDomainById(UUID idDomain) {
-		Session session = session(KEYSPACE);
+		Session session = session();
 		try {
 			Delete.Where delete = QueryBuilder.delete().from(KEYSPACE, DOMAIN_COLECTION)
 					.where(QueryBuilder.eq("idDomain", idDomain));
@@ -221,7 +221,7 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 
 	@Override
 	public Boolean deleteElementById(UUID idElement) {
-		Session session = session(KEYSPACE);
+		Session session = session();
 		try {
 			Delete.Where delete = QueryBuilder.delete().from(KEYSPACE, ELEMENT_COLECTION)
 					.where(QueryBuilder.eq("idElement", idElement));
@@ -236,7 +236,7 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 
 	@Override
 	public Boolean deletePortById(UUID idPort) {
-		Session session = session(KEYSPACE);
+		Session session = session();
 		try {
 			Delete.Where delete = QueryBuilder.delete().from(KEYSPACE, PORT_COLECTION)
 					.where(QueryBuilder.eq("idPort", idPort));
@@ -251,7 +251,7 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 
 	@Override
 	public Boolean deleteElementByIdDomain(UUID idDomain) {
-		Session session = session(KEYSPACE);
+		Session session = session();
 		try {
 			Delete.Where delete = QueryBuilder.delete().from(KEYSPACE, ELEMENT_COLECTION)
 					.where(QueryBuilder.eq("idDomain", idDomain));
@@ -266,7 +266,7 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 
 	@Override
 	public Boolean deletePortByIdElement(UUID idElement) {
-		Session session = session(KEYSPACE);
+		Session session = session();
 		try {
 			Delete.Where delete = QueryBuilder.delete().from(KEYSPACE, PORT_COLECTION)
 					.where(QueryBuilder.eq("idElement", idElement));
@@ -281,7 +281,7 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 
 	@Override
 	public List<Domain> getDomains() {
-		Session session = session(KEYSPACE);
+		Session session = session();
 		try {
 			Select select = QueryBuilder.select().json().from(KEYSPACE, DOMAIN_COLECTION);
 			ResultSet rs = session.execute(select);
@@ -299,7 +299,7 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 
 	@Override
 	public Domain getDomainById(Domain idDomain) {
-		Session session = session(KEYSPACE);
+		Session session = session();
 		try {
 			Select.Where select = QueryBuilder.select().json().from(KEYSPACE, DOMAIN_COLECTION).allowFiltering()
 					.where(QueryBuilder.eq("idDomain", idDomain));;
@@ -317,7 +317,7 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 
 	@Override
 	public List<Element> getElements() {
-		Session session = session(KEYSPACE);
+		Session session = session();
 		try {
 			Select select = QueryBuilder.select().json().from(KEYSPACE, ELEMENT_COLECTION);
 			ResultSet rs = session.execute(select);
@@ -335,7 +335,7 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 
 	@Override
 	public List<Element> getElementsByIdDomain(UUID idDomain) {
-		Session session = session(KEYSPACE);
+		Session session = session();
 		try {
 			Select.Where select = QueryBuilder.select().json().from(KEYSPACE, ELEMENT_COLECTION).allowFiltering()
 					.where(QueryBuilder.eq("idDomain", idDomain));;
@@ -354,7 +354,7 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 
 	@Override
 	public Element getElementById(UUID idElement) {
-		Session session = session(KEYSPACE);
+		Session session = session();
 		try {
 			Select.Where select = QueryBuilder.select().json().from(KEYSPACE, ELEMENT_COLECTION).allowFiltering()
 					.where(QueryBuilder.eq("idElement", idElement));;
@@ -372,7 +372,7 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 
 	@Override
 	public Element getElementByIPAddress(String address) {
-		Session session = session(KEYSPACE);
+		Session session = session();
 		try {
 			Select.Where select = QueryBuilder.select().json().from(KEYSPACE, ELEMENT_COLECTION).allowFiltering()
 					.where(QueryBuilder.contains("managementIPAddressList", address));;
@@ -390,7 +390,7 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 
 	@Override
 	public List<Element> getElementByHostname(String name) {
-		Session session = session(KEYSPACE);
+		Session session = session();
 		try {
 			Select.Where select = QueryBuilder.select().json().from(KEYSPACE, ELEMENT_COLECTION).allowFiltering()
 					.where(QueryBuilder.contains("name", name));;
@@ -409,7 +409,7 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 
 	@Override
 	public Set<Port> getPorts() {
-		Session session = session(KEYSPACE);
+		Session session = session();
 		try {
 			Select select = QueryBuilder.select().json().from(KEYSPACE, PORT_COLECTION);
 			ResultSet rs = session.execute(select);
@@ -427,7 +427,7 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 
 	@Override
 	public Set<Port> getPortsByIdElement(UUID idElement) {
-		Session session = session(KEYSPACE);
+		Session session = session();
 		try {
 			Select.Where select = QueryBuilder.select().json().from(KEYSPACE, PORT_COLECTION).allowFiltering()
 					.where(QueryBuilder.eq("idElement", idElement));;
@@ -446,7 +446,7 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 
 	@Override
 	public Port getPortById(UUID idPort) {
-		Session session = session(KEYSPACE);
+		Session session = session();
 		try {
 			Select.Where select = QueryBuilder.select().json().from(KEYSPACE, PORT_COLECTION).allowFiltering()
 					.where(QueryBuilder.eq("idPort", idPort));;
@@ -464,7 +464,7 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 
 	@Override
 	public Port getPortByMacAddress(String macAddress) {
-		Session session = session(KEYSPACE);
+		Session session = session();
 		try {
 			Select.Where select = QueryBuilder.select().json().from(KEYSPACE, PORT_COLECTION).allowFiltering()
 					.where(QueryBuilder.eq("macAddress", macAddress));;
@@ -482,7 +482,7 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 
 	@Override
 	public Set<Port> getPortsWithIP() {
-		Session session = session(KEYSPACE);
+		Session session = session();
 		try {
 			Select.Where select = QueryBuilder.select().json().from(KEYSPACE, PORT_COLECTION).allowFiltering()
 					.where(QueryBuilder.gt("ipAddress", ""));
@@ -503,7 +503,7 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 
 	@Override
 	public Port getPortByIP(String ip) {
-		Session session = session(KEYSPACE);
+		Session session = session();
 		try {
 			Select.Where select = QueryBuilder.select().json().from(KEYSPACE, PORT_COLECTION).allowFiltering()
 					.where(QueryBuilder.eq("ipAddress", ip));;
@@ -521,7 +521,7 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 
 	@Override
 	public Set<Port> getPortsByRemoteIdElement(UUID idElement) {
-		Session session = session(KEYSPACE);
+		Session session = session();
 		try {
 			//Select Ports
 			Select.Where selectPorts = QueryBuilder.select().json().from(KEYSPACE, PORT_COLECTION).allowFiltering()

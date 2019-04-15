@@ -25,7 +25,7 @@ public class CassandraPropertyRepository extends CassandraGenericRepository impl
 
 	@Override
 	public List<ConfigurationProperty> getConfiguration() {
-		Session session = session(KEYSPACE);
+		Session session = session();
 		try {
 			Select select = QueryBuilder.select().json().from(KEYSPACE, CONFIGURATION_COLECTION);
 			ResultSet rs = session.execute(select);
@@ -43,7 +43,7 @@ public class CassandraPropertyRepository extends CassandraGenericRepository impl
 
 	@Override
 	public List<ConfigurationProperty> getConfiguration(String group) {
-		Session session = session(KEYSPACE);
+		Session session = session();
 		try {
 			Select.Where select = QueryBuilder.select().json().from(KEYSPACE, CONFIGURATION_COLECTION).allowFiltering()
 					.where(QueryBuilder.eq("group", group));
@@ -62,7 +62,7 @@ public class CassandraPropertyRepository extends CassandraGenericRepository impl
 
 	@Override
 	public ConfigurationProperty getConfiguration(String group, String key) {
-		Session session = session(KEYSPACE);
+		Session session = session();
 		try {
 			Select.Where select = QueryBuilder.select().json().from(KEYSPACE, CONFIGURATION_COLECTION).allowFiltering()
 					.where(QueryBuilder.eq("group", group)).and(QueryBuilder.eq("key", key));
@@ -77,7 +77,7 @@ public class CassandraPropertyRepository extends CassandraGenericRepository impl
 
 	@Override
 	public Boolean setProperty(ConfigurationProperty property) {
-		Session session = session(KEYSPACE);
+		Session session = session();
 		try {
 
 			Insert insertQuery = QueryBuilder.insertInto(KEYSPACE, CONFIGURATION_COLECTION).json(ObjectUtils.fromObject(property));
@@ -97,7 +97,7 @@ public class CassandraPropertyRepository extends CassandraGenericRepository impl
 
 	@Override
 	public List<DataProperty> getData() {
-		Session session = session(KEYSPACE);
+		Session session = session();
 		try {
 			Select select = QueryBuilder.select().json().from(KEYSPACE, DATA_COLECTION);
 			ResultSet rs = session.execute(select);
@@ -115,7 +115,7 @@ public class CassandraPropertyRepository extends CassandraGenericRepository impl
 
 	@Override
 	public List<DataProperty> getData(String application) {
-		Session session = session(KEYSPACE);
+		Session session = session();
 		try {
 			Select.Where select = QueryBuilder.select().json().from(KEYSPACE, DATA_COLECTION).allowFiltering()
 					.where(QueryBuilder.eq("application", application));
@@ -134,7 +134,7 @@ public class CassandraPropertyRepository extends CassandraGenericRepository impl
 
 	@Override
 	public List<DataProperty> getData(String application, String instance) {
-		Session session = session(KEYSPACE);
+		Session session = session();
 		try {
 			Select.Where select = QueryBuilder.select().json().from(KEYSPACE, DATA_COLECTION).allowFiltering()
 					.where(QueryBuilder.eq("application", application)).and(QueryBuilder.eq("instance", instance));
@@ -153,7 +153,7 @@ public class CassandraPropertyRepository extends CassandraGenericRepository impl
 
 	@Override
 	public List<DataProperty> getData(String application, String instance, String group) {
-		Session session = session(KEYSPACE);
+		Session session = session();
 		try {
 			Select.Where select = QueryBuilder.select().json().from(KEYSPACE, DATA_COLECTION).allowFiltering()
 					.where(QueryBuilder.eq("application", application)).and(QueryBuilder.eq("instance", instance))
@@ -173,7 +173,7 @@ public class CassandraPropertyRepository extends CassandraGenericRepository impl
 
 	@Override
 	public DataProperty getData(String application, String instance, String group, String key) {
-		Session session = session(KEYSPACE);
+		Session session = session();
 		try {
 			Select.Where select = QueryBuilder.select().json().from(KEYSPACE, DATA_COLECTION).allowFiltering()
 					.where(QueryBuilder.eq("application", application)).and(QueryBuilder.eq("instance", instance))
@@ -188,7 +188,7 @@ public class CassandraPropertyRepository extends CassandraGenericRepository impl
 
 	@Override
 	public Boolean setData(DataProperty property) {
-		Session session = session(KEYSPACE);
+		Session session = session();
 		try {
 
 			Insert insertQuery = QueryBuilder.insertInto(KEYSPACE, DATA_COLECTION).json(ObjectUtils.fromObject(property));
