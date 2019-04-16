@@ -4,54 +4,46 @@
 
   <parent>
         <groupId>br.ufu.facom.mehar.sonar</groupId>
-        <artifactId>self-collector-entities</artifactId>
+        <artifactId>sonar-client</artifactId>
         <version>0.0.1-SNAPSHOT</version>
   </parent>
 
-  <groupId>br.ufu.facom.mehar.sonar.collectors</groupId>
-  <artifactId>topology-self-collector-entity</artifactId>
+  <groupId>br.ufu.facom.mehar.sonar.client</groupId>
+  <artifactId>network-database-client</artifactId>
   <version>0.0.1-SNAPSHOT</version>
   <packaging>jar</packaging>
-  <name>TSCoE - Topology Self-Collector Entity</name>
+  <name>Client NDB - Network Database Client</name>
   <url>http://sonar.facom.ufu.br</url>
 
   <build>
     
   </build>
+
   <dependencies>
-	<!-- Internal Dependencies -->
-	<dependency>
+  	<!-- Internal Dependencies -->
+	  <dependency>
   	  <groupId>br.ufu.facom.mehar.sonar.core</groupId>
   	  <artifactId>sonar-model</artifactId>
   	  <version>${project.version}</version>
-	</dependency>
-	<dependency>
+	  </dependency>
+	  <dependency>
   	  <groupId>br.ufu.facom.mehar.sonar.core</groupId>
   	  <artifactId>sonar-util</artifactId>
   	  <version>${project.version}</version>
-	</dependency>
-	<dependency>
-  		<groupId>br.ufu.facom.mehar.sonar.client</groupId>
-  		<artifactId>network-database-client</artifactId>
-  		<version>${sonar.version}</version>
-  	</dependency>
-  	<dependency>
-  		<groupId>br.ufu.facom.mehar.sonar.client</groupId>
-		<artifactId>network-event-manager-client</artifactId>
-  		<version>${sonar.version}</version>
-  	</dependency>
-
-    <!-- Spring -->
-  	<dependency>
+	  </dependency>
+	
+  	<!-- Spring -->
+    <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-web</artifactId>
+      <scope>compile</scope>
     </dependency>
-    
-    <!-- SNMP -->
+  	
+  	<!-- Cassandra -->
     <dependency>
-      <groupId>org.snmp4j</groupId>
-      <artifactId>snmp4j</artifactId>
-      <version>2.7.0</version>
-	</dependency>
+    	<groupId>com.datastax.cassandra</groupId>
+    	<artifactId>cassandra-driver-core</artifactId>
+    	<version>3.1.4</version>
+	  </dependency>
   </dependencies>
 </project>

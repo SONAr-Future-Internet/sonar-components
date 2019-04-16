@@ -33,7 +33,7 @@
 	</dependency>
 	<dependency>
   		<groupId>br.ufu.facom.mehar.sonar.client</groupId>
-  		<artifactId>distributed-network-database-client</artifactId>
+  		<artifactId>network-database-client</artifactId>
   		<version>${sonar.version}</version>
   	</dependency>
   	<dependency>

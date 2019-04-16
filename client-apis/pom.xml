@@ -17,8 +17,8 @@
 
 
   <modules>
-    <module>containerized-infrastructure-manager-client</module>
-    <module>distributed-network-database-client</module>
+    <module>network-infrastructure-manager-client</module>
+    <module>network-database-client</module>
     <module>network-event-manager-client</module>
     <module>network-service-bus-client</module>
   </modules>

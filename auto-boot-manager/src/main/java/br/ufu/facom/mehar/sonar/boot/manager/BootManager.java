@@ -16,11 +16,11 @@ import org.springframework.context.event.EventListener;
 
 import br.ufu.facom.mehar.sonar.boot.server.exception.DatabasePreparationException;
 import br.ufu.facom.mehar.sonar.boot.server.exception.InvalidEndpointException;
-import br.ufu.facom.mehar.sonar.client.cim.Component;
-import br.ufu.facom.mehar.sonar.client.cim.service.ComponentService;
-import br.ufu.facom.mehar.sonar.client.dndb.configuration.DNDBConfiguration;
-import br.ufu.facom.mehar.sonar.client.dndb.repository.DatabaseBuilder;
-import br.ufu.facom.mehar.sonar.client.dndb.repository.impl.casandra.CassandraGenericRepository;
+import br.ufu.facom.mehar.sonar.client.ndb.configuration.NDBConfiguration;
+import br.ufu.facom.mehar.sonar.client.ndb.repository.DatabaseBuilder;
+import br.ufu.facom.mehar.sonar.client.ndb.repository.impl.casandra.CassandraGenericRepository;
+import br.ufu.facom.mehar.sonar.client.nim.component.Component;
+import br.ufu.facom.mehar.sonar.client.nim.component.service.ComponentService;
 import br.ufu.facom.mehar.sonar.core.model.container.Container;
 import br.ufu.facom.mehar.sonar.core.model.container.ContainerStatus;
 import br.ufu.facom.mehar.sonar.core.util.IPUtils;
@@ -46,8 +46,8 @@ public class BootManager {
 	@Value("${boot.manager.dhcp.enabled:true}")
 	private Boolean DHCP_ENABLED;
 
-	@Value("${boot.manager.dndb.autocreate:true}")
-	private Boolean DNDB_AUTO_CREATE;
+	@Value("${boot.manager.ndb.autocreate:true}")
+	private Boolean NDB_AUTO_CREATE;
 
 	private Map<Component, List<Container>> containerMap;
 
@@ -66,9 +66,9 @@ public class BootManager {
 		// Query already created components
 		containerMap = componentService.get(CIM_IP);
 
-		//RUN DNDB, NEM and SDN Controller
-		Container dndb = checkAndRunComponent(Component.DistributedNetworkDatabase);
-		if (dndb == null) {
+		//RUN NDB, NEM and SDN Controller
+		Container ndb = checkAndRunComponent(Component.DistributedNetworkDatabase);
+		if (ndb == null) {
 			logger.error("Unable to boot network without 'DistributedNetworkDatabase'.");
 			return;
 		}
@@ -87,10 +87,10 @@ public class BootManager {
 
 		//Wait for Database
 		try {
-		prepareDatabase("localhost:" + dndb.getAccessPort().get("main"), dndb.getImage());
+		prepareDatabase("localhost:" + ndb.getAccessPort().get("main"), ndb.getImage());
 
 		//Create Database (id it doesn't exist)
-		if (DNDB_AUTO_CREATE) {
+		if (NDB_AUTO_CREATE) {
 			if (!databaseBuilder.isBuilt()) {
 				databaseBuilder.buildOrAlter();
 			}
@@ -99,8 +99,8 @@ public class BootManager {
 		// Verify and Run DHCP
 		if (DHCP_ENABLED) {
 			Properties propertiesDHCP = new Properties();
-			propertiesDHCP.setProperty("DNDB_SEEDS", findEndPoint(Component.DistributedNetworkDatabase, dndb, "main", "localhost"));
-			propertiesDHCP.setProperty("DNDB_STRATEGY", dndb.getImage());
+			propertiesDHCP.setProperty("NDB_SEEDS", findEndPoint(Component.DistributedNetworkDatabase, ndb, "main", "localhost"));
+			propertiesDHCP.setProperty("NDB_STRATEGY", ndb.getImage());
 			propertiesDHCP.setProperty("NEM_SEEDS", findEndPoint(Component.NetworkEventManager, nem, "main", "localhost"));
 			propertiesDHCP.setProperty("NEM_STRATEGY", nem.getImage());
 			checkAndRunSingletonComponent(Component.DHCPServer, propertiesDHCP);
@@ -108,11 +108,11 @@ public class BootManager {
 
 		//Create Initial Properties
 		Properties properties = new Properties();
-		properties.setProperty("DNDB_SEEDS", findEndPoint(Component.DistributedNetworkDatabase, dndb, "main", bindInterfaceAddress.getAddress().toString()));
+		properties.setProperty("NDB_SEEDS", findEndPoint(Component.DistributedNetworkDatabase, ndb, "main", bindInterfaceAddress.getAddress().toString()));
 		properties.setProperty("NEM_SEEDS", findEndPoint(Component.NetworkEventManager, nem, "main", bindInterfaceAddress.getAddress().toString()));
 //		properties.setProperty("SDN_SOUTH_SEEDS", findEndPoint(Component.SDNController, sdn, "south", bindInterfaceAddress.getAddress().toString()));
 //		properties.setProperty("SDN_NORTH_SEEDS", findEndPoint(Component.SDNController, sdn, "north", bindInterfaceAddress.getAddress().toString()));
-		properties.setProperty("DNDB_STRATEGY", dndb.getImage());
+		properties.setProperty("NDB_STRATEGY", ndb.getImage());
 		properties.setProperty("NEM_STRATEGY", nem.getImage());
 //		properties.setProperty("SDN_STRATEGY", sdn.getImage());
 
@@ -127,26 +127,26 @@ public class BootManager {
 	}
 
 	private void prepareDatabase(String endpoint, String strategy) {
-		DNDBConfiguration.setSeeds(endpoint);
-		DNDBConfiguration.setStrategy(strategy);
+		NDBConfiguration.setSeeds(endpoint);
+		NDBConfiguration.setStrategy(strategy);
 
 		logger.info("Waiting " + Component.DistributedNetworkDatabase + "...");
-		boolean dndbUp = false;
+		boolean ndbUp = false;
 		int attempt = 1;
-		while (!dndbUp) {
+		while (!ndbUp) {
 			try {
 				// Sleep
 				Thread.sleep(2000);
 
 				if (!databaseBuilder.isBuilt()) {
-					if (DNDB_AUTO_CREATE) {
+					if (NDB_AUTO_CREATE) {
 						databaseBuilder.buildOrAlter();
 					}
 				}
 
-				dndbUp = true;
+				ndbUp = true;
 			} catch (InterruptedException e) {
-				throw new DatabasePreparationException("Error wating for DNDB node to run.", e);
+				throw new DatabasePreparationException("Error wating for NDB node to run.", e);
 			} catch (Exception e) {
 				logger.info(" | not yet. Attempt: " + (attempt++));
 			}

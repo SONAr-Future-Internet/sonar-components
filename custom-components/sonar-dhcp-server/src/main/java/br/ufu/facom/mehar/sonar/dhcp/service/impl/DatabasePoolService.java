@@ -8,8 +8,8 @@ import javax.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import br.ufu.facom.mehar.sonar.client.dndb.repository.PropertyRepository;
-import br.ufu.facom.mehar.sonar.client.dndb.repository.TopologyRepository;
+import br.ufu.facom.mehar.sonar.client.ndb.repository.PropertyRepository;
+import br.ufu.facom.mehar.sonar.client.ndb.repository.TopologyRepository;
 import br.ufu.facom.mehar.sonar.core.model.property.DataProperty;
 import br.ufu.facom.mehar.sonar.core.model.topology.Port;
 import br.ufu.facom.mehar.sonar.core.util.IPUtils;

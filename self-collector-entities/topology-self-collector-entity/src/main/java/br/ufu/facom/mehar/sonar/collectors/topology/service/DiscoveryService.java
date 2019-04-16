@@ -22,7 +22,7 @@ import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import br.ufu.facom.mehar.sonar.client.dndb.service.TopologyService;
+import br.ufu.facom.mehar.sonar.client.ndb.service.TopologyService;
 import br.ufu.facom.mehar.sonar.client.nem.action.NetworkEventAction;
 import br.ufu.facom.mehar.sonar.client.nem.configuration.SonarTopics;
 import br.ufu.facom.mehar.sonar.client.nem.service.EventService;
