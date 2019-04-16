@@ -123,7 +123,7 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 	public Boolean delete(Domain domain) {
 		Session session = session();
 		try {
-			Delete.Where delete = QueryBuilder.delete().from(KEYSPACE, DOMAIN_COLECTION)
+			Delete.Where delete = QueryBuilder.delete().all().from(KEYSPACE, DOMAIN_COLECTION)
 					.where(QueryBuilder.eq("idDomain", domain.getIdDomain()));
 			session.execute(delete);
 
@@ -137,7 +137,7 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 	public Boolean delete(Element element) {
 		Session session = session();
 		try {
-			Delete.Where delete = QueryBuilder.delete().from(KEYSPACE, ELEMENT_COLECTION)
+			Delete.Where delete = QueryBuilder.delete().all().from(KEYSPACE, ELEMENT_COLECTION)
 					.where(QueryBuilder.eq("idElement", element.getIdElement()));
 			session.execute(delete);
 
@@ -151,7 +151,7 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 	public Boolean delete(Port port) {
 		Session session = session();
 		try {
-			Delete.Where delete = QueryBuilder.delete().from(KEYSPACE, PORT_COLECTION)
+			Delete.Where delete = QueryBuilder.delete().all().from(KEYSPACE, PORT_COLECTION)
 					.where(QueryBuilder.eq("idPort", port.getIdPort()));
 			
 			session.execute(delete);
@@ -208,7 +208,7 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 	public Boolean deleteDomainById(UUID idDomain) {
 		Session session = session();
 		try {
-			Delete.Where delete = QueryBuilder.delete().from(KEYSPACE, DOMAIN_COLECTION)
+			Delete.Where delete = QueryBuilder.delete().all().from(KEYSPACE, DOMAIN_COLECTION)
 					.where(QueryBuilder.eq("idDomain", idDomain));
 			
 			session.execute(delete);
@@ -223,7 +223,7 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 	public Boolean deleteElementById(UUID idElement) {
 		Session session = session();
 		try {
-			Delete.Where delete = QueryBuilder.delete().from(KEYSPACE, ELEMENT_COLECTION)
+			Delete.Where delete = QueryBuilder.delete().all().from(KEYSPACE, ELEMENT_COLECTION)
 					.where(QueryBuilder.eq("idElement", idElement));
 			
 			session.execute(delete);
@@ -238,7 +238,7 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 	public Boolean deletePortById(UUID idPort) {
 		Session session = session();
 		try {
-			Delete.Where delete = QueryBuilder.delete().from(KEYSPACE, PORT_COLECTION)
+			Delete.Where delete = QueryBuilder.delete().all().from(KEYSPACE, PORT_COLECTION)
 					.where(QueryBuilder.eq("idPort", idPort));
 			
 			session.execute(delete);
@@ -253,7 +253,7 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 	public Boolean deleteElementByIdDomain(UUID idDomain) {
 		Session session = session();
 		try {
-			Delete.Where delete = QueryBuilder.delete().from(KEYSPACE, ELEMENT_COLECTION)
+			Delete.Where delete = QueryBuilder.delete().all().from(KEYSPACE, ELEMENT_COLECTION)
 					.where(QueryBuilder.eq("idDomain", idDomain));
 			
 			session.execute(delete);
@@ -268,10 +268,16 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 	public Boolean deletePortByIdElement(UUID idElement) {
 		Session session = session();
 		try {
-			Delete.Where delete = QueryBuilder.delete().from(KEYSPACE, PORT_COLECTION)
-					.where(QueryBuilder.eq("idElement", idElement));
+			Select.Where select = QueryBuilder.select().json().from(KEYSPACE, PORT_COLECTION).allowFiltering()
+					.where(QueryBuilder.eq("idElement", idElement));;
+			ResultSet rs = session.execute(select);
 			
-			session.execute(delete);
+			for(Row r : rs.all()) {
+				Delete.Where delete = QueryBuilder.delete().all().from(KEYSPACE, PORT_COLECTION)
+						.where(QueryBuilder.eq("idPort", ObjectUtils.toObject(r.getString(0), Port.class).getIdPort()) );
+				
+				session.execute(delete);
+			}
 
 			return Boolean.TRUE;
 		} finally {

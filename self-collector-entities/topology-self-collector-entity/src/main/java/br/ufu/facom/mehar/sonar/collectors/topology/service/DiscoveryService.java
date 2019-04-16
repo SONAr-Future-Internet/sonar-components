@@ -48,7 +48,7 @@ public class DiscoveryService {
 	@Autowired
 	private LldpDiscoverManager lldpDiscoverManager;
 
-	@Value("${topology.scoe.discovery.element.updateInterval:600000}")
+	@Value("${topology.scoe.discovery.element.updateInterval:5000}")
 	private Integer elementUpdateInterval;
 
 	@Value("${topology.scoe.discovery.strategy.flooding.first:192.168.0.1}")
@@ -57,7 +57,7 @@ public class DiscoveryService {
 	@Value("${topology.scoe.discovery.strategy.flooding.last:192.168.0.254}")
 	private String floodingIntervalLast;
 	
-	@Value("${topology.scoe.discovery.strategy.timeout:10000}")
+	@Value("${topology.scoe.discovery.strategy.timeout:2000}")
 	private String timeoutInterval;
 	
 	@Value("${topology.scoe.discovery.strategy.join:10000}")
@@ -233,7 +233,7 @@ public class DiscoveryService {
 		
 	}
 
-	@Scheduled(fixedDelayString = "${topology.scoe.discovery.strategy.timeout:10000}", initialDelayString = "${topology.scoe.discovery.strategy.timeout:10000}")
+	@Scheduled(fixedDelayString = "${topology.scoe.discovery.strategy.timeout:2000}", initialDelayString = "${topology.scoe.discovery.strategy.timeout:10000}")
 	public void updateElements() throws InterruptedException {
 		final Stack<String> ipsToDiscovery = new Stack<String>();
 		for (Element element : topologyService.getElements()) {
@@ -349,7 +349,7 @@ public class DiscoveryService {
 			elementChanged = true;
 		}
 		if (discoveredElement.getManagementIPAddressList() != null && (persistedElement.getManagementIPAddressList() == null
-				|| !discoveredElement.getManagementIPAddressList().equals(persistedElement.getManagementIPAddressList()))) {
+				|| !persistedElement.getManagementIPAddressList().containsAll(discoveredElement.getManagementIPAddressList()))) {
 			persistedElement.getManagementIPAddressList().addAll(discoveredElement.getManagementIPAddressList());
 			elementChanged = true;
 		}
@@ -399,28 +399,29 @@ public class DiscoveryService {
 					persistedPort.setMacAddress(discoveredPort.getMacAddress());
 					portChanged = true;
 				}
-				if (discoveredPort.getRemoteIfId() != null && (persistedPort.getRemoteIfId() == null
-						&& !discoveredPort.getRemoteIfId().equals(persistedPort.getRemoteIfId()))) {
+				
+				if (discoveredPort.getRemoteIfId() == null || (discoveredPort.getRemoteIfId() != null && (persistedPort.getRemoteIfId() == null
+						&& !discoveredPort.getRemoteIfId().equals(persistedPort.getRemoteIfId())))) {
 					persistedPort.setRemoteIfId(discoveredPort.getRemoteIfId());
 					portChanged = true;
 				}
-				if (discoveredPort.getRemoteIpAddress() != null && (persistedPort.getRemoteIpAddress() == null
-						&& !discoveredPort.getRemoteIpAddress().equals(persistedPort.getRemoteIpAddress()))) {
+				if (discoveredPort.getRemoteIpAddress() == null || (discoveredPort.getRemoteIpAddress() != null && (persistedPort.getRemoteIpAddress() == null
+						&& !discoveredPort.getRemoteIpAddress().equals(persistedPort.getRemoteIpAddress())))) {
 					persistedPort.setRemoteIpAddress(discoveredPort.getRemoteIpAddress());
 					portChanged = true;
 				}
-				if (discoveredPort.getRemoteMacAddress() != null && (persistedPort.getRemoteMacAddress() == null
-						&& !discoveredPort.getRemoteMacAddress().equals(persistedPort.getRemoteMacAddress()))) {
+				if (discoveredPort.getRemoteMacAddress() == null || (discoveredPort.getRemoteMacAddress() != null && (persistedPort.getRemoteMacAddress() == null
+						&& !discoveredPort.getRemoteMacAddress().equals(persistedPort.getRemoteMacAddress())))) {
 					persistedPort.setRemoteMacAddress(discoveredPort.getRemoteMacAddress());
 					portChanged = true;
 				}
-				if (discoveredPort.getRemoteHostname() != null && (persistedPort.getRemoteHostname() == null
-						&& !discoveredPort.getRemoteHostname().equals(persistedPort.getRemoteHostname()))) {
+				if (discoveredPort.getRemoteHostname() == null || (discoveredPort.getRemoteHostname() != null && (persistedPort.getRemoteHostname() == null
+						&& !discoveredPort.getRemoteHostname().equals(persistedPort.getRemoteHostname())))) {
 					persistedPort.setRemoteHostname(discoveredPort.getRemoteHostname());
 					portChanged = true;
 				}
-				if (discoveredPort.getRemoteIfName() != null && (persistedPort.getRemoteIfName() == null
-						&& !discoveredPort.getRemoteIfName().equals(persistedPort.getRemoteIfName()))) {
+				if (discoveredPort.getRemoteIfName() == null || (discoveredPort.getRemoteIfName() != null && (persistedPort.getRemoteIfName() == null
+						&& !discoveredPort.getRemoteIfName().equals(persistedPort.getRemoteIfName())))) {
 					persistedPort.setRemoteIfName(discoveredPort.getRemoteIfName());
 					portChanged = true;
 				}
@@ -443,7 +444,10 @@ public class DiscoveryService {
 		}
 		
 		if(elementChanged) {
-			update(discoveredElement);
+			update(persistedElement);
+		}else {
+			//update to set timeout, but without events
+			topologyService.update(persistedElement);
 		}
 		
 		return linkPortsChanged;
@@ -528,13 +532,24 @@ public class DiscoveryService {
 							
 							// if discovery worked
 							if(discoveredElement != null) {
-								// set update data
-								setDiscoveryFields(discoveredElement, new Date(), INSTANCE_DISCOVERY, method, SOURCE_LLDP);
+								for(Port port : discoveredElement.getPortList()) {
+									Pair<Element, Port> pairElementAndPort = topologyService.getElementAndPortByPortMacAddress(port.getMacAddress());
+									if(pairElementAndPort != null) {
+										persistedElement = pairElementAndPort.getFirst();
+										break;
+									}
+								}
 								
 								// and element is already persisted
 								if(persistedElement != null) {
+									// set update data
+									setDiscoveryFields(persistedElement, new Date(), INSTANCE_DISCOVERY, method, SOURCE_LLDP);
+									
 									linkPortsChanged.addAll( mergeCascade(persistedElement, discoveredElement) );
 								}else {
+									// set update data
+									setDiscoveryFields(discoveredElement, new Date(), INSTANCE_DISCOVERY, method, SOURCE_LLDP);
+									
 									// if not persisted
 									saveCascade(discoveredElement);
 								}
@@ -544,7 +559,15 @@ public class DiscoveryService {
 									case METHOD_FLOODING: 
 										break;//don't add neighbors
 									case METHOD_TIMEOUT: 
-										break;//don't add neighbors
+										for(String ipNeighbor : getNeighbors(discoveredElement)) {
+											if(!ipsDiscovered.contains(ipNeighbor) && !ipsToDiscovery.contains(ipNeighbor)) {
+												Element neighborPersisted = getElementByIP(ipNeighbor);
+												if(neighborPersisted == null) {
+													ipsToDiscovery.add(ipNeighbor);
+												}
+											}
+										}
+										break;
 									case METHOD_DFS:
 										for(String ipNeighbor : getNeighbors(discoveredElement)) {
 											if(!ipsDiscovered.contains(ipNeighbor) && !ipsToDiscovery.contains(ipNeighbor)) {
@@ -612,12 +635,14 @@ public class DiscoveryService {
 	
 	private Set<Port> linkElements() {
 		Map<String, Port> macToPort = new HashMap<String, Port>();
+		Map<UUID, Port> idToPort = new HashMap<UUID, Port>();
 		Set<Port> portsChanged = new HashSet<Port>();
 
 		Set<Port> portSet = topologyService.getPorts();
 
 		for (Port port : portSet) {
 			macToPort.put(port.getMacAddress(), port);
+			idToPort.put(port.getIdPort(), port);
 		}
 
 		for (Port port : portSet) {
@@ -639,6 +664,36 @@ public class DiscoveryService {
 				} else {
 					logger.debug("Unable to find port with macAddress: " + port.getRemoteMacAddress()
 							+ " linked to port: " + ObjectUtils.toString(port));
+				}
+			}else {
+				if(port.getRemoteIdPort() != null) {
+					Port remotePort = idToPort.get(port.getRemoteIdPort());
+					if (remotePort != null && remotePort.getRemoteMacAddress() != null && remotePort.getRemoteMacAddress().equals(port.getMacAddress())) {
+						Element element = getElementById(port.getIdElement());
+						Element remoteElement = getElementById(remotePort.getIdElement());
+						
+						if(element.getLastDicoveredAt().after(remoteElement.getLastDicoveredAt())) {
+							//cleanup link
+							remotePort.setRemoteHostname(null);
+							remotePort.setRemoteIdPort(null);
+							remotePort.setRemoteIfId(null);
+							remotePort.setRemoteIfName(null);
+							remotePort.setRemoteIpAddress(null);
+							remotePort.setRemoteMacAddress(null);
+							portsChanged.add(remotePort);
+							update(remotePort);
+							
+							port.setRemoteIdPort(null);						
+							portsChanged.add(port);
+							update(port);
+						}else {
+							//do nothing... just keep on waiting for element update
+						}
+					}else {
+						port.setRemoteIdPort(null);
+						portsChanged.add(port);
+						update(port);
+					}
 				}
 			}
 		}
@@ -686,12 +741,12 @@ public class DiscoveryService {
 
 		Calendar whenUpdate = new GregorianCalendar();
 		whenUpdate.setTime(lastUpdate);
-		whenUpdate.add(Calendar.SECOND, elementUpdateInterval);
+		whenUpdate.add(Calendar.MILLISECOND, elementUpdateInterval);
 
 		Calendar now = new GregorianCalendar();
 		now.setTime(new Date());
 
-		return now.before(whenUpdate);
+		return !now.before(whenUpdate);
 	}
 	
 	private void setElementType(Element element) {

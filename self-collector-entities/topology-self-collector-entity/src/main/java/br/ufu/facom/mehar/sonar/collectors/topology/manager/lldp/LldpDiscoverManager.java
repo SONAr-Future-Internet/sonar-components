@@ -215,6 +215,15 @@ public class LldpDiscoverManager {
 	        	}
 			}
 	        
+	        //Remove interfaces without mac-address
+	        for(String key : new HashSet<String>(portMap.keySet())) {
+	        	Port port = portMap.get(key);
+	        	if(port.getMacAddress() == null) {
+	        		portMap.remove(key);
+	        	}
+	        }
+	        
+	        
 	        if(logger.isDebugEnabled()) {
 	        	logger.debug("Element "+element.getName()+" ("+element.getManagementIPAddressList()+") discovered...");
 		        for(String key : portMap.keySet()) {
