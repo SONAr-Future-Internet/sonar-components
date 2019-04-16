@@ -20,7 +20,7 @@
   </build>
 
   <dependencies>
-    <!-- Internal -->
+	<!-- Internal -->
   	<dependency>
   		<groupId>br.ufu.facom.mehar.sonar.core</groupId>
   		<artifactId>sonar-model</artifactId>
@@ -31,12 +31,20 @@
   		<artifactId>sonar-util</artifactId>
   		<version>${sonar.version}</version>
   	</dependency>
+
+	<!-- Element : OVSDB -->
+	<!-- https://mvnrepository.com/artifact/com.vmware.ovsdb/ovsdb-client -->
+	<dependency>
+		<groupId>com.vmware.ovsdb</groupId>
+		<artifactId>ovsdb-client</artifactId>
+		<version>1.0.1</version>
+	</dependency>
   	
-  	<!-- Spring -->
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-web</artifactId>
-      <scope>compile</scope>
-    </dependency>
+	<!-- Spring -->
+	<dependency>
+		<groupId>org.springframework.boot</groupId>
+		<artifactId>spring-boot-starter-web</artifactId>
+		<scope>compile</scope>
+	</dependency>
   </dependencies>
 </project>

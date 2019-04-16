@@ -1,6 +1,8 @@
 package br.ufu.facom.mehar.sonar.client.nim.component.exception;
 
-public class ComponentNotFoundException extends GeneralContainerizedInfrastructureManagerClientException {
+import br.ufu.facom.mehar.sonar.client.nim.exception.GeneralNetworkInfrastructureManagerClientException;
+
+public class ComponentNotFoundException extends GeneralNetworkInfrastructureManagerClientException {
 
 	private static final long serialVersionUID = 6592793753488301126L;
 

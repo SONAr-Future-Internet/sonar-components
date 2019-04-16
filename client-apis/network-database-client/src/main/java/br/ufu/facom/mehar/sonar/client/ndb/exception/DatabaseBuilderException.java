@@ -1,6 +1,6 @@
 package br.ufu.facom.mehar.sonar.client.ndb.exception;
 
-public class DatabaseBuilderException extends GenericDistributedNetworkDatabaseClientException {
+public class DatabaseBuilderException extends GenericNetworkDatabaseClientException {
 
 	private static final long serialVersionUID = -2601039257523497614L;
 

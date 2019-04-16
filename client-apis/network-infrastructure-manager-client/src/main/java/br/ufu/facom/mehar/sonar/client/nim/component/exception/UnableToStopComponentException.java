@@ -1,6 +1,8 @@
 package br.ufu.facom.mehar.sonar.client.nim.component.exception;
 
-public class UnableToStopComponentException extends GeneralContainerizedInfrastructureManagerClientException {
+import br.ufu.facom.mehar.sonar.client.nim.exception.GeneralNetworkInfrastructureManagerClientException;
+
+public class UnableToStopComponentException extends GeneralNetworkInfrastructureManagerClientException {
 
 	private static final long serialVersionUID = 6592793753488301126L;
 
