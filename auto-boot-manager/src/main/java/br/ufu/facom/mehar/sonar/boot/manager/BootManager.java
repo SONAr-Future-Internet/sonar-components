@@ -148,7 +148,7 @@ public class BootManager {
 			} catch (InterruptedException e) {
 				throw new DatabasePreparationException("Error wating for NDB node to run.", e);
 			} catch (Exception e) {
-				logger.info(" | not yet. Attempt: " + (attempt++));
+				logger.info(" | not yet. Attempt: " + (attempt++), e);
 			}
 		}
 	}
