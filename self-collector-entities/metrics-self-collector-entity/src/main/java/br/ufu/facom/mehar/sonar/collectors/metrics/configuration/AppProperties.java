@@ -8,6 +8,8 @@ public class AppProperties {
 
 	@Value("${amqp.broker.ip}")
 	private String amqpBrokerIp;
+	@Value("${amqp.broker.port}")
+	private Integer amqpBrokerPort;
 	@Value("${amqp.exchange.name}")
 	private String amqpExchangeName;
 	@Value("${amqp.exchange.routing.key}")
@@ -47,6 +49,14 @@ public class AppProperties {
 
 	public void setAmqpBrokerIp(String amqpBrokerIp) {
 		this.amqpBrokerIp = amqpBrokerIp;
+	}
+
+	public Integer getAmqpBrokerPort() {
+		return amqpBrokerPort;
+	}
+
+	public void setAmqpBrokerPort(Integer amqpBrokerPort) {
+		this.amqpBrokerPort = amqpBrokerPort;
 	}
 
 	public String getAmqpExchangeRoutingKey() {

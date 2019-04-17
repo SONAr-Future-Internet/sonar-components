@@ -18,6 +18,7 @@ import org.springframework.http.client.support.BasicAuthenticationInterceptor;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.web.client.RestTemplate;
 
+import br.ufu.facom.mehar.sonar.client.nem.configuration.NEMConfiguration;
 import br.ufu.facom.mehar.sonar.client.nem.service.EventService;
 import br.ufu.facom.mehar.sonar.client.nem.service.impl.rabbitmq.RabbitEventService;
 
@@ -64,7 +65,8 @@ public class AppConfig {
 
 	@Bean
 	public ConnectionFactory connectionFactory() {
-		ConnectionFactory connectionFactory = new CachingConnectionFactory(appProperties.getAmqpBrokerIp());
+		ConnectionFactory connectionFactory = new CachingConnectionFactory(appProperties.getAmqpBrokerIp(),
+				appProperties.getAmqpBrokerPort());
 		return connectionFactory;
 	}
 
@@ -72,6 +74,11 @@ public class AppConfig {
 	public Jackson2JsonMessageConverter jackson2JsonMessageConverter() {
 		Jackson2JsonMessageConverter jackson2JsonMessageConverter = new Jackson2JsonMessageConverter();
 		return jackson2JsonMessageConverter;
+	}
+
+	@Bean
+	public NEMConfiguration nemConfiguration() {
+		return new NEMConfiguration();
 	}
 
 	@Bean
