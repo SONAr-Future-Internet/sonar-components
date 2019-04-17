@@ -16,7 +16,6 @@ import org.springframework.web.client.RestTemplate;
 
 import br.ufu.facom.mehar.sonar.client.nem.configuration.SonarTopics;
 import br.ufu.facom.mehar.sonar.client.nem.service.EventService;
-//import br.ufu.facom.mehar.sonar.collectors.metrics.amqp.MessageSender;
 import br.ufu.facom.mehar.sonar.collectors.metrics.configuration.AppProperties;
 import br.ufu.facom.mehar.sonar.collectors.metrics.model.Statistics;
 import br.ufu.facom.mehar.sonar.collectors.metrics.network.topology.DynamicTopology;
@@ -30,9 +29,7 @@ public class StatisticsSelfCollectorScheduler {
 	@Autowired
 	private RestTemplate restTemplate;
 	@Autowired
-	private DynamicTopology dynamicTopology;
-	// @Autowired
-	// private MessageSender messageSender;
+	private DynamicTopology dynamicTopology;;
 	@Autowired
 	private EventService publisher;
 	private List<String> devices;
@@ -41,7 +38,7 @@ public class StatisticsSelfCollectorScheduler {
 	private void init() {
 		devices = dynamicTopology.getDevices();
 	}
-
+	
 	@Scheduled(fixedDelayString = "${statistics.self.collector.scheduler.fixed.delay}")
 	public void run() throws URISyntaxException {
 		URI onosURI;
