@@ -115,7 +115,7 @@ public class BootManager {
 			properties.setProperty("NDB_STRATEGY", ndb.getImage());
 			properties.setProperty("NEM_STRATEGY", nem.getImage());
 			properties.setProperty("SDN_STRATEGY", sdn.getImage());
-	
+			
 			checkAndRunSingletonComponent(Component.TopologySelfCollectorEntity, properties);
 		
 		} finally {
