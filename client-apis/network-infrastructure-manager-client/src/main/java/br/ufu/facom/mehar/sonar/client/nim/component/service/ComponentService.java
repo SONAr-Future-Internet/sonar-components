@@ -1,7 +1,7 @@
 package br.ufu.facom.mehar.sonar.client.nim.component.service;
 
-import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -12,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -37,13 +38,12 @@ public class ComponentService {
 	private Map<String, Container> componentMap;
 	
 	public ComponentService() {
-		ClassLoader classLoader = getClass().getClassLoader();
-		File file = new File(classLoader.getResource("sonar-components-configuration.json").getFile());
-
-		ObjectMapper objectMapper = new ObjectMapper();
-		
 		try {
-			componentMap =  objectMapper.readValue(file, new TypeReference<Map<String, Container>>(){});
+			InputStream inputStream = new ClassPathResource("sonar-components-configuration.json").getInputStream();
+
+			ObjectMapper objectMapper = new ObjectMapper();
+			
+			componentMap =  objectMapper.readValue(inputStream, new TypeReference<Map<String, Container>>(){});
 		} catch (IOException e) {
 			logger.error("Unable to load sonar components descriptor file : 'sonar-components-configuration.json' in resources.", e);
 		}

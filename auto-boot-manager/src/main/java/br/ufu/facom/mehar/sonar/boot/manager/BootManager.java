@@ -79,44 +79,45 @@ public class BootManager {
 			return;
 		}
 		
-//		Container sdn = checkAndRunComponent(Component.SDNController);
-//		if (sdn == null) {
-//			logger.error("Unable to boot network without 'SDNController'.");
-//			return;
-//		}
+		Container sdn = checkAndRunComponent(Component.SDNController);
+		if (sdn == null) {
+			logger.error("Unable to boot network without 'SDNController'.");
+			return;
+		}
 
 		//Wait for Database
 		try {
-		prepareDatabase("localhost:" + ndb.getAccessPort().get("main"), ndb.getImage());
-
-		//Create Database (id it doesn't exist)
-		if (NDB_AUTO_CREATE) {
-			if (!databaseBuilder.isBuilt()) {
-				databaseBuilder.buildOrAlter();
+			prepareDatabase("localhost:" + ndb.getAccessPort().get("main"), ndb.getImage());
+	
+			//Create Database (id it doesn't exist)
+			if (NDB_AUTO_CREATE) {
+				if (!databaseBuilder.isBuilt()) {
+					databaseBuilder.buildOrAlter();
+				}
 			}
-		}
-
-		// Verify and Run DHCP
-		if (DHCP_ENABLED) {
-			Properties propertiesDHCP = new Properties();
-			propertiesDHCP.setProperty("NDB_SEEDS", findEndPoint(Component.DistributedNetworkDatabase, ndb, "main", "localhost"));
-			propertiesDHCP.setProperty("NDB_STRATEGY", ndb.getImage());
-			propertiesDHCP.setProperty("NEM_SEEDS", findEndPoint(Component.NetworkEventManager, nem, "main", "localhost"));
-			propertiesDHCP.setProperty("NEM_STRATEGY", nem.getImage());
-			checkAndRunSingletonComponent(Component.DHCPServer, propertiesDHCP);
-		}
-
-		//Create Initial Properties
-		Properties properties = new Properties();
-		properties.setProperty("NDB_SEEDS", findEndPoint(Component.DistributedNetworkDatabase, ndb, "main", bindInterfaceAddress.getAddress().toString()));
-		properties.setProperty("NEM_SEEDS", findEndPoint(Component.NetworkEventManager, nem, "main", bindInterfaceAddress.getAddress().toString()));
-//		properties.setProperty("SDN_SOUTH_SEEDS", findEndPoint(Component.SDNController, sdn, "south", bindInterfaceAddress.getAddress().toString()));
-//		properties.setProperty("SDN_NORTH_SEEDS", findEndPoint(Component.SDNController, sdn, "north", bindInterfaceAddress.getAddress().toString()));
-		properties.setProperty("NDB_STRATEGY", ndb.getImage());
-		properties.setProperty("NEM_STRATEGY", nem.getImage());
-//		properties.setProperty("SDN_STRATEGY", sdn.getImage());
-
-		// checkAndRunComponent(Component.TopologySelfCollectorEntity, properties);
+	
+			// Verify and Run DHCP
+			if (DHCP_ENABLED) {
+				Properties propertiesDHCP = new Properties();
+				propertiesDHCP.setProperty("NDB_SEEDS", findEndPoint(Component.DistributedNetworkDatabase, ndb, "main", "localhost"));
+				propertiesDHCP.setProperty("NDB_STRATEGY", ndb.getImage());
+				propertiesDHCP.setProperty("NEM_SEEDS", findEndPoint(Component.NetworkEventManager, nem, "main", "localhost"));
+				propertiesDHCP.setProperty("NEM_STRATEGY", nem.getImage());
+				checkAndRunSingletonComponent(Component.DHCPServer, propertiesDHCP);
+			}
+	
+			//Create Initial Properties
+			Properties properties = new Properties();
+			properties.setProperty("NDB_SEEDS", findEndPoint(Component.DistributedNetworkDatabase, ndb, "main", bindInterfaceAddress.getAddress().toString()));
+			properties.setProperty("NEM_SEEDS", findEndPoint(Component.NetworkEventManager, nem, "main", bindInterfaceAddress.getAddress().toString()));
+			properties.setProperty("SDN_SOUTH_SEEDS", findEndPoint(Component.SDNController, sdn, "south", bindInterfaceAddress.getAddress().toString()));
+			properties.setProperty("SDN_NORTH_SEEDS", findEndPoint(Component.SDNController, sdn, "north", bindInterfaceAddress.getAddress().toString()));
+			properties.setProperty("NDB_STRATEGY", ndb.getImage());
+			properties.setProperty("NEM_STRATEGY", nem.getImage());
+			properties.setProperty("SDN_STRATEGY", sdn.getImage());
+	
+			checkAndRunSingletonComponent(Component.TopologySelfCollectorEntity, properties);
+		
 		} finally {
 			finish();
 		}
@@ -148,7 +149,7 @@ public class BootManager {
 			} catch (InterruptedException e) {
 				throw new DatabasePreparationException("Error wating for NDB node to run.", e);
 			} catch (Exception e) {
-				logger.info(" | not yet. Attempt: " + (attempt++), e);
+				logger.info(" | not yet. Attempt: " + (attempt++));
 			}
 		}
 	}
@@ -158,7 +159,7 @@ public class BootManager {
 		String port = container.getAccessPort().get(accessPort);
 		if (port != null) {
 			if (container.getServer() != null && !container.getServer().isEmpty()) {
-				if (container.getServer().equals("local") || container.getServer().equals("localhost")) {
+				if (container.getServer().equals("local") || container.getServer().equals("localhost") || container.getServer().equals("127.0.0.1")) {
 					return localServerAddress + ":" + port;
 				} else {
 					return container.getServer() + ":" + port;

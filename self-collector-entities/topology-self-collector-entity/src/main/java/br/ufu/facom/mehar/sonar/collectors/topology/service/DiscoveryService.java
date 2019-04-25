@@ -755,7 +755,7 @@ public class DiscoveryService {
 			element.setTypeElement(Element.TYPE_DEVICE);
 		} else {
 			if (element.getName() != null
-					&& (element.getName().startsWith("nfvi") || element.getName().startsWith("nfci"))) {
+					&& (element.getName().startsWith("sonar-server") || element.getName().startsWith("nfvi") || element.getName().startsWith("nfci"))) {
 				element.setTypeElement(Element.TYPE_SERVER);
 			} else {
 				element.setTypeElement(Element.TYPE_HOST);
