@@ -42,7 +42,6 @@
 				"namespace": "meharsonar",	
 				"image":"topology-self-collector-entity",
 				"version":"latest",
-				"network": "host",
 				"autoDestroy":true,
 				"singleton":true
 	},

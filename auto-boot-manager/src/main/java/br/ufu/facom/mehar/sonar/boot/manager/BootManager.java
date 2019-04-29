@@ -95,32 +95,48 @@ public class BootManager {
 					databaseBuilder.buildOrAlter();
 				}
 			}
+			
+			//Create Initial Properties
+			Properties propertiesBridge = generateProperties(bindInterfaceAddress, ndb, nem, sdn, Boolean.FALSE);
+			Properties propertiesHost = generateProperties(bindInterfaceAddress, ndb, nem, sdn, Boolean.TRUE);
 	
 			// Verify and Run DHCP
 			if (DHCP_ENABLED) {
-				Properties propertiesDHCP = new Properties();
-				propertiesDHCP.setProperty("NDB_SEEDS", findEndPoint(Component.DistributedNetworkDatabase, ndb, "main", "localhost"));
-				propertiesDHCP.setProperty("NDB_STRATEGY", ndb.getImage());
-				propertiesDHCP.setProperty("NEM_SEEDS", findEndPoint(Component.NetworkEventManager, nem, "main", "localhost"));
-				propertiesDHCP.setProperty("NEM_STRATEGY", nem.getImage());
-				checkAndRunSingletonComponent(Component.DHCPServer, propertiesDHCP);
+				checkAndRunSingletonComponent(Component.DHCPServer, propertiesHost);
 			}
 	
-			//Create Initial Properties
-			Properties properties = new Properties();
-			properties.setProperty("NDB_SEEDS", findEndPoint(Component.DistributedNetworkDatabase, ndb, "main", bindInterfaceAddress.getAddress().toString()));
-			properties.setProperty("NEM_SEEDS", findEndPoint(Component.NetworkEventManager, nem, "main", bindInterfaceAddress.getAddress().toString()));
-			properties.setProperty("SDN_SOUTH_SEEDS", findEndPoint(Component.SDNController, sdn, "south", bindInterfaceAddress.getAddress().toString()));
-			properties.setProperty("SDN_NORTH_SEEDS", findEndPoint(Component.SDNController, sdn, "north", bindInterfaceAddress.getAddress().toString()));
-			properties.setProperty("NDB_STRATEGY", ndb.getImage());
-			properties.setProperty("NEM_STRATEGY", nem.getImage());
-			properties.setProperty("SDN_STRATEGY", sdn.getImage());
-			
-			checkAndRunSingletonComponent(Component.TopologySelfCollectorEntity, properties);
+			checkAndRunSingletonComponent(Component.TopologySelfCollectorEntity, propertiesBridge);
 		
 		} finally {
 			finish();
 		}
+	}
+
+	private Properties generateProperties(InterfaceAddress bindInterfaceAddress, Container ndb, Container nem, Container sdn, Boolean networkHost) {
+		Properties propertiesBridge = new Properties();
+		
+		propertiesBridge.setProperty("SONAR_SERVER_LOCAL_IP_ADDRESS", bindInterfaceAddress.getAddress().getHostAddress());
+		propertiesBridge.setProperty("SONAR_SERVER_LOCAL_IP_MASK", IPUtils.prefixToMask(bindInterfaceAddress.getNetworkPrefixLength()));
+		propertiesBridge.setProperty("SONAR_SERVER_LOCAL_IP_BROADCAST", bindInterfaceAddress.getBroadcast().getHostAddress());
+		
+		propertiesBridge.setProperty("SONAR_SERVER_SEEDS", bindInterfaceAddress.getAddress().getHostAddress());
+		if(networkHost) {
+			propertiesBridge.setProperty("NDB_SEEDS", findEndPoint(Component.DistributedNetworkDatabase, ndb, "main", "localhost"));
+			propertiesBridge.setProperty("NEM_SEEDS", findEndPoint(Component.NetworkEventManager, nem, "main", "localhost"));
+			propertiesBridge.setProperty("SDN_SOUTH_SEEDS", findEndPoint(Component.SDNController, sdn, "south", "localhost"));
+			propertiesBridge.setProperty("SDN_NORTH_SEEDS", findEndPoint(Component.SDNController, sdn, "north", "localhost"));
+		}else {
+			propertiesBridge.setProperty("NDB_SEEDS", findEndPoint(Component.DistributedNetworkDatabase, ndb, "main", bindInterfaceAddress.getAddress().getHostAddress()));
+			propertiesBridge.setProperty("NEM_SEEDS", findEndPoint(Component.NetworkEventManager, nem, "main", bindInterfaceAddress.getAddress().getHostAddress()));
+			propertiesBridge.setProperty("SDN_SOUTH_SEEDS", findEndPoint(Component.SDNController, sdn, "south", bindInterfaceAddress.getAddress().getHostAddress()));
+			propertiesBridge.setProperty("SDN_NORTH_SEEDS", findEndPoint(Component.SDNController, sdn, "north", bindInterfaceAddress.getAddress().getHostAddress()));
+		}
+		
+		propertiesBridge.setProperty("NDB_STRATEGY", ndb.getImage());
+		propertiesBridge.setProperty("NEM_STRATEGY", nem.getImage());
+		propertiesBridge.setProperty("SDN_STRATEGY", sdn.getImage());
+		
+		return propertiesBridge;
 	}
 
 	private void finish() {

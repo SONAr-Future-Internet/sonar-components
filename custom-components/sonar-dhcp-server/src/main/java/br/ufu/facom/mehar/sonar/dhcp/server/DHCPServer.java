@@ -1,7 +1,6 @@
 package br.ufu.facom.mehar.sonar.dhcp.server;
 
 import java.net.InetAddress;
-import java.net.InterfaceAddress;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Properties;
@@ -30,6 +29,15 @@ import br.ufu.facom.mehar.sonar.dhcp.service.PoolService;
 @Component
 public class DHCPServer {
 	Logger logger = LoggerFactory.getLogger(DHCPServer.class);
+	
+	@Value("${sonar.server.local.ip.address:192.168.0.1}")
+	private String serverLocalIpAddress;
+	
+	@Value("${sonar.server.local.ip.broadcast:192.168.0.255}")
+	private String serverLocalIpBroadcast;
+	
+	@Value("${sonar.server.local.ip.mask:255.255.255.0}")
+	private String serverLocalIpMask;
 
 	@Value("${dhcp.bindAddress:0.0.0.0:67}")
 	private String dhcpBindAddress;
@@ -43,9 +51,6 @@ public class DHCPServer {
 	@Value("${dhcp.renewalTime:-1}")
 	private String renewalTime;
 
-	@Value("${dhcp.subnetMask:255.255.255.0}")
-	private String subnetMask;
-
 	@Autowired
 	@Qualifier("database")
 	private PoolService poolService;
@@ -58,11 +63,6 @@ public class DHCPServer {
 		try {
 			logger.info("Starting DHCP Server...");
 			
-			final InterfaceAddress bindInterfaceAddress =  IPUtils.searchActiveInterfaceAddress();
-
-			final InetAddress serverIP = bindInterfaceAddress.getAddress();
-			final InetAddress broadcast = bindInterfaceAddress.getBroadcast();
-			
 			final Properties dhcpProperties = new Properties();
 			dhcpProperties.setProperty(DHCPCoreServer.SERVER_ADDRESS, this.dhcpBindAddress);
 			dhcpProperties.setProperty(DHCPCoreServer.SERVER_THREADS, this.serverThreads);
@@ -70,7 +70,7 @@ public class DHCPServer {
 			final Integer leaseTime = Integer.parseInt(this.leaseTime);
 			final Integer renewalTime = Integer.parseInt(this.renewalTime);
 
-			logger.info("  - server: " + serverIP + " bind: " + this.dhcpBindAddress + ".");
+			logger.info("  - server: " + serverLocalIpAddress + " bind: " + this.dhcpBindAddress + ".");
 
 			DHCPCoreServer server = DHCPCoreServer.initServer(new DHCPServlet() {
 				@Override
@@ -88,19 +88,17 @@ public class DHCPServer {
 					response.setDHCPMessageType(DHCPConstants.BOOTREPLY);
 					response.setOp(DHCPConstants.DHCPOFFER);
 					response.setYiaddr(offeredInetAddress);
-					response.setSiaddr(serverIP);
+					response.setSiaddr(IPUtils.convertIPStringToInetAddress(serverLocalIpAddress));
 					response.setSecs((short) (request.getSecs() + 1));
 
-					response.setAddress(broadcast);
+					response.setAddress(IPUtils.convertIPStringToInetAddress(serverLocalIpBroadcast));
 
 					Collection<DHCPOption> options = new ArrayList<DHCPOption>();
-					options.add(
-							DHCPOption.newOptionAsByte(DHCPConstants.DHO_DHCP_MESSAGE_TYPE, DHCPConstants.DHCPOFFER));
-					options.add(DHCPOption.newOptionAsInetAddress(DHCPConstants.DHO_DHCP_SERVER_IDENTIFIER, serverIP));
+					options.add(DHCPOption.newOptionAsByte(DHCPConstants.DHO_DHCP_MESSAGE_TYPE, DHCPConstants.DHCPOFFER));
+					options.add(DHCPOption.newOptionAsInetAddress(DHCPConstants.DHO_DHCP_SERVER_IDENTIFIER, IPUtils.convertIPStringToInetAddress(serverLocalIpAddress)));
 					options.add(DHCPOption.newOptionAsInt(DHCPConstants.DHO_DHCP_LEASE_TIME, leaseTime));
 					options.add(DHCPOption.newOptionAsInt(DHCPConstants.DHO_DHCP_RENEWAL_TIME, renewalTime));
-					options.add(DHCPOption.newOptionAsInetAddress(DHCPConstants.DHO_SUBNET_MASK,
-							IPUtils.convertIPStringToInetAddress(subnetMask)));
+					options.add(DHCPOption.newOptionAsInetAddress(DHCPConstants.DHO_SUBNET_MASK, IPUtils.convertIPStringToInetAddress(serverLocalIpMask)));
 
 					response.setOptions(options);
 
@@ -123,18 +121,17 @@ public class DHCPServer {
 					response.setDHCPMessageType(DHCPConstants.BOOTREPLY);
 					response.setOp(DHCPConstants.DHCPACK);
 					response.setYiaddr(requestedAddress);
-					response.setSiaddr(serverIP);
+					response.setSiaddr(IPUtils.convertIPStringToInetAddress(serverLocalIpAddress));
 					response.setSecs((short) (request.getSecs() + 1));
 
-					response.setAddress(broadcast);
+					response.setAddress(IPUtils.convertIPStringToInetAddress(serverLocalIpBroadcast));
 
 					Collection<DHCPOption> options = new ArrayList<DHCPOption>();
 					options.add(DHCPOption.newOptionAsByte(DHCPConstants.DHO_DHCP_MESSAGE_TYPE, DHCPConstants.DHCPACK));
-					options.add(DHCPOption.newOptionAsInetAddress(DHCPConstants.DHO_DHCP_SERVER_IDENTIFIER, serverIP));
+					options.add(DHCPOption.newOptionAsInetAddress(DHCPConstants.DHO_DHCP_SERVER_IDENTIFIER, IPUtils.convertIPStringToInetAddress(serverLocalIpAddress)));
 					options.add(DHCPOption.newOptionAsInt(DHCPConstants.DHO_DHCP_LEASE_TIME, leaseTime));
 					options.add(DHCPOption.newOptionAsInt(DHCPConstants.DHO_DHCP_RENEWAL_TIME, renewalTime));
-					options.add(DHCPOption.newOptionAsInetAddress(DHCPConstants.DHO_SUBNET_MASK,
-							IPUtils.convertIPStringToInetAddress(subnetMask)));
+					options.add(DHCPOption.newOptionAsInetAddress(DHCPConstants.DHO_SUBNET_MASK, IPUtils.convertIPStringToInetAddress(serverLocalIpMask)));
 
 					response.setOptions(options);
 					

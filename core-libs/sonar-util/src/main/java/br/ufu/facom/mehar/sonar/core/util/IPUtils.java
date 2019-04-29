@@ -190,4 +190,13 @@ public class IPUtils {
 		}
 		return macAddress;
 	}
+	
+	public static String prefixToMask(short prefix) {
+		int shft = 0xffffffff<<(32-prefix);
+		int oct1 = ((byte) ((shft&0xff000000)>>24)) & 0xff;
+		int oct2 = ((byte) ((shft&0x00ff0000)>>16)) & 0xff;
+		int oct3 = ((byte) ((shft&0x0000ff00)>>8)) & 0xff;
+		int oct4 = ((byte) (shft&0x000000ff)) & 0xff;
+		return oct1+"."+oct2+"."+oct3+"."+oct4;
+	}
 }
