@@ -16,14 +16,6 @@ public class AppProperties {
 	private Integer httpConnectTimeout;
 	@Value("${http.read.timeout}")
 	private Integer httpReadTimeout;
-	@Value("${onos.api.base.path}")
-	private String onosApiBasePath;
-	@Value("${onos.api.statistics.ports.path}")
-	private String onosApiStatisticsPortsPath;
-	@Value("${onos.api.topology.clusters.path}")
-	private String onosApiTopologyClustersPath;
-	@Value("${onos.api.topology.clusters.devices.path}")
-	private String onosApiTopologyClustersDevicesPath;
 	@Value("${onos.ip}")
 	private String onosIp;
 	@Value("${onos.password}")
@@ -83,38 +75,6 @@ public class AppProperties {
 
 	public void setHttpReadTimeout(Integer httpReadTimeout) {
 		this.httpReadTimeout = httpReadTimeout;
-	}
-
-	public String getOnosApiBasePath() {
-		return onosApiBasePath;
-	}
-
-	public void setOnosApiBasePath(String onosApiBasePath) {
-		this.onosApiBasePath = onosApiBasePath;
-	}
-
-	public String getOnosApiStatisticsPortsPath() {
-		return onosApiStatisticsPortsPath;
-	}
-
-	public void setOnosApiStatisticsPortsPath(String onosApiStatisticsPortsPath) {
-		this.onosApiStatisticsPortsPath = onosApiStatisticsPortsPath;
-	}
-
-	public String getOnosApiTopologyClustersPath() {
-		return onosApiTopologyClustersPath;
-	}
-
-	public void setOnosApiTopologyClustersPath(String onosApiTopologyClustersPath) {
-		this.onosApiTopologyClustersPath = onosApiTopologyClustersPath;
-	}
-
-	public String getOnosApiTopologyClustersDevicesPath() {
-		return onosApiTopologyClustersDevicesPath;
-	}
-
-	public void setOnosApiTopologyClustersDevicesPath(String onosApiTopologyClustersDevicesPath) {
-		this.onosApiTopologyClustersDevicesPath = onosApiTopologyClustersDevicesPath;
 	}
 
 	public String getOnosIp() {
