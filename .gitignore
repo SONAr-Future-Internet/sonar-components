@@ -3,6 +3,8 @@
 
 .project
 
+.pom.xml.swp
+
 .settings/
 
 target/

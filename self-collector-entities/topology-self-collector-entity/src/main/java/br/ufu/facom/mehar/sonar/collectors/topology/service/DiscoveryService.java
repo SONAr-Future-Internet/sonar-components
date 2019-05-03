@@ -47,6 +47,9 @@ public class DiscoveryService {
 
 	@Autowired
 	private LldpDiscoverManager lldpDiscoverManager;
+	
+	@Value("${sonar.server.local.ip.address:192.168.0.1}")
+	private String serverLocalIpAddress;
 
 	@Value("${topology.scoe.discovery.element.updateInterval:5000}")
 	private Integer elementUpdateInterval;
@@ -62,14 +65,6 @@ public class DiscoveryService {
 	
 	@Value("${topology.scoe.discovery.strategy.join:10000}")
 	private String joinInterval;
-
-	private String INSTANCE_DISCOVERY = "tscoe";
-	{
-		InterfaceAddress interfaceAddress = IPUtils.searchActiveInterfaceAddress();
-		if (interfaceAddress != null && interfaceAddress.getAddress() != null) {
-			INSTANCE_DISCOVERY += "-" + interfaceAddress.getAddress().getHostAddress();
-		}
-	}
 	
 	private static final String METHOD_IP_ASSIGN = "IP Assign";
 	private static final String METHOD_DFS = "Depth-First Search";
@@ -79,117 +74,120 @@ public class DiscoveryService {
 	
 	private static final String SOURCE_LLDP = "LLDP";
 	private static final String SOURCE_DHCP = "DHCP";
-
+	
 	/**
 	 * Schedulers and Listerners
 	 */
 	@EventListener(ApplicationReadyEvent.class)
 	public void listenToEvents() throws InterruptedException {
+		final DiscoveryService parent = this;
 		eventService.subscribe(SonarTopics.TOPIC_TOPOLOGY_PORT_IP_ASSIGNED, new NetworkEventAction() {
 			@Override
 			public void handle(String event, String json) {
-				Port portEvent = ObjectUtils.toObject(json, Port.class);
-				String ip = portEvent.getIpAddress();
-				String mac = IPUtils.normalizeMAC(portEvent.getMacAddress());
-
-				// find element and port using mac
-				Pair<Element, Port> pairByMac = topologyService.getElementAndPortByPortMacAddress(mac);
-				Element elementByMac = null;
-				Port portByMac = null;
-				if(pairByMac != null) {
-					elementByMac = pairByMac.getFirst();
-					portByMac = pairByMac.getSecond();
-				}
-
-				// find element and port using ip
-				Pair<Element, Port> pairByIp = topologyService.getElementAndPortByPortIPAddress(ip);
-				Element elementByIP = null;
-				Port portByIPort = null;
-				if(pairByIp != null) {
-					elementByIP = pairByIp.getFirst();
-					portByIPort = pairByIp.getSecond();
-				}
-				
-
-				//if new element (not found element with ip or mac)
-				if (elementByIP == null && elementByMac == null) {
+				synchronized (parent) {
+					Port portEvent = ObjectUtils.toObject(json, Port.class);
+					String ip = portEvent.getIpAddress();
+					String mac = IPUtils.normalizeMAC(portEvent.getMacAddress());
+	
+					// find element and port using mac
+					Pair<Element, Port> pairByMac = topologyService.getElementAndPortByPortMacAddress(mac);
+					Element elementByMac = null;
+					Port portByMac = null;
+					if(pairByMac != null) {
+						elementByMac = pairByMac.getFirst();
+						portByMac = pairByMac.getSecond();
+					}
+	
+					// find element and port using ip
+					Pair<Element, Port> pairByIp = topologyService.getElementAndPortByPortIPAddress(ip);
+					Element elementByIP = null;
+					Port portByIPort = null;
+					if(pairByIp != null) {
+						elementByIP = pairByIp.getFirst();
+						portByIPort = pairByIp.getSecond();
+					}
 					
-					logger.info("Discovering network elements using 'IP Assignment Event'...");
-					
-					discover(ip, METHOD_IP_ASSIGN);
-					
-					logger.info("Discovery using 'IP Assignment Event' concluded!");
-				} else {
-					// element found with ip and mac at same time...
-					if (elementByIP != null && elementByMac != null) {
+	
+					//if new element (not found element with ip or mac)
+					if (elementByIP == null && elementByMac == null) {
 						
-						// and they are equals
-						if (elementByMac.equals(elementByIP)) {
-							// this is a reassignment of ip, so:
-							// do nothing! Just wait for the normal discovery schedule.
-						} else {
-							// but they are not equals... we found a conflict!
-							
-							// remove ip on element found with the same ip
-							elementByIP.getManagementIPAddressList().remove(ip);
-							portByIPort.setIpAddress(ip);
-
-							// remove old ip (if exists) configured on the port with the same mac
-							if (portByMac.getIpAddress() != null) {
-								if (elementByMac.getManagementIPAddressList() != null) {
-									elementByMac.getManagementIPAddressList().remove(portByMac.getIpAddress());
-								}
-							}
-							
-							// set ip on port with related mac
-							if (elementByMac.getManagementIPAddressList() == null) {
-								elementByMac.setManagementIPAddressList(new HashSet<String>());
-							}
-							elementByMac.getManagementIPAddressList().add(ip);
-							portByMac.setIpAddress(ip);
-
-							// set 'update discovery info' of both elements
-							setDiscoveryFields(elementByIP, new Date(), INSTANCE_DISCOVERY, METHOD_IP_ASSIGN, SOURCE_DHCP);
-							setDiscoveryFields(elementByMac, new Date(), INSTANCE_DISCOVERY, METHOD_IP_ASSIGN, SOURCE_DHCP);
-
-							// update both element with ip and element with mac (and also the related ports)
-							update(elementByIP);
-							update(elementByMac);
-							update(portByIPort);
-							update(portByMac);
-						}
+						logger.info("Discovering network elements using 'IP Assignment Event'...");
+						
+						discover(ip, METHOD_IP_ASSIGN);
+						
+						logger.info("Discovery using 'IP Assignment Event' concluded!");
 					} else {
-						// if an element was found with the mac but not with ip (already created element) 
-						if (elementByMac != null && elementByIP == null) {
+						// element found with ip and mac at same time...
+						if (elementByIP != null && elementByMac != null) {
 							
-							// remove old ip (if exists) configured on the port with the same mac
-							if (portByMac.getIpAddress() != null) {
-								if (elementByMac.getManagementIPAddressList() != null) {
-									elementByMac.getManagementIPAddressList().remove(portByMac.getIpAddress());
+							// and they are equals
+							if (elementByMac.equals(elementByIP)) {
+								// this is a reassignment of ip, so:
+								// do nothing! Just wait for the normal discovery schedule.
+							} else {
+								// but they are not equals... we found a conflict!
+								
+								// remove ip on element found with the same ip
+								elementByIP.getManagementIPAddressList().remove(ip);
+								portByIPort.setIpAddress(ip);
+	
+								// remove old ip (if exists) configured on the port with the same mac
+								if (portByMac.getIpAddress() != null) {
+									if (elementByMac.getManagementIPAddressList() != null) {
+										elementByMac.getManagementIPAddressList().remove(portByMac.getIpAddress());
+									}
 								}
+								
+								// set ip on port with related mac
+								if (elementByMac.getManagementIPAddressList() == null) {
+									elementByMac.setManagementIPAddressList(new HashSet<String>());
+								}
+								elementByMac.getManagementIPAddressList().add(ip);
+								portByMac.setIpAddress(ip);
+	
+								// set 'update discovery info' of both elements
+								setDiscoveryFields(elementByIP, new Date(), getInstanceDiscovery(), METHOD_IP_ASSIGN, SOURCE_DHCP);
+								setDiscoveryFields(elementByMac, new Date(), getInstanceDiscovery(), METHOD_IP_ASSIGN, SOURCE_DHCP);
+	
+								// update both element with ip and element with mac (and also the related ports)
+								update(elementByIP);
+								update(elementByMac);
+								update(portByIPort);
+								update(portByMac);
 							}
-							
-							// set ip on port with related mac
-							if (elementByMac.getManagementIPAddressList() == null) {
-								elementByMac.setManagementIPAddressList(new HashSet<String>());
-							}
-							elementByMac.getManagementIPAddressList().add(ip);
-							portByMac.setIpAddress(ip);
-
-							// Set Discovery Fields
-							setDiscoveryFields(elementByMac, new Date(), INSTANCE_DISCOVERY, "IP-ASSIGNMENT", "DHCP");
-
-							// Update (but not discovery)
-							update(elementByMac);
-							update(portByMac);
 						} else {
-							// if an element with the ip was found but not with the mac
-							
-							logger.info("Discovering network elements using 'IP Assignment Event'...");
-							
-							discover(ip, METHOD_IP_ASSIGN);
-							
-							logger.info("Discovery using 'IP Assignment Event' concluded!");
+							// if an element was found with the mac but not with ip (already created element) 
+							if (elementByMac != null && elementByIP == null) {
+								
+								// remove old ip (if exists) configured on the port with the same mac
+								if (portByMac.getIpAddress() != null) {
+									if (elementByMac.getManagementIPAddressList() != null) {
+										elementByMac.getManagementIPAddressList().remove(portByMac.getIpAddress());
+									}
+								}
+								
+								// set ip on port with related mac
+								if (elementByMac.getManagementIPAddressList() == null) {
+									elementByMac.setManagementIPAddressList(new HashSet<String>());
+								}
+								elementByMac.getManagementIPAddressList().add(ip);
+								portByMac.setIpAddress(ip);
+	
+								// Set Discovery Fields
+								setDiscoveryFields(elementByMac, new Date(), getInstanceDiscovery(), "IP-ASSIGNMENT", "DHCP");
+	
+								// Update (but not discovery)
+								update(elementByMac);
+								update(portByMac);
+							} else {
+								// if an element with the ip was found but not with the mac
+								
+								logger.info("Discovering network elements using 'IP Assignment Event'...");
+								
+								discover(ip, METHOD_IP_ASSIGN);
+								
+								logger.info("Discovery using 'IP Assignment Event' concluded!");
+							}
 						}
 					}
 				}
@@ -200,13 +198,10 @@ public class DiscoveryService {
 	
 	@Scheduled(fixedDelayString = "${topology.scoe.discovery.strategy.dfs.interval:600000}")
 	public void discoveryDFS() throws InterruptedException {
-		InterfaceAddress interfaceAddress = IPUtils.searchActiveInterfaceAddress();
-		if (interfaceAddress != null && interfaceAddress.getAddress() != null) {
-			String rootIp = interfaceAddress.getAddress().getHostAddress();
-			
+		synchronized (this) {
 			logger.info("Discovering network elements using 'Depth-First Search' with local server as root...");
 			
-			discover(rootIp, METHOD_DFS);
+			discover(serverLocalIpAddress, METHOD_DFS);
 		
 			logger.info("Discovery using 'Depth-First Search' concluded!");
 		}
@@ -214,58 +209,63 @@ public class DiscoveryService {
 
 	@Scheduled(fixedDelayString = "${topology.scoe.discovery.strategy.flooding.interval:60000000}", initialDelayString = "${topology.scoe.discovery.strategy.flooding.interval:60000000}")
 	public void discoveryFlooding() throws InterruptedException {
-		final Stack<String> ipsToDiscovery = new Stack<String>();
-		String ip = floodingIntervalFirst;
-
-		while (!ip.equals(floodingIntervalLast)) {
-			ipsToDiscovery.add(ip);
-			ip = IPUtils.nextIP(ip);
+		synchronized (this) {
+			final Stack<String> ipsToDiscovery = new Stack<String>();
+			String ip = floodingIntervalFirst;
+	
+			while (!ip.equals(floodingIntervalLast)) {
+				ipsToDiscovery.add(ip);
+				ip = IPUtils.nextIP(ip);
+			}
+	
+			if (!ipsToDiscovery.isEmpty()) {
+				
+				logger.info("Discovering network elements using 'Flooding' with interval "+floodingIntervalFirst+"-"+floodingIntervalLast+"...");
+				
+				discover(ipsToDiscovery, METHOD_FLOODING);
+				
+				logger.info("Discovery using 'Flooding' concluded!");
+			}
 		}
-
-		if (!ipsToDiscovery.isEmpty()) {
-			
-			logger.info("Discovering network elements using 'Flooding' with interval "+floodingIntervalFirst+"-"+floodingIntervalLast+"...");
-			
-			discover(ipsToDiscovery, METHOD_FLOODING);
-			
-			logger.info("Discovery using 'Flooding' concluded!");
-		}
-		
 	}
 
 	@Scheduled(fixedDelayString = "${topology.scoe.discovery.strategy.timeout:2000}", initialDelayString = "${topology.scoe.discovery.strategy.timeout:10000}")
 	public void updateElements() throws InterruptedException {
-		final Stack<String> ipsToDiscovery = new Stack<String>();
-		for (Element element : topologyService.getElements()) {
-			if (shouldUpdate(element)) {
-				ipsToDiscovery.add(element.getManagementIPAddressList().iterator().next());
+		synchronized (this) {
+			final Stack<String> ipsToDiscovery = new Stack<String>();
+			for (Element element : topologyService.getElements()) {
+				if (shouldUpdate(element)) {
+					ipsToDiscovery.add(element.getManagementIPAddressList().iterator().next());
+				}
 			}
-		}
-
-		if (!ipsToDiscovery.isEmpty()) {
-			logger.info("Discovering network elements using 'Timeout' with interval "+timeoutInterval+" in millis...");
-			
-			discover(ipsToDiscovery, METHOD_TIMEOUT);
-
-			logger.info("Discovery using 'Timeout' concluded!");
+	
+			if (!ipsToDiscovery.isEmpty()) {
+				logger.info("Discovering network elements using 'Timeout' with interval "+timeoutInterval+" in millis...");
+				
+				discover(ipsToDiscovery, METHOD_TIMEOUT);
+	
+				logger.info("Discovery using 'Timeout' concluded!");
+			}
 		}
 	}
 	
 	@Scheduled(fixedDelayString = "${topology.scoe.discovery.strategy.join:5000}", initialDelayString = "${topology.scoe.discovery.strategy.join:5000}")
 	public void verifyIsolated() throws InterruptedException {
-		final Stack<String> ipsToDiscovery = new Stack<String>();
-		for (Element element : topologyService.getElements()) {
-			if(getNeighbors(element).isEmpty()) {
-				ipsToDiscovery.add(element.getManagementIPAddressList().iterator().next());
+		synchronized (this) {
+			final Stack<String> ipsToDiscovery = new Stack<String>();
+			for (Element element : topologyService.getElements()) {
+				if(getNeighbors(element).isEmpty()) {
+					ipsToDiscovery.add(element.getManagementIPAddressList().iterator().next());
+				}
 			}
-		}
-
-		if (!ipsToDiscovery.isEmpty()) {
-			logger.info("Discovering network elements using 'Join' with interval "+joinInterval+" in millis...");
-			
-			discover(ipsToDiscovery, METHOD_TIMEOUT);
-
-			logger.info("Discovery using 'Timeout' concluded!");
+	
+			if (!ipsToDiscovery.isEmpty()) {
+				logger.info("Discovering network elements using 'Join' with interval "+joinInterval+" in millis...");
+				
+				discover(ipsToDiscovery, METHOD_TIMEOUT);
+	
+				logger.info("Discovery using 'Timeout' concluded!");
+			}
 		}
 	}
 
@@ -274,6 +274,7 @@ public class DiscoveryService {
 	 * CRUD
 	 */
 	private Element saveCascade(Element element) {
+		logger.info("New Element saved: "+ObjectUtils.toString(element));
 		setElementType(element);
 		Element elementSaved = topologyService.save(element);
 		for (Port port : element.getPortList()) {
@@ -543,12 +544,12 @@ public class DiscoveryService {
 								// and element is already persisted
 								if(persistedElement != null) {
 									// set update data
-									setDiscoveryFields(persistedElement, new Date(), INSTANCE_DISCOVERY, method, SOURCE_LLDP);
+									setDiscoveryFields(persistedElement, new Date(), getInstanceDiscovery(), method, SOURCE_LLDP);
 									
 									linkPortsChanged.addAll( mergeCascade(persistedElement, discoveredElement) );
 								}else {
 									// set update data
-									setDiscoveryFields(discoveredElement, new Date(), INSTANCE_DISCOVERY, method, SOURCE_LLDP);
+									setDiscoveryFields(discoveredElement, new Date(), getInstanceDiscovery(), method, SOURCE_LLDP);
 									
 									// if not persisted
 									saveCascade(discoveredElement);
@@ -610,6 +611,7 @@ public class DiscoveryService {
 							latch.countDown();
 						}
 					}
+
 				});
 			}
 
@@ -624,8 +626,13 @@ public class DiscoveryService {
 			}
 		}
 		
+//		logger.info("Links Changed Before Link using method "+method+" : "+ ObjectUtils.toString(linkPortsChanged));
+		
 		// Updating Topology
 		linkPortsChanged.addAll(linkElements());
+		
+//		logger.info("Links Changed After Link using method "+method+"... "+ ObjectUtils.toString(linkPortsChanged));
+		
 		if (!linkPortsChanged.isEmpty()) {
 			eventService.publish(SonarTopics.TOPIC_TOPOLOGY_LINKS_CHANGED, linkPortsChanged);
 		}
@@ -650,6 +657,7 @@ public class DiscoveryService {
 				Port remotePort = macToPort.get(port.getRemoteMacAddress());
 				if (remotePort != null) {
 					if (port.getRemoteIdPort() == null || !port.getRemoteIdPort().equals(remotePort.getIdPort())) {
+//						logger.info("Port "+ObjectUtils.fromObject(port));
 						port.setRemoteIdPort(remotePort.getIdPort());
 						portsChanged.add(port);
 						update(port);
@@ -657,6 +665,7 @@ public class DiscoveryService {
 
 					if (remotePort.getRemoteIdPort() == null
 							|| remotePort.getRemoteIdPort().equals(port.getRemoteIdPort())) {
+//						logger.info("Remote "+ObjectUtils.fromObject(remotePort));
 						remotePort.setRemoteIdPort(port.getIdPort());
 						portsChanged.add(remotePort);
 						update(remotePort);
@@ -669,27 +678,33 @@ public class DiscoveryService {
 				if(port.getRemoteIdPort() != null) {
 					Port remotePort = idToPort.get(port.getRemoteIdPort());
 					if (remotePort != null && remotePort.getRemoteMacAddress() != null && remotePort.getRemoteMacAddress().equals(port.getMacAddress())) {
-						Element element = getElementById(port.getIdElement());
-						Element remoteElement = getElementById(remotePort.getIdElement());
-						
-						if(element.getLastDicoveredAt().after(remoteElement.getLastDicoveredAt())) {
-							//cleanup link
-							remotePort.setRemoteHostname(null);
-							remotePort.setRemoteIdPort(null);
-							remotePort.setRemoteIfId(null);
-							remotePort.setRemoteIfName(null);
-							remotePort.setRemoteIpAddress(null);
-							remotePort.setRemoteMacAddress(null);
-							portsChanged.add(remotePort);
-							update(remotePort);
-							
-							port.setRemoteIdPort(null);						
-							portsChanged.add(port);
-							update(port);
-						}else {
-							//do nothing... just keep on waiting for element update
-						}
+						//Do nothing yet... wait for a new discovery
+//						Element element = getElementById(port.getIdElement());
+//						Element remoteElement = getElementById(remotePort.getIdElement());
+//						
+//						logger.info("Last Discovered Element: "+element.getLastDicoveredAt());
+//						logger.info("Last Discovered Remote Element: "+remoteElement.getLastDicoveredAt());
+//						
+//						if(element.getLastDicoveredAt().compareTo(remoteElement.getLastDicoveredAt()) > 0) {
+//							logger.info("Port "+ObjectUtils.fromObject(port)+" Remote "+ObjectUtils.fromObject(remotePort));
+//							//cleanup link
+//							remotePort.setRemoteHostname(null);
+//							remotePort.setRemoteIdPort(null);
+//							remotePort.setRemoteIfId(null);
+//							remotePort.setRemoteIfName(null);
+//							remotePort.setRemoteIpAddress(null);
+//							remotePort.setRemoteMacAddress(null);
+//							portsChanged.add(remotePort);
+//							update(remotePort);
+//							
+//							port.setRemoteIdPort(null);						
+//							portsChanged.add(port);
+//							update(port);
+//						}else {
+//							//do nothing... just keep on waiting for element update
+//						}
 					}else {
+//						logger.info("Port "+ObjectUtils.fromObject(port)+" Remote NULL");
 						port.setRemoteIdPort(null);
 						portsChanged.add(port);
 						update(port);
@@ -736,6 +751,10 @@ public class DiscoveryService {
 	/**
 	 * Util
 	 */
+	private String getInstanceDiscovery() {
+		return "tscoe-"+serverLocalIpAddress;
+	}
+	
 	private Boolean shouldUpdate(Element element) {
 		Date lastUpdate = element.getLastDicoveredAt();
 
@@ -755,7 +774,7 @@ public class DiscoveryService {
 			element.setTypeElement(Element.TYPE_DEVICE);
 		} else {
 			if (element.getName() != null
-					&& (element.getName().startsWith("nfvi") || element.getName().startsWith("nfci"))) {
+					&& (element.getName().startsWith("sonar-server") || element.getName().startsWith("nfvi") || element.getName().startsWith("nfci"))) {
 				element.setTypeElement(Element.TYPE_SERVER);
 			} else {
 				element.setTypeElement(Element.TYPE_HOST);
