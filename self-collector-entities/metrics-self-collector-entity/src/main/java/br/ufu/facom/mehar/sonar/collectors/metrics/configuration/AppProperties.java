@@ -6,16 +6,6 @@ import org.springframework.stereotype.Component;
 @Component
 public class AppProperties {
 
-	@Value("${amqp.broker.ip}")
-	private String amqpBrokerIp;
-	@Value("${amqp.broker.port}")
-	private Integer amqpBrokerPort;
-	@Value("${amqp.exchange.name}")
-	private String amqpExchangeName;
-	@Value("${amqp.exchange.routing.key}")
-	private String amqpExchangeRoutingKey;
-	@Value("${amqp.exchange.type}")
-	private String amqpExchangeType;
 	@Value("${elastic.api.index.path}")
 	private String elasticApiIndexPath;
 	@Value("${elastic.ip}")
@@ -42,46 +32,18 @@ public class AppProperties {
 	private Integer onosPort;
 	@Value("${onos.user}")
 	private String onosUser;
-
-	public String getAmqpBrokerIp() {
-		return amqpBrokerIp;
-	}
-
-	public void setAmqpBrokerIp(String amqpBrokerIp) {
-		this.amqpBrokerIp = amqpBrokerIp;
-	}
-
-	public Integer getAmqpBrokerPort() {
-		return amqpBrokerPort;
-	}
-
-	public void setAmqpBrokerPort(Integer amqpBrokerPort) {
-		this.amqpBrokerPort = amqpBrokerPort;
-	}
-
-	public String getAmqpExchangeRoutingKey() {
-		return amqpExchangeRoutingKey;
-	}
-
-	public void setAmqpExchangeRoutingKey(String amqpExchangeRoutingKey) {
-		this.amqpExchangeRoutingKey = amqpExchangeRoutingKey;
-	}
-
-	public String getAmqpExchangeType() {
-		return amqpExchangeType;
-	}
-
-	public void setAmqpExchangeType(String amqpExchangeType) {
-		this.amqpExchangeType = amqpExchangeType;
-	}
-
-	public String getAmqpExchangeName() {
-		return amqpExchangeName;
-	}
-
-	public void setAmqpExchangeName(String amqpExchangeName) {
-		this.amqpExchangeName = amqpExchangeName;
-	}
+	@Value("${ovsdb.completable.future.timeout}")
+	private Integer ovsdbCompletableFutureTimeout;
+	@Value("${ovsdb.database.name}")
+	private String ovsdbDatabaseName;
+	@Value("${ovsdb.table.name}")
+	private String ovsdbTableName;
+	@Value("${ovsdb.table.columns}")
+	private String[] ovsdbTableColumns;
+	@Value("${ovsdb.ips}")
+	private String[] ovsdbIps;
+	@Value("${ovsdb.port}")
+	private Integer ovsdbPort;
 
 	public String getElasticApiIndexPath() {
 		return elasticApiIndexPath;
@@ -185,6 +147,54 @@ public class AppProperties {
 
 	public void setOnosUser(String onosUser) {
 		this.onosUser = onosUser;
+	}
+
+	public Integer getOvsdbCompletableFutureTimeout() {
+		return ovsdbCompletableFutureTimeout;
+	}
+
+	public void setOvsdbCompletableFutureTimeout(Integer ovsdbCompletableFutureTimeout) {
+		this.ovsdbCompletableFutureTimeout = ovsdbCompletableFutureTimeout;
+	}
+
+	public String getOvsdbDatabaseName() {
+		return ovsdbDatabaseName;
+	}
+
+	public void setOvsdbDatabaseName(String ovsdbDatabaseName) {
+		this.ovsdbDatabaseName = ovsdbDatabaseName;
+	}
+
+	public String getOvsdbTableName() {
+		return ovsdbTableName;
+	}
+
+	public void setOvsdbTableName(String ovsdbTableName) {
+		this.ovsdbTableName = ovsdbTableName;
+	}
+
+	public String[] getOvsdbTableColumns() {
+		return ovsdbTableColumns;
+	}
+
+	public void setOvsdbTableColumns(String[] ovsdbTableColumns) {
+		this.ovsdbTableColumns = ovsdbTableColumns;
+	}
+
+	public String[] getOvsdbIps() {
+		return ovsdbIps;
+	}
+
+	public void setOvsdbIps(String[] ovsdbIps) {
+		this.ovsdbIps = ovsdbIps;
+	}
+
+	public Integer getOvsdbPort() {
+		return ovsdbPort;
+	}
+
+	public void setOvsdbPort(Integer ovsdbPort) {
+		this.ovsdbPort = ovsdbPort;
 	}
 
 }

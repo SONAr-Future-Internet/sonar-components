@@ -2,13 +2,6 @@ package br.ufu.facom.mehar.sonar.collectors.metrics.configuration;
 
 import java.time.Duration;
 
-import org.springframework.amqp.core.AmqpAdmin;
-import org.springframework.amqp.core.Exchange;
-import org.springframework.amqp.core.TopicExchange;
-import org.springframework.amqp.rabbit.connection.CachingConnectionFactory;
-import org.springframework.amqp.rabbit.connection.ConnectionFactory;
-import org.springframework.amqp.rabbit.core.RabbitAdmin;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.web.client.RestTemplateBuilder;
@@ -38,36 +31,6 @@ public class AppConfig {
 		restTemplate.getInterceptors()
 				.add(new BasicAuthenticationInterceptor(appProperties.getOnosUser(), appProperties.getOnosPassword()));
 		return restTemplate;
-	}
-
-	@Bean
-	public RabbitTemplate rabbitTemplate(ConnectionFactory connectionFactory,
-			Jackson2JsonMessageConverter jackson2JsonMessageConverter) {
-		RabbitTemplate rabbitTemplate = new RabbitTemplate(connectionFactory);
-		rabbitTemplate.setRoutingKey(appProperties.getAmqpExchangeRoutingKey());
-		rabbitTemplate.setExchange(appProperties.getAmqpExchangeName());
-		rabbitTemplate.setMessageConverter(jackson2JsonMessageConverter);
-		return rabbitTemplate;
-	}
-
-	@Bean
-	public AmqpAdmin amqpAdmin(ConnectionFactory connectionFactory, Exchange exchange) {
-		AmqpAdmin rabbitAdmin = new RabbitAdmin(connectionFactory);
-		rabbitAdmin.declareExchange(exchange);
-		return new RabbitAdmin(connectionFactory());
-	}
-
-	@Bean
-	public Exchange topicExchange() {
-		Exchange topicExchange = new TopicExchange(appProperties.getAmqpExchangeName());
-		return topicExchange;
-	}
-
-	@Bean
-	public ConnectionFactory connectionFactory() {
-		ConnectionFactory connectionFactory = new CachingConnectionFactory(appProperties.getAmqpBrokerIp(),
-				appProperties.getAmqpBrokerPort());
-		return connectionFactory;
 	}
 
 	@Bean
