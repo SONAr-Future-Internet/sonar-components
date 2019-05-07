@@ -106,6 +106,7 @@ public class BootManager {
 			}
 	
 			checkAndRunSingletonComponent(Component.TopologySelfCollectorEntity, propertiesBridge);
+			checkAndRunSingletonComponent(Component.SelfConfigurationEntity, propertiesBridge);
 		
 		} finally {
 			finish();

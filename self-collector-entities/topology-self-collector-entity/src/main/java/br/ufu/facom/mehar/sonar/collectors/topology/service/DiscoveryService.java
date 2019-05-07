@@ -777,7 +777,7 @@ public class DiscoveryService {
 					&& (element.getName().startsWith("sonar-server") || element.getName().startsWith("nfvi") || element.getName().startsWith("nfci"))) {
 				element.setTypeElement(Element.TYPE_SERVER);
 			} else {
-				element.setTypeElement(Element.TYPE_HOST);
+				element.setTypeElement(Element.TYPE_DEVICE);
 			}
 		}
 	}

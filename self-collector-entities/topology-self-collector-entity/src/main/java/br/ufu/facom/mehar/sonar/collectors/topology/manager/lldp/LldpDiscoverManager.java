@@ -218,7 +218,7 @@ public class LldpDiscoverManager {
 	        //Remove interfaces without mac-address
 	        for(String key : new HashSet<String>(portMap.keySet())) {
 	        	Port port = portMap.get(key);
-	        	if(port.getMacAddress() == null) {
+	        	if(port.getMacAddress() == null || port.getMacAddress().isEmpty()) {
 	        		portMap.remove(key);
 	        	}
 	        }

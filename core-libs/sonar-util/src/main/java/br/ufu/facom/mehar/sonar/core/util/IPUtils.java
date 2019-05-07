@@ -178,9 +178,9 @@ public class IPUtils {
 
 	public static String normalizeMAC(String macAddress) {
 		macAddress = macAddress.toLowerCase();
-		if(!macAddress.contains(":")) {
+		if(!macAddress.contains(":") && !macAddress.trim().isEmpty()) {
 			String newMacAddress = "";
-			for(int i=0; i< macAddress.length(); i=i+2) {
+			for(int i=0; i < macAddress.length() - 1; i=i+2) {
 				if(!newMacAddress.isEmpty()) {
 					newMacAddress += ":";
 				}

@@ -12,13 +12,23 @@ import org.springframework.stereotype.Component;
 import br.ufu.facom.mehar.sonar.client.nem.action.NetworkEventAction;
 import br.ufu.facom.mehar.sonar.client.nem.configuration.SonarTopics;
 import br.ufu.facom.mehar.sonar.client.nem.service.EventService;
+import br.ufu.facom.mehar.sonar.client.nim.element.service.DeviceService;
+import br.ufu.facom.mehar.sonar.core.model.topology.Element;
+import br.ufu.facom.mehar.sonar.core.util.ObjectUtils;
+import br.ufu.facom.mehar.sonar.organizing.configuration.configuration.SCEConfiguration;
 
 @Component
 public class TopologyManager {
 	private Logger logger = LoggerFactory.getLogger(TopologyManager.class);
 	
 	@Autowired
-	EventService eventService;
+	private EventService eventService;
+	
+	@Autowired
+	private DeviceService deviceService; 
+	
+	@Autowired
+	private SCEConfiguration configuration;
 	
 	@Autowired
 	@Qualifier("taskScheduler")
@@ -50,6 +60,17 @@ public class TopologyManager {
 					@Override
 					public void handle(String event, String json) {
 						System.out.println("Event: "+event+" JSON:"+json);
+						if(SonarTopics.TOPIC_TOPOLOGY_ELEMENT_ADDED.equals(event)) {
+							Element element = ObjectUtils.toObject(json, Element.class);
+							if(Element.TYPE_DEVICE.equals(element.getTypeElement())){
+								try {
+									deviceService.configureControllerIfSupported(element, configuration.getSDNSouthSeeds());
+									logger.info("Controller configured!");
+								} catch(Exception e) {
+									logger.error("Error while configuring controllers on element: "+ObjectUtils.toString(element));
+								}
+							}
+						}
 					}
 				});
 			}
