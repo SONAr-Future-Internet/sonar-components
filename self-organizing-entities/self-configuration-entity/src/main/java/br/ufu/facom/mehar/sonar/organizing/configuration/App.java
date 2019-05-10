@@ -17,9 +17,4 @@ public class App {
     public static void main( String[] args ){
     	new SpringApplicationBuilder(App.class).web(WebApplicationType.NONE).run(args);
     }
-    
-    @Bean
-	public RestTemplate restTemplate() {
-	    return new RestTemplate();
-	}
 }

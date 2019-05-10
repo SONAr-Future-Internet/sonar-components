@@ -4,6 +4,9 @@ import java.util.Date;
 import java.util.Set;
 import java.util.UUID;
 
+import br.ufu.facom.mehar.sonar.core.model.topology.type.ElementManager;
+import br.ufu.facom.mehar.sonar.core.model.topology.type.ElementType;
+
 // Generic Element abstraction (types: Device, Host, Server, Entity)
 public class Element {
 	// Primary Key
@@ -16,7 +19,7 @@ public class Element {
 	private String name;
 
 	// Type of Element
-	private String typeElement;
+	private ElementType typeElement;
 
 	// Management IPs
 	private Set<String> managementIPAddressList;
@@ -24,8 +27,8 @@ public class Element {
 	// Discovery Fields
 	private Date lastDicoveredAt; // when?
 	private String lastDicoveredBy; // who?
-	private String lastDicoveredMethod; // how?
 	private String lastDicoveredSource; // from?
+	private String lastDicoveredMethod; // how?
 
 	// Atributes
 	private Integer memory; // ram memory
@@ -40,16 +43,6 @@ public class Element {
 
 	// OneToMany Mapping (Element -> Ports)
 	private Set<Port> portList;
-
-	// Types Enumeration as Constants
-	public static final String TYPE_DEVICE = "DEVICE";
-	public static final String TYPE_HOST = "HOST";
-	public static final String TYPE_ENTITY = "ENTITY";
-	public static final String TYPE_SERVER = "SERVER";
-
-	// Discovery Methods
-	public static final String DISCOVERY_SNMP_LLDP = "SNMP_LLDP";
-	public static final String DISCOVERY_SDN_CONTROLER = "SDN_CONTROLLER";
 
 	public UUID getIdElement() {
 		return idElement;
@@ -67,11 +60,11 @@ public class Element {
 		this.idDomain = idDomain;
 	}
 
-	public String getTypeElement() {
+	public ElementType getTypeElement() {
 		return typeElement;
 	}
 
-	public void setTypeElement(String typeElement) {
+	public void setTypeElement(ElementType typeElement) {
 		this.typeElement = typeElement;
 	}
 

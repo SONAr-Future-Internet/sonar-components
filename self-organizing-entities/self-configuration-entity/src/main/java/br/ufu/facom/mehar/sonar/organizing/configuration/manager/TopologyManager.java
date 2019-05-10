@@ -14,6 +14,7 @@ import br.ufu.facom.mehar.sonar.client.nem.configuration.SonarTopics;
 import br.ufu.facom.mehar.sonar.client.nem.service.EventService;
 import br.ufu.facom.mehar.sonar.client.nim.element.service.DeviceService;
 import br.ufu.facom.mehar.sonar.core.model.topology.Element;
+import br.ufu.facom.mehar.sonar.core.model.topology.type.ElementType;
 import br.ufu.facom.mehar.sonar.core.util.ObjectUtils;
 import br.ufu.facom.mehar.sonar.organizing.configuration.configuration.SCEConfiguration;
 
@@ -62,7 +63,7 @@ public class TopologyManager {
 						System.out.println("Event: "+event+" JSON:"+json);
 						if(SonarTopics.TOPIC_TOPOLOGY_ELEMENT_ADDED.equals(event)) {
 							Element element = ObjectUtils.toObject(json, Element.class);
-							if(Element.TYPE_DEVICE.equals(element.getTypeElement())){
+							if(ElementType.DEVICE.equals(element.getTypeElement())){
 								try {
 									deviceService.configureControllerIfSupported(element, configuration.getSDNSouthSeeds());
 									logger.info("Controller configured!");

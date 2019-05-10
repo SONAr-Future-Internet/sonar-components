@@ -15,14 +15,17 @@ public class Configuration {
 	// Type of configuration
 	private ConfigurationType type;
 
-	// Generic instruction for configuration
-	private String instruction;
+	// Generic command for configuration
+	private String command;
+	
+	// Params to instructions implementation
+	private Map<String, Object> parameterMap;
+	
+	// Flow (specific for flow configutatio)
+	private Flow flow;
 	
 	// Identification of configuration in elements : e.g. flowId
 	private String identification;
-
-	// Params to instructions implementation
-	private Map<String, Object> parameterMap;
 
 	public Element getTarget() {
 		return target;
@@ -48,12 +51,20 @@ public class Configuration {
 		this.type = type;
 	}
 
-	public String getInstruction() {
-		return instruction;
+	public String getCommand() {
+		return command;
 	}
 
-	public void setInstruction(String instruction) {
-		this.instruction = instruction;
+	public void setCommand(String command) {
+		this.command = command;
+	}
+
+	public Flow getFlow() {
+		return flow;
+	}
+
+	public void setFlow(Flow flow) {
+		this.flow = flow;
 	}
 
 	public Map<String, Object> getParameterMap() {

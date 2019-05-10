@@ -2,6 +2,8 @@ package br.ufu.facom.mehar.sonar.core.model.topology;
 
 import java.util.UUID;
 
+import br.ufu.facom.mehar.sonar.core.model.topology.type.PortModeType;
+
 // Port abstraction
 public class Port {
 	// Primary Key
@@ -12,7 +14,6 @@ public class Port {
 
 	// OneToOne (Port -> Port)
 	private UUID remoteIdPort;
-
 
 	// Local Fields
 	private String ifId;
@@ -28,18 +29,13 @@ public class Port {
 	private String remoteIpAddress;
 
 	// Attributes
-	private String mode; // Simplex, Half-Duplex e Full-Duplex
+	private PortModeType mode; // Simplex, Half-Duplex e Full-Duplex
 	private Long bandwidth; // Speed configured / max bandwidth
 	
 	// ManyToOne (Port -> Element)
 	private transient Element element;
 	// OneToOne (Port -> Port)
 	private transient Port remotePort;
-
-	// Modes
-	public static final String MODE_SIMPLEX = "SIMPLEX";
-	public static final String MODE_HALF_DUPLEX = "HALF_DUPLEX";
-	public static final String MODE_FULL_DUPLEX = "FULL_DUPLEX";
 
 	public UUID getIdPort() {
 		return idPort;
@@ -123,11 +119,11 @@ public class Port {
 		this.remoteIpAddress = remoteIpAddress;
 	}
 
-	public String getMode() {
+	public PortModeType getMode() {
 		return mode;
 	}
 
-	public void setMode(String mode) {
+	public void setMode(PortModeType mode) {
 		this.mode = mode;
 	}
 

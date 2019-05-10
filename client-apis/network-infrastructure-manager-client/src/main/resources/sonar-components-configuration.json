@@ -24,7 +24,7 @@
 				"image":"onos",
 				"version":"latest",
 				"accessPort": {"north": "8181", "south":"6653"},
-				"env": ["ONOS_APPS=org.onosproject.openflow,org.onosproject.fwd"],
+				"env": ["ONOS_APPS=org.onosproject.openflow-base"],
 				"exposedPorts":["6653", "6640", "8181", "8101", "9876"],
 				"portMapping":{"6653":"6653", "6640":"6640", "8181":"8181", "8101":"8101", "9876":"9876"},
 				"autoDestroy":false,

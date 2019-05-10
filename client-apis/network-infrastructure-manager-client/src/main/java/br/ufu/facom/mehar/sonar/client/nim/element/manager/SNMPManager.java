@@ -1,6 +1,7 @@
-package br.ufu.facom.mehar.sonar.collectors.topology.manager.lldp;
+package br.ufu.facom.mehar.sonar.client.nim.element.manager;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -25,15 +26,13 @@ import org.snmp4j.util.TreeEvent;
 import org.snmp4j.util.TreeUtils;
 import org.springframework.stereotype.Component;
 
-import com.google.common.collect.Sets;
-
 import br.ufu.facom.mehar.sonar.core.model.topology.Element;
 import br.ufu.facom.mehar.sonar.core.model.topology.Port;
 import br.ufu.facom.mehar.sonar.core.util.IPUtils;
 
-@Component
-public class LldpDiscoverManager {
-	private Logger logger = LoggerFactory.getLogger(LldpDiscoverManager.class);
+@Component("snmp")
+public class SNMPManager implements ElementManager{
+	private Logger logger = LoggerFactory.getLogger(SNMPManager.class);
 
 	private static final String LLDP_MIB = ".1.0.8802.1.1.2.1"; //http://www.mibdepot.com/cgi-bin/getmib3.cgi?win=mib_a&r=cisco&f=LLDP-MIB-V1SMI.my&v=v1&t=tree
 	
@@ -53,6 +52,7 @@ public class LldpDiscoverManager {
 	private static final String LLDP_MIB_lldpLocAddressIPv4 = LLDP_MIB_lldpLocAddress+".1.4"; //ipv4
 	
 	
+	@Override
 	public Element discover(String ip) {
 		CommunityTarget target = new CommunityTarget();
 		target.setCommunity(new OctetString("secret"));
@@ -74,7 +74,7 @@ public class LldpDiscoverManager {
 	        
 	        Element element = new Element();
 			if(element.getManagementIPAddressList() == null) {
-				element.setManagementIPAddressList(Sets.newHashSet(ip));
+				element.setManagementIPAddressList(new HashSet<String>(Arrays.asList(ip)));
 			}
 	        
 	        HashMap<String, Port> portMap = new HashMap<String, Port>();

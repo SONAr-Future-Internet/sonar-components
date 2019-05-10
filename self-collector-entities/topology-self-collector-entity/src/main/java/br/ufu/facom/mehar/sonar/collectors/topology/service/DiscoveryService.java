@@ -1,6 +1,5 @@
 package br.ufu.facom.mehar.sonar.collectors.topology.service;
 
-import java.net.InterfaceAddress;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.GregorianCalendar;
@@ -26,9 +25,10 @@ import br.ufu.facom.mehar.sonar.client.ndb.service.TopologyService;
 import br.ufu.facom.mehar.sonar.client.nem.action.NetworkEventAction;
 import br.ufu.facom.mehar.sonar.client.nem.configuration.SonarTopics;
 import br.ufu.facom.mehar.sonar.client.nem.service.EventService;
-import br.ufu.facom.mehar.sonar.collectors.topology.manager.lldp.LldpDiscoverManager;
+import br.ufu.facom.mehar.sonar.client.nim.element.service.ElementService;
 import br.ufu.facom.mehar.sonar.core.model.topology.Element;
 import br.ufu.facom.mehar.sonar.core.model.topology.Port;
+import br.ufu.facom.mehar.sonar.core.model.topology.type.ElementType;
 import br.ufu.facom.mehar.sonar.core.util.CountingLatch;
 import br.ufu.facom.mehar.sonar.core.util.IPUtils;
 import br.ufu.facom.mehar.sonar.core.util.ObjectUtils;
@@ -46,7 +46,7 @@ public class DiscoveryService {
 	private TopologyService topologyService;
 
 	@Autowired
-	private LldpDiscoverManager lldpDiscoverManager;
+	private ElementService elementService;
 	
 	@Value("${sonar.server.local.ip.address:192.168.0.1}")
 	private String serverLocalIpAddress;
@@ -526,7 +526,7 @@ public class DiscoveryService {
 					public void run() {
 						try {
 							// discover current ip
-							Element discoveredElement = lldpDiscoverManager.discover(currentIp);
+							Element discoveredElement = elementService.discover(currentIp);
 							
 							// find element already persisted
 							Element persistedElement = getElementByIP(currentIp);
@@ -771,13 +771,13 @@ public class DiscoveryService {
 	private void setElementType(Element element) {
 		// Temporary solution: TODO fix this setElementType
 		if (element.getName() != null && element.getName().startsWith("sw")) {
-			element.setTypeElement(Element.TYPE_DEVICE);
+			element.setTypeElement(ElementType.DEVICE);
 		} else {
 			if (element.getName() != null
 					&& (element.getName().startsWith("sonar-server") || element.getName().startsWith("nfvi") || element.getName().startsWith("nfci"))) {
-				element.setTypeElement(Element.TYPE_SERVER);
+				element.setTypeElement(ElementType.SERVER);
 			} else {
-				element.setTypeElement(Element.TYPE_DEVICE);
+				element.setTypeElement(ElementType.DEVICE);
 			}
 		}
 	}

@@ -18,9 +18,4 @@ public class App {
         .web(WebApplicationType.NONE)
         .run(args);
 	}
-	
-	@Bean
-	public RestTemplate restTemplate() {
-	    return new RestTemplate();
-	}
 }

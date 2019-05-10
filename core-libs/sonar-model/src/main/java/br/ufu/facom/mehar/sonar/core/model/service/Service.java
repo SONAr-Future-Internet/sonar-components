@@ -2,10 +2,11 @@ package br.ufu.facom.mehar.sonar.core.model.service;
 
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 public class Service {
 	// Primary Key
-	private Long idService;
+	private UUID idService;
 	
 	// Service identification (from OSS/BSS)
 	private Long serviceReference;
@@ -25,11 +26,11 @@ public class Service {
 	// Natural description of the service. Useful for Intent Translation
 	private String desciption;
 
-	public Long getIdService() {
+	public UUID getIdService() {
 		return idService;
 	}
 
-	public void setIdService(Long idService) {
+	public void setIdService(UUID idService) {
 		this.idService = idService;
 	}
 

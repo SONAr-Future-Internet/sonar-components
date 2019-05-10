@@ -39,6 +39,9 @@ import com.vmware.ovsdb.service.impl.OvsdbActiveConnectionConnectorImpl;
 
 import br.ufu.facom.mehar.sonar.client.nim.element.exception.BridgeNotFoundException;
 import br.ufu.facom.mehar.sonar.client.nim.element.exception.DeviceConfigurationException;
+import br.ufu.facom.mehar.sonar.client.nim.element.exception.MethodNotImplementedYetException;
+import br.ufu.facom.mehar.sonar.core.model.configuration.Flow;
+import br.ufu.facom.mehar.sonar.core.model.topology.Element;
 
 @Component("ovsdb")
 public class OVSDBManager implements DeviceManager{
@@ -66,7 +69,13 @@ public class OVSDBManager implements DeviceManager{
 	private OvsdbActiveConnectionConnector connector = new OvsdbActiveConnectionConnectorImpl(executorService);
 	
 	@Override
-	public void configureController(String ip, String[] controllerTargets) {
+	public Element discover(String ip) {
+		throw new MethodNotImplementedYetException("Method 'discover' of OVSDBManager not implemented yet!");
+	}
+	
+	@Override
+	public void configureController(Element element, String[] controllerTargets) {
+		String ip = element.getManagementIPAddressList().iterator().next();
 		OvsdbClient client = connect(ip, DEFAULT_PORT);
 		try {
 			//Operations
@@ -162,6 +171,15 @@ public class OVSDBManager implements DeviceManager{
 			close(client);
 		}
 	}
+	
+	@Override
+	public void configureFlows(Element element, Set<Flow> flows, Boolean permanent) {
+		throw new MethodNotImplementedYetException("Method 'configureFlows' of OVSDBManager not implemented yet!");
+	}
+	
+	/**
+	 * UTIL
+	 */
 
 	private SelectResult select(OvsdbClient client, String table) {
 		try {

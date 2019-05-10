@@ -14,10 +14,10 @@ public class DeviceService {
 	private Logger logger = LoggerFactory.getLogger(DeviceService.class);
 
 	@Autowired
-	private OVSDBManager ovsdbManager;
+	private OVSDBManager deviceManager;
 	
 	public void configureControllerIfSupported(Element element, String[] controllers) {
 		//TODO Verify Vendor/Model
-		ovsdbManager.configureController(element.getManagementIPAddressList().iterator().next(), controllers);
+		deviceManager.configureController(element, controllers);
 	}
 }

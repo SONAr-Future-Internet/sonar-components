@@ -65,7 +65,7 @@ public class TopologyService {
 	}
 	
 	private void validate(Element element) {
-		if(element.getTypeElement() == null || element.getTypeElement().isEmpty()) {
+		if(element.getTypeElement() == null) {
 			throw new DataValidationException("Element is invalid! Please fill the 'typeElement' field.");
 		}
 	}
