@@ -4,7 +4,6 @@ import java.util.Date;
 import java.util.Set;
 import java.util.UUID;
 
-import br.ufu.facom.mehar.sonar.core.model.topology.type.ElementManager;
 import br.ufu.facom.mehar.sonar.core.model.topology.type.ElementType;
 
 // Generic Element abstraction (types: Device, Host, Server, Entity)
@@ -29,6 +28,10 @@ public class Element {
 	private String lastDicoveredBy; // who?
 	private String lastDicoveredSource; // from?
 	private String lastDicoveredMethod; // how?
+	
+	// SDN Fields
+	private Set<String> ofControllers;
+	private String ofDeviceId;
 
 	// Atributes
 	private Integer memory; // ram memory
@@ -37,7 +40,12 @@ public class Element {
 	private Long disk; // disk size
 	private Double cost; // generic cost per second
 	private Double energy; // energy usage per second
-
+	
+	// Product Fields
+	private String manufacturer;
+	private String product;
+	private String software;
+	
 	// ManyToOne (Element -> Domain)
 	private transient Domain domain;
 
@@ -178,5 +186,45 @@ public class Element {
 
 	public void setDomain(Domain domain) {
 		this.domain = domain;
+	}
+
+	public Set<String> getOfControllers() {
+		return ofControllers;
+	}
+
+	public void setOfControllers(Set<String> ofControllers) {
+		this.ofControllers = ofControllers;
+	}
+
+	public String getOfDeviceId() {
+		return ofDeviceId;
+	}
+
+	public void setOfDeviceId(String ofDeviceId) {
+		this.ofDeviceId = ofDeviceId;
+	}
+
+	public String getManufacturer() {
+		return manufacturer;
+	}
+
+	public void setManufacturer(String manufacturer) {
+		this.manufacturer = manufacturer;
+	}
+
+	public String getProduct() {
+		return product;
+	}
+
+	public void setProduct(String product) {
+		this.product = product;
+	}
+
+	public String getSoftware() {
+		return software;
+	}
+
+	public void setSoftware(String software) {
+		this.software = software;
 	}
 }

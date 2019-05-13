@@ -22,22 +22,30 @@ CREATE TABLE IF NOT EXISTS topology.element (
 	lastDicoveredAt TEXT,
 	lastDicoveredBy TEXT,
 	lastDicoveredMethod TEXT,
-	lastDicoveredSource TEXT );
+	lastDicoveredSource TEXT,
+	ofControllers list<TEXT>,
+	ofDeviceId TEXT,
+	manufacturer TEXT,
+	product TEXT,
+	software TEXT);
 CREATE TABLE IF NOT EXISTS topology.port ( 
 	idPort UUID PRIMARY KEY,
 	idElement UUID,
 	remoteIdPort UUID,
-	ifId TEXT,
-	ifName TEXT,
+	portId TEXT,
+	portName TEXT,
 	macAddress TEXT,
 	ipAddress TEXT,
-	remoteIfId TEXT,
-	remoteIfName TEXT,
+	remotePortId TEXT,
+	remotePortName TEXT,
 	remoteHostName TEXT,
 	remoteMacAddress TEXT,
 	remoteIpAddress TEXT,
 	mode TEXT,
-	bandwidth BIGINT );
+	speed INT,
+	ofPort TEXT,
+	state TEXT,
+	adminState TEXT );
 -- Property
 CREATE KEYSPACE IF NOT EXISTS property WITH REPLICATION = { 'class' : 'NetworkTopologyStrategy', 'datacenter1' : 3 };
 CREATE TABLE IF NOT EXISTS property.configuration ( 

@@ -1,4 +1,4 @@
-package br.ufu.facom.mehar.sonar.client.nim.element.manager;
+package br.ufu.facom.mehar.sonar.client.nim.element.manager.impl;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -26,6 +26,7 @@ import org.snmp4j.util.TreeEvent;
 import org.snmp4j.util.TreeUtils;
 import org.springframework.stereotype.Component;
 
+import br.ufu.facom.mehar.sonar.client.nim.element.manager.ElementManager;
 import br.ufu.facom.mehar.sonar.core.model.topology.Element;
 import br.ufu.facom.mehar.sonar.core.model.topology.Port;
 import br.ufu.facom.mehar.sonar.core.util.IPUtils;
@@ -110,7 +111,7 @@ public class SNMPManager implements ElementManager{
     	        			}
 	        	        			
     	        			//setting remote port id
-    	        			portMap.get(ifId).setRemoteIfId(entry.getValue());
+    	        			portMap.get(ifId).setRemotePortId(entry.getValue());
 	        			}
 	        			logger.debug(" RemoteIfId :: " + entry.getKey().substring(LLDP_MIB_lldpRemHostname.length()+1)+" :: "+entry.getValue());
 	        		}
@@ -125,7 +126,7 @@ public class SNMPManager implements ElementManager{
     	        			}
 	        	        			
     	        			//setting remote port name
-    	        			portMap.get(ifId).setRemoteIfName(entry.getValue());
+    	        			portMap.get(ifId).setRemotePortName(entry.getValue());
 	        			}
 	        			logger.debug(" RemoteIfName :: " + entry.getKey().substring(LLDP_MIB_lldpRemPortIfName.length()+1)+" :: "+entry.getValue());
 	        		}
@@ -177,10 +178,10 @@ public class SNMPManager implements ElementManager{
 	        			}
 	        			
 	        			//setting local port id
-	        			portMap.get(ifId).setIfId(ifId);
+	        			portMap.get(ifId).setPortId(ifId);
 	        			
 	        			//setting local port name
-	        			portMap.get(ifId).setIfName(entry.getValue());
+	        			portMap.get(ifId).setPortName(entry.getValue());
 	        			logger.debug(" LocPortIfName :: " + entry.getKey().substring(LLDP_MIB_lldpLocPortIfName.length()+1)+" :: "+entry.getValue());
 	        		}
 	        		if(entry.getKey().startsWith(LLDP_MIB_lldpLocPortMac)) {
@@ -190,7 +191,7 @@ public class SNMPManager implements ElementManager{
 	        			}
 	        			
 	        			//setting local port id
-	        			portMap.get(ifId).setIfId(ifId);
+	        			portMap.get(ifId).setPortId(ifId);
 	        			
 	        			//setting local port mac
 	        			portMap.get(ifId).setMacAddress( IPUtils.normalizeMAC(entry.getValue() ));
@@ -203,7 +204,7 @@ public class SNMPManager implements ElementManager{
 	        			}
 	        			
 	        			//setting local port id
-	        			portMap.get(ifId).setIfId(ifId);
+	        			portMap.get(ifId).setPortId(ifId);
 	        			
 	        			//setting local port ip
 	        			String[] valueRaw = entry.getKey().substring(LLDP_MIB_lldpLocAddressIPv4.length()+1).split("\\.");
@@ -230,13 +231,13 @@ public class SNMPManager implements ElementManager{
 		        	logger.debug(
 		        			String.format("[%-5s]\t%-8s\t%-12s\t%-20s\t%-15s\t<--->\t%-20s\t%-8s\t%-12s\t%-20s\t%-15s",	        			
 		        			key,
-		        			portMap.get(key).getIfId(),
-		        			portMap.get(key).getIfName(),
+		        			portMap.get(key).getPortId(),
+		        			portMap.get(key).getPortName(),
 		        			portMap.get(key).getMacAddress(),
 		        			portMap.get(key).getIpAddress(),
 		        			portMap.get(key).getRemoteHostname(),
-		        			portMap.get(key).getRemoteIfId(),
-		        			portMap.get(key).getRemoteIfName(),
+		        			portMap.get(key).getRemotePortId(),
+		        			portMap.get(key).getRemotePortName(),
 		        			portMap.get(key).getRemoteMacAddress(),
 		        			portMap.get(key).getRemoteIpAddress()) );
 		        }

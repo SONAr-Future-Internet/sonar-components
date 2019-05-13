@@ -1,4 +1,4 @@
-package br.ufu.facom.mehar.sonar.client.nim.element.manager;
+package br.ufu.facom.mehar.sonar.client.nim.element.manager.impl;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -40,6 +40,7 @@ import com.vmware.ovsdb.service.impl.OvsdbActiveConnectionConnectorImpl;
 import br.ufu.facom.mehar.sonar.client.nim.element.exception.BridgeNotFoundException;
 import br.ufu.facom.mehar.sonar.client.nim.element.exception.DeviceConfigurationException;
 import br.ufu.facom.mehar.sonar.client.nim.element.exception.MethodNotImplementedYetException;
+import br.ufu.facom.mehar.sonar.client.nim.element.manager.DeviceManager;
 import br.ufu.facom.mehar.sonar.core.model.configuration.Flow;
 import br.ufu.facom.mehar.sonar.core.model.topology.Element;
 
@@ -67,11 +68,6 @@ public class OVSDBManager implements DeviceManager{
 
 	private ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
 	private OvsdbActiveConnectionConnector connector = new OvsdbActiveConnectionConnectorImpl(executorService);
-	
-	@Override
-	public Element discover(String ip) {
-		throw new MethodNotImplementedYetException("Method 'discover' of OVSDBManager not implemented yet!");
-	}
 	
 	@Override
 	public void configureController(Element element, String[] controllerTargets) {
@@ -170,6 +166,11 @@ public class OVSDBManager implements DeviceManager{
 		} finally {
 			close(client);
 		}
+	}
+	
+	@Override
+	public Element discover(String ip) {
+		throw new MethodNotImplementedYetException("Method 'discover' of OVSDBManager not implemented yet!");
 	}
 	
 	@Override

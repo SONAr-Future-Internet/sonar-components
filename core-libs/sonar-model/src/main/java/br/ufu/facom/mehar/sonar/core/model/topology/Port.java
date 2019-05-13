@@ -3,6 +3,7 @@ package br.ufu.facom.mehar.sonar.core.model.topology;
 import java.util.UUID;
 
 import br.ufu.facom.mehar.sonar.core.model.topology.type.PortModeType;
+import br.ufu.facom.mehar.sonar.core.model.topology.type.PortState;
 
 // Port abstraction
 public class Port {
@@ -16,22 +17,27 @@ public class Port {
 	private UUID remoteIdPort;
 
 	// Local Fields
-	private String ifId;
-	private String ifName;
+	private String portId;
+	private String portName;
 	private String macAddress;
 	private String ipAddress;
 
 	// Remote Identification
 	private String remoteHostname;
-	private String remoteIfId;
-	private String remoteIfName;
+	private String remotePortId;
+	private String remotePortName;
 	private String remoteMacAddress;
 	private String remoteIpAddress;
 
 	// Attributes
 	private PortModeType mode; // Simplex, Half-Duplex e Full-Duplex
-	private Long bandwidth; // Speed configured / max bandwidth
-	
+	private Integer speed; // Speed configured / max bandwidth
+	private PortState adminState;
+	private PortState state;
+
+	// SDN Fields
+	private String ofPort;
+
 	// ManyToOne (Port -> Element)
 	private transient Element element;
 	// OneToOne (Port -> Port)
@@ -61,22 +67,6 @@ public class Port {
 		this.remoteIdPort = remoteIdPort;
 	}
 
-	public String getIfId() {
-		return ifId;
-	}
-
-	public void setIfId(String ifId) {
-		this.ifId = ifId;
-	}
-
-	public String getIfName() {
-		return ifName;
-	}
-
-	public void setIfName(String ifName) {
-		this.ifName = ifName;
-	}
-
 	public String getMacAddress() {
 		return macAddress;
 	}
@@ -92,16 +82,6 @@ public class Port {
 	public void setIpAddress(String ipAddress) {
 		this.ipAddress = ipAddress;
 	}
-
-	public String getRemoteIfId() {
-		return remoteIfId;
-	}
-
-	public void setRemoteIfId(String remoteIfId) {
-		this.remoteIfId = remoteIfId;
-	}
-
-
 
 	public String getRemoteMacAddress() {
 		return remoteMacAddress;
@@ -127,12 +107,12 @@ public class Port {
 		this.mode = mode;
 	}
 
-	public Long getBandwidth() {
-		return bandwidth;
+	public Integer getSpeed() {
+		return speed;
 	}
 
-	public void setBandwidth(Long bandwidth) {
-		this.bandwidth = bandwidth;
+	public void setSpeed(Integer speed) {
+		this.speed = speed;
 	}
 
 	public Element getElement() {
@@ -151,12 +131,36 @@ public class Port {
 		this.remotePort = remotePort;
 	}
 
-	public String getRemoteIfName() {
-		return remoteIfName;
+	public String getPortId() {
+		return portId;
 	}
 
-	public void setRemoteIfName(String remoteIfName) {
-		this.remoteIfName = remoteIfName;
+	public void setPortId(String portId) {
+		this.portId = portId;
+	}
+
+	public String getPortName() {
+		return portName;
+	}
+
+	public void setPortName(String portName) {
+		this.portName = portName;
+	}
+
+	public String getRemotePortId() {
+		return remotePortId;
+	}
+
+	public void setRemotePortId(String remotePortId) {
+		this.remotePortId = remotePortId;
+	}
+
+	public String getRemotePortName() {
+		return remotePortName;
+	}
+
+	public void setRemotePortName(String remotePortName) {
+		this.remotePortName = remotePortName;
 	}
 
 	public String getRemoteHostname() {
@@ -166,6 +170,28 @@ public class Port {
 	public void setRemoteHostname(String remoteHostname) {
 		this.remoteHostname = remoteHostname;
 	}
-	
-	
+
+	public String getOfPort() {
+		return ofPort;
+	}
+
+	public void setOfPort(String ofPort) {
+		this.ofPort = ofPort;
+	}
+
+	public PortState getAdminState() {
+		return adminState;
+	}
+
+	public void setAdminState(PortState adminState) {
+		this.adminState = adminState;
+	}
+
+	public PortState getState() {
+		return state;
+	}
+
+	public void setState(PortState state) {
+		this.state = state;
+	}
 }
