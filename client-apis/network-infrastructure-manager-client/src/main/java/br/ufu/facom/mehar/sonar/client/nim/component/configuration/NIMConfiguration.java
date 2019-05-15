@@ -68,7 +68,7 @@ public class NIMConfiguration {
 	}
 
 	@Value("${sonar.sdn.north.authString:onos:rocks}")
-	public void setSdnNorthAuthStringAttr(String sdnNorthAuthString) {
+	public void setSDNNorthAuthStringAttr(String sdnNorthAuthString) {
 		NIMConfiguration.sdnNorthAuthString = sdnNorthAuthString;
 	}
 }

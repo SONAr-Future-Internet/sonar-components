@@ -1,17 +1,26 @@
 package br.ufu.facom.mehar.sonar.core.model.configuration;
 
 public class FlowSelector {
-	// key
-	private FlowSelector type;
+	private FlowSelectorType type;
 
-	// value
 	private String value;
+	
 
-	public FlowSelector getType() {
+	public FlowSelector() {
+		super();
+	}
+
+	public FlowSelector(FlowSelectorType ethType, String value) {
+		this();
+		this.type = ethType;
+		this.value = value;
+	}
+
+	public FlowSelectorType getType() {
 		return type;
 	}
 
-	public void setType(FlowSelector type) {
+	public void setType(FlowSelectorType type) {
 		this.type = type;
 	}
 

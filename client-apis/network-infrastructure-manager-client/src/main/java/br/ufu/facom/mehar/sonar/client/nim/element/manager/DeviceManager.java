@@ -1,5 +1,6 @@
 package br.ufu.facom.mehar.sonar.client.nim.element.manager;
 
+import java.util.List;
 import java.util.Set;
 
 import br.ufu.facom.mehar.sonar.core.model.configuration.Flow;
@@ -9,6 +10,6 @@ public interface DeviceManager extends ElementManager {
 
 	void configureController(Element element, String[] controllerTargets);
 
-	void configureFlows(Element element, Set<Flow> flows, Boolean permanent);
+	void configureFlows(Element element, List<Flow> flows);
 
 }

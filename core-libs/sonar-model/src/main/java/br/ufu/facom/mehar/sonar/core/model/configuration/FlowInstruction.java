@@ -4,6 +4,22 @@ public class FlowInstruction {
 	private FlowInstructionType type;
 	
 	private String value;
+	
+	
+
+	public FlowInstruction() {
+		super();
+	}
+	
+	public FlowInstruction(FlowInstructionType type) {
+		this();
+		this.type = type;
+	}
+
+	public FlowInstruction(FlowInstructionType type, String value) {
+		this(type);
+		this.value = value;
+	}
 
 	public FlowInstructionType getType() {
 		return type;

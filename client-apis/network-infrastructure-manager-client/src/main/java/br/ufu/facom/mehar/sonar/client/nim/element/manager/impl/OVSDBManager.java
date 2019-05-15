@@ -117,6 +117,7 @@ public class OVSDBManager implements DeviceManager{
 			 */
 			Set<String> bridgesToConfigure = new HashSet<String>(Arrays.asList("br0"));//configuring just br0
 			Set<String> protocolSet = new HashSet<String>(Arrays.asList("OpenFlow10","OpenFlow11","OpenFlow12","OpenFlow13"));		
+			//Set<String> protocolSet = new HashSet<String>(Arrays.asList("OpenFlow13"));
 			result = select(client, BRIDGE);
 			if (result != null && result.getRows() != null && !result.getRows().isEmpty()) {
 				for (Row r : result.getRows()) {
@@ -174,7 +175,7 @@ public class OVSDBManager implements DeviceManager{
 	}
 	
 	@Override
-	public void configureFlows(Element element, Set<Flow> flows, Boolean permanent) {
+	public void configureFlows(Element element, List<Flow> flows) {
 		throw new MethodNotImplementedYetException("Method 'configureFlows' of OVSDBManager not implemented yet!");
 	}
 	

@@ -25,6 +25,7 @@ public class ONOSFlowSelectorCriteria {
 	private Integer icmpCode;
 	private Integer flowlabel;
 	private Integer icmpv6Type;
+	private Integer icmpv6Code;
 	private String targetAddress;
 	private Integer label;
 	private Integer exthdrFlags;
@@ -39,6 +40,8 @@ public class ONOSFlowSelectorCriteria {
 	private Integer tributaryPortNumber;
 	private byte[] tributarySlotBitmap;
 	private Integer tributarySlotLen;
+	private Integer oduSignalType;
+	private Integer oduSignalId;
 	
 	public String getType() {
 		return type;
@@ -243,5 +246,23 @@ public class ONOSFlowSelectorCriteria {
 	}
 	public void setTributarySlotLen(Integer tributarySlotLen) {
 		this.tributarySlotLen = tributarySlotLen;
+	}
+	public Integer getOduSignalType() {
+		return oduSignalType;
+	}
+	public void setOduSignalType(Integer oduSignalType) {
+		this.oduSignalType = oduSignalType;
+	}
+	public Integer getOduSignalId() {
+		return oduSignalId;
+	}
+	public void setOduSignalId(Integer oduSignalId) {
+		this.oduSignalId = oduSignalId;
+	}
+	public Integer getIcmpv6Code() {
+		return icmpv6Code;
+	}
+	public void setIcmpv6Code(Integer icmpv6Code) {
+		this.icmpv6Code = icmpv6Code;
 	}
 }
