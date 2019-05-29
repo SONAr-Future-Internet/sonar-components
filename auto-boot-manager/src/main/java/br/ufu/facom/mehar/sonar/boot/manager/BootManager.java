@@ -105,8 +105,8 @@ public class BootManager {
 				checkAndRunSingletonComponent(Component.DHCPServer, propertiesHost);
 			}
 	
-			checkAndRunSingletonComponent(Component.TopologySelfCollectorEntity, propertiesBridge);
-			checkAndRunSingletonComponent(Component.SelfConfigurationEntity, propertiesBridge);
+//			checkAndRunSingletonComponent(Component.TopologySelfCollectorEntity, propertiesBridge);
+//			checkAndRunSingletonComponent(Component.SelfConfigurationEntity, propertiesBridge);
 		
 		} finally {
 			finish();

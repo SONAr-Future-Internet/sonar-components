@@ -10,81 +10,57 @@ import br.ufu.facom.mehar.sonar.core.model.property.ConfigurationProperty;
 import br.ufu.facom.mehar.sonar.core.model.property.DataProperty;
 
 @Service
-public class PropertyService{
-	
+public class PropertyService {
+
 	@Autowired
 	private PropertyRepository propertyRepository;
 
-	
 	public List<ConfigurationProperty> getConfiguration() {
-		// TODO Auto-generated method stub
-		return null;
+		return propertyRepository.getConfiguration();
 	}
 
-	
 	public List<ConfigurationProperty> getConfiguration(String group) {
-		// TODO Auto-generated method stub
-		return null;
+		return propertyRepository.getConfiguration();
 	}
 
-	
 	public ConfigurationProperty getConfiguration(String group, String key) {
-		// TODO Auto-generated method stub
-		return null;
+		return propertyRepository.getConfiguration(group, key);
 	}
 
-	
 	public Boolean setProperty(ConfigurationProperty property) {
-		// TODO Auto-generated method stub
-		return null;
+		return propertyRepository.setProperty(property);
 	}
 
-	
-	public Boolean setProperty(String group, String key, Object value) {
-		// TODO Auto-generated method stub
-		return null;
+	public Boolean setProperty(String group, String key, String value) {
+		return propertyRepository.setProperty(group, key, value);
 	}
 
-	
 	public List<DataProperty> getData() {
-		// TODO Auto-generated method stub
-		return null;
+		return propertyRepository.getData();
 	}
 
-	
 	public List<DataProperty> getData(String application) {
-		// TODO Auto-generated method stub
-		return null;
+		return propertyRepository.getData(application);
 	}
 
-	
 	public List<DataProperty> getData(String application, String instance) {
-		// TODO Auto-generated method stub
-		return null;
+		return propertyRepository.getData(application, instance);
 	}
 
-	
 	public List<DataProperty> getData(String application, String instance, String group) {
-		// TODO Auto-generated method stub
-		return null;
+		return propertyRepository.getData(application, instance, group);
 	}
 
-	
 	public DataProperty getData(String application, String instance, String group, String key) {
-		// TODO Auto-generated method stub
-		return null;
+		return propertyRepository.getData(application, instance, group, key);
 	}
 
-	
 	public Boolean setData(DataProperty property) {
-		// TODO Auto-generated method stub
-		return null;
+		return propertyRepository.setData(property);
 	}
 
-	
-	public Boolean setData(String application, String group, String key, Object value) {
-		// TODO Auto-generated method stub
-		return null;
+	public Boolean setData(String application, String instance, String group, String key, String value) {
+		return propertyRepository.setData(application, instance, group, key, value);
 	}
 
 }

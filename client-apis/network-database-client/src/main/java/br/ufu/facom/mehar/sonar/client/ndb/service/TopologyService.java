@@ -1,5 +1,6 @@
 package br.ufu.facom.mehar.sonar.client.ndb.service;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -13,6 +14,7 @@ import br.ufu.facom.mehar.sonar.client.ndb.repository.TopologyRepository;
 import br.ufu.facom.mehar.sonar.core.model.topology.Domain;
 import br.ufu.facom.mehar.sonar.core.model.topology.Element;
 import br.ufu.facom.mehar.sonar.core.model.topology.Port;
+import br.ufu.facom.mehar.sonar.core.model.topology.type.ElementType;
 import br.ufu.facom.mehar.sonar.core.util.IPUtils;
 import br.ufu.facom.mehar.sonar.core.util.ObjectUtils;
 import br.ufu.facom.mehar.sonar.core.util.Pair;
@@ -215,8 +217,8 @@ public class TopologyService {
 		return repository.getElementByIPAddress(address);
 	}
 
-	public List<Element> getElementByHostname(String address) {
-		return repository.getElementByHostname(address);
+	public List<Element> getElementsByHostname(String address) {
+		return repository.getElementsByHostname(address);
 	}
 
 	public Set<Port> getPorts() {
@@ -281,4 +283,29 @@ public class TopologyService {
 	public Set<Port> getPortsByRemoteIdElement(UUID idElement) {
 		return repository.getPortsByRemoteIdElement(idElement);
 	}
+	
+	public Set<Port> getLinkedPortsByIdElement(Set<UUID> idElementList) {
+		Set<Port> resultSet = new HashSet<Port>();
+		for(Port port : repository.getPorts()) {
+			if(port.getRemoteIdPort() != null && idElementList.contains(port.getIdElement())) {
+				resultSet.add(port);
+			}
+		}
+		return resultSet;
+	}
+
+	public Set<Port> getPortsWithIP() {
+		return repository.getPortsWithIP();
+	}
+
+	public List<Element> getElementsByType(ElementType type) {
+		List<Element> resultSet = new ArrayList<Element>();
+		for(Element element : repository.getElements()) {
+			if(type.equals(element.getTypeElement())) {
+				resultSet.add(element);
+			}
+		}
+		return resultSet;
+	}
+
 }

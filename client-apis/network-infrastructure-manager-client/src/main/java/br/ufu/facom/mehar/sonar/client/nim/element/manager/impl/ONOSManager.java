@@ -1,13 +1,15 @@
 package br.ufu.facom.mehar.sonar.client.nim.element.manager.impl;
 
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Calendar;
 import java.util.Collection;
+import java.util.Date;
+import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.commons.net.util.Base64;
 import org.slf4j.Logger;
@@ -31,12 +33,13 @@ import br.ufu.facom.mehar.sonar.client.nim.element.model.ElementModelTranslator;
 import br.ufu.facom.mehar.sonar.client.nim.element.model.onos.flow.ONOSDevice;
 import br.ufu.facom.mehar.sonar.client.nim.element.model.onos.flow.ONOSDiscovery;
 import br.ufu.facom.mehar.sonar.client.nim.element.model.onos.flow.ONOSFlowGroup;
+import br.ufu.facom.mehar.sonar.client.nim.element.model.onos.flow.ONOSFlowRecord;
+import br.ufu.facom.mehar.sonar.client.nim.element.model.onos.flow.ONOSFlowResponse;
+import br.ufu.facom.mehar.sonar.client.nim.exception.DeviceConfigurationException;
+import br.ufu.facom.mehar.sonar.client.nim.exception.DeviceConfigurationTimeoutException;
 import br.ufu.facom.mehar.sonar.core.model.configuration.Flow;
-import br.ufu.facom.mehar.sonar.core.model.configuration.FlowInstruction;
-import br.ufu.facom.mehar.sonar.core.model.configuration.FlowInstructionType;
-import br.ufu.facom.mehar.sonar.core.model.configuration.FlowSelector;
-import br.ufu.facom.mehar.sonar.core.model.configuration.FlowSelectorType;
 import br.ufu.facom.mehar.sonar.core.model.topology.Element;
+import br.ufu.facom.mehar.sonar.core.model.topology.Port;
 import br.ufu.facom.mehar.sonar.core.util.ObjectUtils;
 
 @Component("onos")
@@ -78,7 +81,9 @@ public class ONOSManager implements SDNManager {
 									});
 							
 							ONOSDevice completeOnosDevice = responseDevice.getBody();
-							responseMap.put(completeOnosDevice.getId(), ElementModelTranslator.convertToElement(completeOnosDevice));
+							if(completeOnosDevice.getAvailable()) {
+								responseMap.put(completeOnosDevice.getId(), ElementModelTranslator.convertToElement(completeOnosDevice));
+							}
 						}
 					}
 				}
@@ -99,24 +104,77 @@ public class ONOSManager implements SDNManager {
 				headers.set("Accept", MediaType.APPLICATION_JSON_VALUE);
 				headers.set("Authorization", "Basic " + Base64.encodeBase64String( configuration.getSdnNorthAuthString().getBytes(StandardCharsets.UTF_8)).trim() );
 				
-				System.out.println(ObjectUtils.fromObject(group));
+				logger.info("Creating flows for element with IP:"+element.getManagementIPAddressList()+"\n"+ObjectUtils.fromObject(group));
 				
-				ResponseEntity<String> responseDeviceList = restTemplate.exchange(
+				ResponseEntity<ONOSFlowResponse> responseDeviceList = restTemplate.exchange(
 						"http://"+endpointController+"/onos/v1/flows",
 						HttpMethod.POST, new HttpEntity<>(group, headers),
-						new ParameterizedTypeReference<String>() {
+						new ParameterizedTypeReference<ONOSFlowResponse>() {
 						});
 		
-				String result = responseDeviceList.getBody();
+				ONOSFlowResponse result = responseDeviceList.getBody();
 				
-				System.out.println(result);
+				//Wait while flows are pending
+				Set<String> flowSet = new HashSet<String>();
+				for(ONOSFlowRecord flow : result.getFlows()) {
+					flowSet.add(flow.getFlowId());
+				}
+				
+				Date startDate = new Date();
+				Set<String> flowPendingSet = new HashSet<String>(flowSet); 
+				do {
+					try {
+						logger.info("Waiting for pending flows... "+flowPendingSet);
+						Thread.sleep(1000);
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+					
+					flowPendingSet.clear();
+					
+					ResponseEntity<ONOSFlowResponse> responsePending = restTemplate.exchange(
+							"http://"+endpointController+"/onos/v1/flows/"+element.getOfDeviceId(),
+							HttpMethod.GET, new HttpEntity<>(headers),
+							new ParameterizedTypeReference<ONOSFlowResponse>() {
+							});
+			
+					ONOSFlowResponse deviceFlowsFlows = responsePending.getBody();
+					
+					
+					
+					for(ONOSFlowRecord flow : deviceFlowsFlows.getFlows()) {
+						if(flowSet.contains(flow.getId()) && !flow.getState().equalsIgnoreCase("ADDED")) {
+							flowPendingSet.add(flow.getId());
+						}
+					}
+					
+					if(timeoutReached(startDate, 10) && !flowPendingSet.isEmpty()) {
+						throw new DeviceConfigurationTimeoutException("Configuration timeout for pending flows "+flowPendingSet);
+					}else {
+						logger.debug("Current flows:"+ObjectUtils.fromObject(responsePending));
+					}
+				}while(!flowPendingSet.isEmpty());
 				
 				break;
 				
 			} catch(Exception e) {
-				logger.error("Error pushing flows on ONOS Controller with endpoint:"+endpointController+" for element:"+ObjectUtils.toString(element), e);
+				if(! (e instanceof DeviceConfigurationTimeoutException)) {
+					throw new DeviceConfigurationException("Error pushing flows on ONOS Controller with endpoint:"+endpointController+" for element:"+ObjectUtils.toString(element), e);
+				}
+				throw e;
 			}
 		}
+	}
+
+	private boolean timeoutReached(Date startDate, int timeInSecs) {
+		Calendar whenTimeout = new GregorianCalendar();
+		whenTimeout.setTime(startDate);
+		whenTimeout.add(Calendar.SECOND, timeInSecs);
+
+		Calendar now = new GregorianCalendar();
+		now.setTime(new Date());
+
+		return !now.before(whenTimeout);
 	}
 
 	@Override
@@ -135,23 +193,37 @@ public class ONOSManager implements SDNManager {
 		onosManager.configuration = new NIMConfiguration();
 		onosManager.configuration.setSDNNorthSeedsAttr("192.168.0.1:8181");
 		onosManager.configuration.setSDNNorthAuthStringAttr("onos:rocks");
+	
+		for(Element element : onosManager.discover()) {
+			System.out.println(element.getManagementIPAddressList() + " : "+element.getOfDeviceId());
+			for(Port port : element.getPortList()) {
+				System.out.println("\t"+port.getMacAddress()+" : "+port.getOfPort());
+			}
+		}
+	}
+	
+	/*public static void main(String[] args) {
+		ONOSManager onosManager = new ONOSManager();
+		onosManager.restTemplate = new RestTemplate();
+		onosManager.configuration = new NIMConfiguration();
+		onosManager.configuration.setSDNNorthSeedsAttr("192.168.0.1:8181");
+		onosManager.configuration.setSDNNorthAuthStringAttr("onos:rocks");
 		
 		List<Flow> flows =  new ArrayList<Flow>();
 		//Generic ARP Flow
-		//flows.add(new Flow(new FlowSelector(FlowSelectorType.ETH_TYPE, "0x0806"), new FlowInstruction(FlowInstructionType.NORMAL)));//
+		flows.add(new Flow(new FlowSelector(FlowSelectorType.ETH_TYPE, "0x0806"), new FlowInstruction(FlowInstructionType.NORMAL)));//
 		
 		//Generic LLDP Flow
-		//flows.add(new Flow(new FlowSelector(FlowSelectorType.ETH_TYPE, "0x88CC"), new FlowInstruction(FlowInstructionType.NORMAL)));
+		flows.add(new Flow(new FlowSelector(FlowSelectorType.ETH_TYPE, "0x88CC"), new FlowInstruction(FlowInstructionType.NORMAL)));
 		
 		//Device specifics
 		{
 			Element element = new Element();
-			element.setOfDeviceId("of:0000168dd144704a");
+			element.setOfDeviceId("of:00001ea738cb2c4d");
 			element.setManagementIPAddressList(new HashSet<String>(Arrays.asList("192.168.0.2")));
 			List<Flow> elementFlows = new ArrayList<Flow>(flows);
 			
 			//Route to Server
-			/*
 			elementFlows.add(new Flow(
 				Arrays.asList(
 					new FlowSelector(FlowSelectorType.ETH_TYPE, "0x0800"), 
@@ -161,10 +233,10 @@ public class ONOSManager implements SDNManager {
 					new FlowInstruction(FlowInstructionType.OUTPUT, "1")
 				)
 			));
-			*/
+			
 			
 			//Local Processing
-			/*
+			
 			for(String address : element.getManagementIPAddressList()) {
 				elementFlows.add(new Flow(
 						Arrays.asList(
@@ -176,7 +248,7 @@ public class ONOSManager implements SDNManager {
 						)
 					));
 			}
-			*/
+			
 			
 			//Neighbors Route
 			elementFlows.add(new Flow(
@@ -190,7 +262,6 @@ public class ONOSManager implements SDNManager {
 				));
 			
 			//DHCP Broadcast (->)
-			/*
 			elementFlows.add(new Flow(
 				Arrays.asList(
 						new FlowSelector(FlowSelectorType.ETH_TYPE, "0x0800"), 
@@ -202,13 +273,13 @@ public class ONOSManager implements SDNManager {
 					new FlowInstruction(FlowInstructionType.OUTPUT, "1")
 				)
 			));
-			*/
 			
-			//DHCP Broadcast (<-)
-			/*
+			
+			//DHCP Broadcast (<-) : TODO Loop Avoidance
 			elementFlows.add(new Flow(
 				Arrays.asList(
 						new FlowSelector(FlowSelectorType.ETH_TYPE, "0x0800"), 
+						new FlowSelector(FlowSelectorType.IPV4_SRC, "192.168.0.1/32"),
 						new FlowSelector(FlowSelectorType.IPV4_DST, "192.168.0.255/32"),
 						new FlowSelector(FlowSelectorType.IP_PROTO, "17"),
 						new FlowSelector(FlowSelectorType.UDP_DST, "68") 
@@ -217,10 +288,12 @@ public class ONOSManager implements SDNManager {
 					new FlowInstruction(FlowInstructionType.FLOOD)
 				)
 			));
-			*/
 			
+			
+//			SNMP, OVSDB, Openflow
+			//??
 			
 			onosManager.configureFlows(element, elementFlows);
 		}
-	}
+	}*/
 }

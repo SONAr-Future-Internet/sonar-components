@@ -83,7 +83,7 @@ public class SNMPManager implements ElementManager{
 	        
 	        for (Map.Entry<String, String> entry : lldpInfo.entrySet()) {
 	        	if(entry.getKey().startsWith(LLDP_MIB_REMOTE)) {
-	        		//logger.debug(entry.getKey().substring(LLDP_MIB_REMOTE.length())+" -> "+entry.getValue());
+	        		logger.debug(entry.getKey().substring(LLDP_MIB_REMOTE.length())+" -> "+entry.getValue());
 	        		
 	        		if(entry.getKey().startsWith(LLDP_MIB_lldpRemHostname)) {
 	        			String remoteIdentification = entry.getKey().substring(LLDP_MIB_lldpRemHostname.length()+1);
@@ -165,7 +165,7 @@ public class SNMPManager implements ElementManager{
 	        	}
 	        	
 	        	if(entry.getKey().startsWith(LLDP_MIB_LOCAL)) {
-//	        		logger.debug(entry.getKey().substring(LLDP_MIB_LOCAL.length())+" -> "+entry.getValue());
+	        		logger.debug(entry.getKey().substring(LLDP_MIB_LOCAL.length())+" -> "+entry.getValue());
 	        		
 	        		if(entry.getKey().startsWith(LLDP_MIB_lldpLocHostame)) {
 	        			element.setName( entry.getValue() );
@@ -227,6 +227,18 @@ public class SNMPManager implements ElementManager{
 	        
 	        if(logger.isDebugEnabled()) {
 	        	logger.debug("Element "+element.getName()+" ("+element.getManagementIPAddressList()+") discovered...");
+	        	logger.debug(
+	        			String.format("%-5s\t%-8s\t%-12s\t%-20s\t%-15s\t<--->\t%-20s\t%-8s\t%-12s\t%-20s\t%-15s",	        			
+	        			"ID",
+	        			"PortId",
+	        			"PortName",
+	        			"MacAddress",
+	        			"IpAddress",
+	        			"RemoteHostname",
+	        			"RemotePortId",
+	        			"RemotePortName",
+	        			"RemoteMacAddress",
+	        			"RemoteIpAddress") );
 		        for(String key : portMap.keySet()) {
 		        	logger.debug(
 		        			String.format("[%-5s]\t%-8s\t%-12s\t%-20s\t%-15s\t<--->\t%-20s\t%-8s\t%-12s\t%-20s\t%-15s",	        			
@@ -290,5 +302,11 @@ public class SNMPManager implements ElementManager{
 		snmp.close();
 
 		return result;
+	}
+	
+	public static void main(String[] args) {
+		ch.qos.logback.classic.Logger root = (ch.qos.logback.classic.Logger)LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
+		root.setLevel(ch.qos.logback.classic.Level.DEBUG);
+		System.out.println(new SNMPManager().discover("192.168.0.6"));
 	}
 }

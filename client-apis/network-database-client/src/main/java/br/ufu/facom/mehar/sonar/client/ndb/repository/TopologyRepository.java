@@ -7,6 +7,7 @@ import java.util.UUID;
 import br.ufu.facom.mehar.sonar.core.model.topology.Domain;
 import br.ufu.facom.mehar.sonar.core.model.topology.Element;
 import br.ufu.facom.mehar.sonar.core.model.topology.Port;
+import br.ufu.facom.mehar.sonar.core.model.topology.type.ElementType;
 
 public interface TopologyRepository {
 	//Save / Update / Delete
@@ -37,7 +38,8 @@ public interface TopologyRepository {
 	//Element Queries
 	public List<Element> getElements();
 	public List<Element> getElementsByIdDomain(UUID idDomain);
-	public List<Element> getElementByHostname(String name);
+	public List<Element> getElementsByHostname(String name);
+//	public List<Element> getElementsByType(ElementType type);
 	public Element getElementByIPAddress(String address);
 	public Element getElementById(UUID idElement);
 	
@@ -49,4 +51,6 @@ public interface TopologyRepository {
 	public Set<Port> getPortsWithIP();
 	public Port getPortByIP(String ip);
 	public Set<Port> getPortsByRemoteIdElement(UUID idElement);
+//	public Set<Port> getPortsByIdElement(Set<UUID> idElementList);
+	
 }

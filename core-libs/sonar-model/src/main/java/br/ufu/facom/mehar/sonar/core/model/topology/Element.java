@@ -4,6 +4,7 @@ import java.util.Date;
 import java.util.Set;
 import java.util.UUID;
 
+import br.ufu.facom.mehar.sonar.core.model.topology.type.ElementState;
 import br.ufu.facom.mehar.sonar.core.model.topology.type.ElementType;
 
 // Generic Element abstraction (types: Device, Host, Server, Entity)
@@ -23,11 +24,15 @@ public class Element {
 	// Management IPs
 	private Set<String> managementIPAddressList;
 
+	//State
+	private ElementState state;
+	
 	// Discovery Fields
 	private Date lastDicoveredAt; // when?
 	private String lastDicoveredBy; // who?
 	private String lastDicoveredSource; // from?
 	private String lastDicoveredMethod; // how?
+	private Integer discoveryFailureCount; //failed attempts in a row
 	
 	// SDN Fields
 	private Set<String> ofControllers;
@@ -226,5 +231,65 @@ public class Element {
 
 	public void setSoftware(String software) {
 		this.software = software;
+	}
+
+	public ElementState getState() {
+		return state;
+	}
+
+	public void setState(ElementState state) {
+		this.state = state;
+	}
+	
+	public Integer getDiscoveryFailureCount() {
+		return discoveryFailureCount;
+	}
+	public void setDiscoveryFailureCount(Integer discoveryFailureCount) {
+		this.discoveryFailureCount = discoveryFailureCount;
+	}
+	public void clearDiscoveryFailureCount() {
+		this.discoveryFailureCount = 0;
+	}
+	public void incrementDiscoveryFailureCount() {
+		if(this.discoveryFailureCount < Integer.MAX_VALUE) {
+			this.discoveryFailureCount++;
+		}
+	}
+	
+	@Override
+	public String toString() {
+		return "Element [managementIPAddressList=" + managementIPAddressList + ", ofDeviceId=" + ofDeviceId +  ", idElement=" + idElement 
+				+ ", idDomain=" + idDomain + ", name=" + name + ", typeElement="+ typeElement + ", state=" + state
+				+ ", lastDicoveredAt=" + lastDicoveredAt + ", lastDicoveredBy=" + lastDicoveredBy
+				+ ", lastDicoveredSource=" + lastDicoveredSource + ", lastDicoveredMethod=" + lastDicoveredMethod
+				+ ", discoveryFailureCount=" + discoveryFailureCount + ", ofControllers=" + ofControllers
+				+ ", memory=" + memory + ", cores=" + cores + ", clock=" + clock
+				+ ", disk=" + disk + ", cost=" + cost + ", energy=" + energy + ", manufacturer=" + manufacturer
+				+ ", product=" + product + ", software=" + software + ", portList=" + portList + "]";
+	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + ((idElement == null) ? 0 : idElement.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		Element other = (Element) obj;
+		if (idElement == null) {
+			if (other.idElement != null)
+				return false;
+		} else if (!idElement.equals(other.idElement))
+			return false;
+		return true;
 	}
 }

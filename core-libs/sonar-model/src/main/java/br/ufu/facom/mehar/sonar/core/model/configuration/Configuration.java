@@ -1,13 +1,15 @@
 package br.ufu.facom.mehar.sonar.core.model.configuration;
 
 import java.util.Map;
+import java.util.UUID;
 
 import br.ufu.facom.mehar.sonar.core.model.topology.Element;
 
 //Configuration record
 public class Configuration {
 	// Target for deploying this configuration
-	private Element target;
+	private Element element;
+	private UUID idElement;
 
 	// Order of configuration (useful for sorting)
 	private Long order;
@@ -27,12 +29,20 @@ public class Configuration {
 	// Identification of configuration in elements : e.g. flowId
 	private String identification;
 
-	public Element getTarget() {
-		return target;
+	public Element getElement() {
+		return element;
 	}
 
-	public void setTarget(Element target) {
-		this.target = target;
+	public void setElement(Element element) {
+		this.element = element;
+	}
+
+	public UUID getIdElement() {
+		return idElement;
+	}
+
+	public void setIdElement(UUID idElement) {
+		this.idElement = idElement;
 	}
 
 	public Long getOrder() {
@@ -81,5 +91,12 @@ public class Configuration {
 
 	public void setIdentification(String identification) {
 		this.identification = identification;
+	}
+
+	@Override
+	public String toString() {
+		return "Configuration [element=" + element + ", idElement=" + idElement + ", order=" + order + ", type=" + type
+				+ ", command=" + command + ", parameterMap=" + parameterMap + ", flow=" + flow + ", identification="
+				+ identification + "]";
 	}
 }

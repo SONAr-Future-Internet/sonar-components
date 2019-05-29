@@ -14,8 +14,8 @@ import br.ufu.facom.mehar.sonar.client.nem.configuration.SonarTopics;
 import br.ufu.facom.mehar.sonar.client.nem.service.EventService;
 
 @Component
-public class ServiceManager {
-	private Logger logger = LoggerFactory.getLogger(ServiceManager.class);
+public class ServiceConfigurationManager {
+	private Logger logger = LoggerFactory.getLogger(ServiceConfigurationManager.class);
 	
 	@Autowired
 	private EventService eventService;
@@ -24,7 +24,7 @@ public class ServiceManager {
 	@Qualifier("taskScheduler")
     private TaskExecutor taskExecutor;
 	
-	@EventListener(ApplicationReadyEvent.class)
+//	@EventListener(ApplicationReadyEvent.class)
 	public void listenToServiceManagementEvents() {
 		taskExecutor.execute(new Runnable() {
 			@Override

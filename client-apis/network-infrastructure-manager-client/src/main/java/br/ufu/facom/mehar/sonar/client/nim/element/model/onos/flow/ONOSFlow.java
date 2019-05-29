@@ -62,5 +62,4 @@ public class ONOSFlow {
 	public void setSelector(ONOSFlowSelector selector) {
 		this.selector = selector;
 	}
-
 }

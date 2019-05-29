@@ -194,4 +194,38 @@ public class Port {
 	public void setState(PortState state) {
 		this.state = state;
 	}
+
+	@Override
+	public String toString() {
+		return "Port [portName=" + portName + ", macAddress=" + macAddress +   ", idPort=" + idPort  + ", remoteIdPort=" + remoteIdPort
+				+ ", idElement=" + idElement + ", portId=" + portId +  ", ipAddress=" + ipAddress+ ", remoteHostname=" + remoteHostname 
+				+ ", remotePortId=" + remotePortId + ", remotePortName=" + remotePortName + ", remoteMacAddress=" + remoteMacAddress 
+				+ ", remoteIpAddress=" + remoteIpAddress+ ", mode=" + mode + ", speed=" + speed + ", adminState=" + adminState + ", state=" + state
+				+ ", ofPort=" + ofPort + "]";
+	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + ((macAddress == null) ? 0 : macAddress.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		Port other = (Port) obj;
+		if (macAddress == null) {
+			if (other.macAddress != null)
+				return false;
+		} else if (!macAddress.equals(other.macAddress))
+			return false;
+		return true;
+	}
 }

@@ -199,6 +199,14 @@ public class OVSDBManager implements DeviceManager{
 			return null;
 		}
 	}
+	private DatabaseSchema[] printSchema(String ip) {
+		OvsdbClient client = connect(ip, DEFAULT_PORT);
+		try {
+			return printSchema(client);
+		}finally {
+			close(client);
+		}
+	}
 
 	private DatabaseSchema[] printSchema(OvsdbClient client) {
 

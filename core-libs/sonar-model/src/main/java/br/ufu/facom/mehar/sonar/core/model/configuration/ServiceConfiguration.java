@@ -2,16 +2,16 @@ package br.ufu.facom.mehar.sonar.core.model.configuration;
 
 import java.util.List;
 
-import br.ufu.facom.mehar.sonar.core.model.context.Snapshot;
+import br.ufu.facom.mehar.sonar.core.model.context.Scenario;
 import br.ufu.facom.mehar.sonar.core.model.service.Service;
 
 public class ServiceConfiguration {
 	// Configuration of a specific service...
 	private Service service;
-	
-	// for a specific 'moment'...
-	private Snapshot snapshot;
-	
+
+	// for a specific 'scenario'...
+	private Scenario scenario;
+
 	// through the command list bellow
 	private List<Configuration> configurationList;
 
@@ -23,12 +23,12 @@ public class ServiceConfiguration {
 		this.service = service;
 	}
 
-	public Snapshot getSnapshot() {
-		return snapshot;
+	public Scenario getScenario() {
+		return scenario;
 	}
 
-	public void setSnapshot(Snapshot snapshot) {
-		this.snapshot = snapshot;
+	public void setScenario(Scenario scenario) {
+		this.scenario = scenario;
 	}
 
 	public List<Configuration> getConfigurationList() {

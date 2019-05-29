@@ -8,8 +8,8 @@ import javax.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import br.ufu.facom.mehar.sonar.client.ndb.repository.PropertyRepository;
-import br.ufu.facom.mehar.sonar.client.ndb.repository.TopologyRepository;
+import br.ufu.facom.mehar.sonar.client.ndb.service.PropertyService;
+import br.ufu.facom.mehar.sonar.client.ndb.service.TopologyService;
 import br.ufu.facom.mehar.sonar.core.model.property.DataProperty;
 import br.ufu.facom.mehar.sonar.core.model.topology.Port;
 import br.ufu.facom.mehar.sonar.core.util.IPUtils;
@@ -25,20 +25,20 @@ public class DatabasePoolService implements PoolService{
 	private MemoryPoolService memoryPoolService;
 	
 	@Autowired
-	private PropertyRepository propertyRepository;
+	private PropertyService propertyService;
 	
 	@Autowired
-	private TopologyRepository topologyRepository;
+	private TopologyService topologyService;
 
 	@PostConstruct
 	public void init() {
-		List<DataProperty> dataPropertyList = propertyRepository.getData(APPLICATION_NAME, INSTANCE_NAME, GROUP);
+		List<DataProperty> dataPropertyList = propertyService.getData(APPLICATION_NAME, INSTANCE_NAME, GROUP);
 		for(DataProperty dataproperty : dataPropertyList) {
 			memoryPoolService.getMacToIp().put(dataproperty.getKey(), dataproperty.getValue());
 			memoryPoolService.getBusyIPs().add(dataproperty.getValue());
 		}
 		
-		Set<Port> portList = topologyRepository.getPortsWithIP();
+		Set<Port> portList = topologyService.getPortsWithIP();
 		for(Port port : portList) {
 			if(port.getIpAddress() != null) {
 				memoryPoolService.getMacToIp().put(port.getMacAddress(), port.getIpAddress());
@@ -52,7 +52,7 @@ public class DatabasePoolService implements PoolService{
 	public String getIP(String macAddress) {
 		String normalizedMacAddress = IPUtils.normalizeMAC(macAddress);
 		String ip = this.memoryPoolService.getIP(normalizedMacAddress);
-		propertyRepository.setData(APPLICATION_NAME, INSTANCE_NAME, GROUP, normalizedMacAddress, ip);
+		propertyService.setData(APPLICATION_NAME, INSTANCE_NAME, GROUP, normalizedMacAddress, ip);
 		return ip;
 	}
 }

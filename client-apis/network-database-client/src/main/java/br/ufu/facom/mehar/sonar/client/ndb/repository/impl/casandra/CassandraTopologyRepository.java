@@ -395,7 +395,7 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 	}
 
 	@Override
-	public List<Element> getElementByHostname(String name) {
+	public List<Element> getElementsByHostname(String name) {
 		Session session = session();
 		try {
 			Select.Where select = QueryBuilder.select().json().from(KEYSPACE, ELEMENT_COLECTION).allowFiltering()
@@ -412,7 +412,7 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 			close(session);
 		}
 	}
-
+	
 	@Override
 	public Set<Port> getPorts() {
 		Session session = session();
