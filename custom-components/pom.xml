@@ -19,6 +19,7 @@
   <modules>
     <module>sonar-containerized-infrastructure-manager</module>
     <module>sonar-dhcp-server</module>
+    <module>sonar-controller-interceptor</module>
   </modules>
 
 

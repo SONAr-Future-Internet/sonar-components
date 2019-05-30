@@ -44,9 +44,6 @@
 
     <!-- View and Assisted management -->
     <module>sonar-dashboard</module>
-
-    <!-- "Appliances" for dealing wih network data-->
-    <module>function-apps</module>
   </modules>
 
   <repositories>

@@ -1,0 +1,58 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+        <groupId>br.ufu.facom.mehar.sonar</groupId>
+        <artifactId>sonar-custom</artifactId>
+        <version>0.0.1-SNAPSHOT</version>
+  </parent>
+
+  <groupId>br.ufu.facom.mehar.sonar.function</groupId>
+  <artifactId>sonar-controller-interceptor</artifactId>
+  <version>0.0.1-SNAPSHOT</version>
+  <packaging>jar</packaging>
+
+  <name>SCI - SONAr Controller Interceptor</name>
+  <url>http://sonar.facom.ufu.br</url>
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+  </properties>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-maven-plugin</artifactId>
+        <configuration>
+          <mainClass>br.ufu.facom.mehar.sonar.interceptor.App</mainClass>
+          <executable>true</executable>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>com.spotify</groupId>
+        <artifactId>dockerfile-maven-plugin</artifactId>
+      </plugin>
+    </plugins>
+  </build>
+
+  <dependencies>
+    <!-- Internal -->
+    <dependency>
+      <groupId>br.ufu.facom.mehar.sonar.core</groupId>
+      <artifactId>sonar-util</artifactId>
+      <version>${sonar.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>br.ufu.facom.mehar.sonar.client</groupId>
+      <artifactId>network-event-manager-client</artifactId>
+      <version>${sonar.version}</version>
+    </dependency>
+  <!-- Spring -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-web</artifactId>
+    </dependency>
+  </dependencies>
+</project>
