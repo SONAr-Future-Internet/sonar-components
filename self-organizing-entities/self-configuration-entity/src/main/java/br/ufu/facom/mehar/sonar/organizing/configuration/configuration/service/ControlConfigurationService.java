@@ -8,6 +8,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -33,6 +35,8 @@ import br.ufu.facom.mehar.sonar.organizing.configuration.algorithm.model.Path;
 
 @Service
 public class ControlConfigurationService {
+	
+	private static final Logger logger = LoggerFactory.getLogger(ControlConfigurationService.class);
 
 	@Autowired
 	private ConfigurationService configurationService;
@@ -82,22 +86,25 @@ public class ControlConfigurationService {
 		//Basic Device Configuration
 		configurationList = buildBasicDeviceConfiguration(element, serverList);
 		
-		//Generic Route to access server
-		configurationList.add(buildFlowConfigurationTemplate(element,
-			"Route "+element.getManagementIPAddressList().iterator().next()+"-> any host on 192.168.0.0/24 with learning-switch", 
-			new Flow(
-				Arrays.asList(
-						new FlowSelector(FlowSelectorType.ETH_TYPE, "0x0800"), 
-						new FlowSelector(FlowSelectorType.IPV4_DST, "192.168.0.0/24")
-					), 
+		return configurationList;
+	}
+	
+	public List<Configuration> getGenericRouteConfiguration(Element element){
+		return new ArrayList<Configuration>(Arrays.asList(
+			buildFlowConfigurationTemplate(element,
+				"Route "+element.getManagementIPAddressList().iterator().next()+"-> any host on 192.168.0.0/24 with learning-switch", 
+				new Flow(
 					Arrays.asList(
-						new FlowInstruction(FlowInstructionType.NORMAL)
+							new FlowSelector(FlowSelectorType.ETH_TYPE, "0x0800"), 
+							new FlowSelector(FlowSelectorType.IPV4_DST, "192.168.0.0/24")
+						), 
+						Arrays.asList(
+							new FlowInstruction(FlowInstructionType.NORMAL)
+						)
 					)
 				)
 			)
 		);
-		
-		return configurationList;
 	}
 	
 
@@ -158,19 +165,23 @@ public class ControlConfigurationService {
 				if(peerPortB == null) {
 					peerPortB = topologyService.getPortById(peerPortA.getRemoteIdPort());
 				}
-				Element peerA = idElementToElementMap.get(peerPortA.getIdElement());
-				Element peerB = idElementToElementMap.get(peerPortB.getIdElement());
-				if(peerA != null && peerB != null) {
-					if (server.equals(peerA) || server.equals(peerB) || 
-						(	ElementType.DEVICE.equals(peerA.getTypeElement()) && 
-							ElementType.DEVICE.equals(peerB.getTypeElement()) &&
-							( peerA.getState().equals(ElementState.CONFIGURED) || (elementTarget != null &&  peerA.equals(elementTarget))) &&
-							( peerB.getState().equals(ElementState.CONFIGURED) || (elementTarget != null && peerB.equals(elementTarget)))
-						)
-					) {
-	
-						graph.addLink(peerA, peerB, new Pair<Port,Port>(peerPortA, peerPortB));
+				if(peerPortB != null) {
+					Element peerA = idElementToElementMap.get(peerPortA.getIdElement());
+					Element peerB = idElementToElementMap.get(peerPortB.getIdElement());
+					if(peerA != null && peerB != null) {
+						if (server.equals(peerA) || server.equals(peerB) || 
+							(	ElementType.DEVICE.equals(peerA.getTypeElement()) && 
+								ElementType.DEVICE.equals(peerB.getTypeElement()) &&
+								( peerA.getState().equals(ElementState.CONFIGURED) || (elementTarget != null &&  peerA.equals(elementTarget))) &&
+								( peerB.getState().equals(ElementState.CONFIGURED) || (elementTarget != null && peerB.equals(elementTarget)))
+							)
+						) {
+		
+							graph.addLink(peerA, peerB, new Pair<Port,Port>(peerPortA, peerPortB));
+						}
 					}
+				}else {
+					logger.warn("PeerPort Remote not found in database! Port:"+peerPortA);
 				}
 			}
 			Node<Element> serverNode = graph.getNodeByValue(server);
@@ -188,7 +199,11 @@ public class ControlConfigurationService {
 									if (neighbor.equals(server)) {
 										Port portConnectedToServer = segment.getSecond().getPeerB();
 										// COnfigure route to server 
-										configuration.addAll(buildDeviceRouteConfiguration(element, portConnectedToServer, server.getManagementIPAddressList()));
+										if(portConnectedToServer.getOfPort() != null) {
+											configuration.addAll(buildDeviceRouteConfiguration(element, portConnectedToServer, server.getManagementIPAddressList()));
+										}else {
+											logger.warn("Unable to use port to server. It doesn't have ofPortId."+portConnectedToServer);
+										}
 									} else {
 										Port neighbordPortConnectedToElement = segment.getSecond().getPeerA();
 										
@@ -196,6 +211,8 @@ public class ControlConfigurationService {
 										if(neighbordPortConnectedToElement.getOfPort() != null) {
 											configuration.addAll(buildDeviceRouteConfiguration(neighbor, neighbordPortConnectedToElement,
 												element.getManagementIPAddressList()));
+										}else {
+											logger.warn("Unable to use port to create path to the server. It doesn't have ofPortId."+neighbordPortConnectedToElement);
 										}
 									}
 								}
@@ -209,9 +226,15 @@ public class ControlConfigurationService {
 		/**
 		 * Generate basic configuration for each device
 		 */
-		if(!justRoutes) {
+		if(elementTarget == null) {
 			for (Element element : deviceList) {
-				configuration.addAll(buildBasicDeviceConfiguration(element, serverList));
+				if(element.getOfDeviceId() != null) {
+					configuration.addAll(buildBasicDeviceConfiguration(element, serverList));
+				}
+			}
+		}else {
+			if(elementTarget.getOfDeviceId() != null && !justRoutes) {
+				configuration.addAll(buildBasicDeviceConfiguration(elementTarget, serverList));
 			}
 		}
 		

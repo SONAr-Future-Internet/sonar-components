@@ -111,6 +111,13 @@ public class TopologyConfigurationManager {
 										
 										//Fire event of state changed
 										eventService.publish(SonarTopics.TOPIC_TOPOLOGY_ELEMENT_CHANGED_STATE_WAITING_DISCOVERY, updatedElement);
+									}else {
+										if(element.getOfDeviceId() != null) {
+											List<Configuration> configuration = controlConfigurationService.getBasicDeviceConfiguration(element);
+											if(configuration != null && !configuration.isEmpty()) {
+												deviceService.configure(element, configuration);
+											}
+										}
 									}
 								}
 								break;
