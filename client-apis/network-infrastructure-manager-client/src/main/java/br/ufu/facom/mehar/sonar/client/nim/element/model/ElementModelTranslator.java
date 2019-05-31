@@ -94,6 +94,9 @@ public class ElementModelTranslator {
 				treatment.setType("TABLE");
 				treatment.setTableId(Integer.parseInt(instruction.getValue()));
 				break;
+			case CONTROLLER:
+				treatment.setType("OUTPUT");
+				treatment.setPort("CONTROLLER");
 		
 		}
 		

@@ -1,13 +1,13 @@
 package br.ufu.facom.mehar.sonar.interceptor.proxy;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.net.Socket;
 
-public class Connection implements Runnable {
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+public class Connection implements Runnable {
+	private final Interceptor interceptor;
     private final Socket clientsocket;
     private final String remoteIp;
     private final int remotePort;
@@ -15,8 +15,9 @@ public class Connection implements Runnable {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Connection.class);
 
-    public Connection(Socket clientsocket, String remoteIp, int remotePort) {
-        this.clientsocket = clientsocket;
+    public Connection(Interceptor interceptor, Socket clientsocket, String remoteIp, int remotePort) {
+        this.interceptor = interceptor;
+    	this.clientsocket = clientsocket;
         this.remoteIp = remoteIp;
         this.remotePort = remotePort;
     }
@@ -31,8 +32,8 @@ public class Connection implements Runnable {
             return;
         }
 
-        new Thread(new Proxy(clientsocket, serverConnection)).start();
-        new Thread(new Proxy(serverConnection, clientsocket)).start();
+        new Thread(new Proxy(Direction.CLIENT_TO_SERVER, interceptor, clientsocket, serverConnection)).start();
+        new Thread(new Proxy(Direction.SERVER_TO_CLIENT, interceptor, serverConnection, clientsocket)).start();
         new Thread(new Runnable() {
 			@Override
 			public void run() {

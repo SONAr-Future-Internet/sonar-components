@@ -54,5 +54,13 @@
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-web</artifactId>
     </dependency>
+
+  <!-- Openflow -->
+    <dependency>
+      <groupId>org.projectfloodlight</groupId>
+      <artifactId>openflowj</artifactId>
+      <version>3.5.539</version>
+    </dependency>
+
   </dependencies>
 </project>

@@ -3,6 +3,7 @@ package br.ufu.facom.mehar.sonar.organizing.configuration.configuration.service;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Service;
 
 import br.ufu.facom.mehar.sonar.client.ndb.service.ConfigurationService;
 import br.ufu.facom.mehar.sonar.client.ndb.service.TopologyService;
+import br.ufu.facom.mehar.sonar.client.nim.element.model.ElementModelTranslator;
 import br.ufu.facom.mehar.sonar.core.model.configuration.Configuration;
 import br.ufu.facom.mehar.sonar.core.model.configuration.ConfigurationType;
 import br.ufu.facom.mehar.sonar.core.model.configuration.Flow;
@@ -26,6 +28,7 @@ import br.ufu.facom.mehar.sonar.core.model.topology.Element;
 import br.ufu.facom.mehar.sonar.core.model.topology.Port;
 import br.ufu.facom.mehar.sonar.core.model.topology.type.ElementState;
 import br.ufu.facom.mehar.sonar.core.model.topology.type.ElementType;
+import br.ufu.facom.mehar.sonar.core.util.ObjectUtils;
 import br.ufu.facom.mehar.sonar.core.util.Pair;
 import br.ufu.facom.mehar.sonar.organizing.configuration.algorithm.Dijkstra;
 import br.ufu.facom.mehar.sonar.organizing.configuration.algorithm.model.Edge;
@@ -327,7 +330,7 @@ public class ControlConfigurationService {
 		
 		return configurationList;
 	}
-
+	
 	
 	private Configuration buildFlowConfigurationTemplate(Element element, String label, Flow flow) {
 		Configuration configuration = new Configuration();
@@ -337,5 +340,26 @@ public class ControlConfigurationService {
 		configuration.setIdentification(label + " [" + element.getManagementIPAddressList().iterator().next() + "]");
 		configuration.setFlow(flow);
 		return configuration;
+	}
+	
+	public static void main(String[] args) {
+		Flow flow = new Flow(
+				Arrays.asList(
+						new FlowSelector(FlowSelectorType.ETH_TYPE, "0x0800"), 
+						new FlowSelector(FlowSelectorType.IPV4_DST, "255.255.255.255/32"),
+						new FlowSelector(FlowSelectorType.IP_PROTO, "17"),
+						new FlowSelector(FlowSelectorType.UDP_DST, "67") 
+				), 
+				Arrays.asList(
+					new FlowInstruction(FlowInstructionType.CONTROLLER)
+				)
+			);
+		
+		Element element = new Element();
+		element.setTypeElement(ElementType.DEVICE);
+		element.setManagementIPAddressList(new HashSet<String>(Arrays.asList("192.168.0.2")));
+		element.setOfDeviceId("of:0000eeb72f191b4f");
+		
+		System.out.println(ObjectUtils.fromObject(ElementModelTranslator.convertToONOSFlow(element, Arrays.asList(flow))));
 	}
 }

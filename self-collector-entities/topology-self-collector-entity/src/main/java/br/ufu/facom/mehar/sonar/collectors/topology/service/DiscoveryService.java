@@ -103,7 +103,7 @@ public class DiscoveryService {
 	@EventListener(ApplicationReadyEvent.class)
 	public void listenToEvents() throws InterruptedException {
 		final Object parent = this;
-		eventService.subscribe(SonarTopics.TOPIC_TOPOLOGY_PORT_IP_ASSIGNED, new NetworkEventAction() {
+		eventService.subscribe(SonarTopics.TOPIC_DHCP_IP_ASSIGNED, new NetworkEventAction() {
 			@Override
 			public void handle(String event, String json) {
 				synchronized (parent) {

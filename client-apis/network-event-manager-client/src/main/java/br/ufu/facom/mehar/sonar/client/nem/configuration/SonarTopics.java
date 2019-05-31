@@ -24,7 +24,6 @@ public class SonarTopics {
 	public static final String TOPIC_TOPOLOGY_PORT_ADDED = "sonar.topology.port.added";
 	public static final String TOPIC_TOPOLOGY_PORT_REMOVED = "sonar.topology.port.removed";
 	public static final String TOPIC_TOPOLOGY_PORT_CHANGED = "sonar.topology.port.changed";
-	public static final String TOPIC_TOPOLOGY_PORT_IP_ASSIGNED = "sonar.topology.port.ipAssigned";
 	public static final String TOPIC_TOPOLOGY_LINKS = "sonar.topology.links.*";
 	public static final String TOPIC_TOPOLOGY_LINKS_CHANGED = "sonar.topology.links.changed";
 	
@@ -43,4 +42,8 @@ public class SonarTopics {
 	public static final String TOPIC_SERVICE_ADDED = "sonar.service.added";
 	public static final String TOPIC_SERVICE_REMOVED = "sonar.service.added";
 	public static final String TOPIC_SERVICE_CHANGED = "sonar.service.added";
+	
+	public static final String TOPIC_DHCP = "sonar.dhcp.*";
+	public static final String TOPIC_DHCP_IP_ASSIGNED = "sonar.topology.port.ipAssigned";
+	public static final String TOPIC_DHCP_MESSAGE_INCOMING = "sonar.dhcp.message-incoming";
 }
