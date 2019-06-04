@@ -358,7 +358,7 @@ public class ControlConfigurationService {
 		Element element = new Element();
 		element.setTypeElement(ElementType.DEVICE);
 		element.setManagementIPAddressList(new HashSet<String>(Arrays.asList("192.168.0.2")));
-		element.setOfDeviceId("of:0000eeb72f191b4f");
+		element.setOfDeviceId("of:00001a5a2332f14b");
 		
 		System.out.println(ObjectUtils.fromObject(ElementModelTranslator.convertToONOSFlow(element, Arrays.asList(flow))));
 	}

@@ -36,9 +36,9 @@ public class RabbitEventService extends EventService {
 	private static volatile Connection connection;
 
 	private static final String RABBIT_LOCK = "RabbitEventServiceLock";
-
+	
 	@Override
-	public void publish(final String topic, final String json) {
+	public void publish(String topic, byte[] payload) {
 		synchronized (RABBIT_LOCK) {
 			Connection connection = connection();
 			try {
@@ -49,13 +49,13 @@ public class RabbitEventService extends EventService {
 					channel.exchangeDeclare(exchangeName, "topic");
 
 					// Send message
-					channel.basicPublish(exchangeName, topic, null, json.getBytes("UTF-8"));
+					channel.basicPublish(exchangeName, topic, null, payload);
 				} finally {
 					close(channel);
 				}
 
 			} catch (IOException e) {
-				throw new PublishErrorException("Error publishing message '" + json + "' to topic '" + topic + "'.", e);
+				throw new PublishErrorException("Error publishing raw message with payload of " + payload.length + " bytes to topic '" + topic + "'.", e);
 			} finally {
 				// Should not close automatically
 				// close(connection);
@@ -84,8 +84,7 @@ public class RabbitEventService extends EventService {
 					channel.basicConsume(queueName, autoAck, new DeliverCallback() {
 						@Override
 						public void handle(String consumerTag, Delivery delivery) throws IOException {
-							action.handle(delivery.getEnvelope().getRoutingKey(),
-									new String(delivery.getBody(), "UTF-8"));
+							action.handle(delivery.getEnvelope().getRoutingKey(), delivery.getBody());
 						}
 					}, new CancelCallback() {
 						@Override

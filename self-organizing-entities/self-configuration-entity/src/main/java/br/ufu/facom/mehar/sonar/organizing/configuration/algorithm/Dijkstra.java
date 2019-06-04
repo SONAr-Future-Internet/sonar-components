@@ -5,8 +5,8 @@ import java.util.LinkedList;
 import java.util.Map.Entry;
 import java.util.Set;
 
-import br.ufu.facom.mehar.sonar.core.util.Pair;
 import br.ufu.facom.mehar.sonar.organizing.configuration.algorithm.model.Graph;
+import br.ufu.facom.mehar.sonar.core.util.Pair;
 import br.ufu.facom.mehar.sonar.organizing.configuration.algorithm.model.Edge;
 import br.ufu.facom.mehar.sonar.organizing.configuration.algorithm.model.Node;
 import br.ufu.facom.mehar.sonar.organizing.configuration.algorithm.model.Path;

@@ -1,6 +1,7 @@
 package br.ufu.facom.mehar.sonar.interceptor.server;
 
 import java.io.IOException;
+import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
@@ -17,7 +18,11 @@ import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
+import br.ufu.facom.mehar.sonar.client.nem.action.NetworkEventAction;
+import br.ufu.facom.mehar.sonar.client.nem.configuration.SonarTopics;
+import br.ufu.facom.mehar.sonar.client.nem.service.EventService;
 import br.ufu.facom.mehar.sonar.core.util.IPUtils;
+import br.ufu.facom.mehar.sonar.core.util.openflow.PacketOutRequest;
 import br.ufu.facom.mehar.sonar.interceptor.configuration.CIConfiguration;
 import br.ufu.facom.mehar.sonar.interceptor.manager.SonarSyncInterceptor;
 import br.ufu.facom.mehar.sonar.interceptor.proxy.Connection;
@@ -32,7 +37,45 @@ public class ControllerProxyServer {
 	@Autowired
 	private CIConfiguration configuration;
 	
+	@Autowired
+	private EventService eventService;
+	
 	private Map<String,List<Socket>> deviceSockMap = new HashMap<String, List<Socket>>();
+	
+	@EventListener(ApplicationReadyEvent.class)
+	public void providePacketOut() {
+		eventService.subscribe(SonarTopics.TOPIC_OPENFLOW_PACKET_OUT, new NetworkEventAction() {
+			
+			@Override
+			public void handle(String event, byte[] payload) {
+				PacketOutRequest packetOutRequest = PacketOutRequest.deserialize(payload);
+				String destinationSwitchIp = IPUtils.convertInetToIPString(packetOutRequest.getDestination());
+				LOGGER.info("Sending packetOut to "+destinationSwitchIp+".");
+				if(deviceSockMap.containsKey(destinationSwitchIp)) {
+					for(Socket deviceSock : deviceSockMap.get(destinationSwitchIp)) {
+						if(deviceSock.isConnected() && !deviceSock.isClosed()) {
+							try {
+								OutputStream out = deviceSock.getOutputStream();
+								out.write(packetOutRequest.getPacketOutBytes());
+								out.flush();
+								return;
+							} catch (IOException e) {
+								LOGGER.error("Error while trying to send a packout to "+destinationSwitchIp+".",e);
+							}
+						}
+					}
+					LOGGER.error("A connected socket was not found while trying to send a packout to "+destinationSwitchIp+".");
+				}else {
+					LOGGER.error("No socket was not found while trying to send a packout to "+destinationSwitchIp+".");
+				}
+			}
+			
+			@Override
+			public void handle(String event, String json) {
+				//do nothing... use raw version instead
+			}
+		});
+	}
   
 	@EventListener(ApplicationReadyEvent.class)
 	public void run() {
@@ -47,7 +90,7 @@ public class ControllerProxyServer {
                 	if(seed.contains(":")) {
                 		String seedParts[] = seed.split(":",2);
                 		registerDeviceSocket(socket);
-                		new Thread(new Connection(new SonarSyncInterceptor() ,socket, seedParts[0], Integer.parseInt(seedParts[1]))).start();
+                		new Thread(new Connection(new SonarSyncInterceptor(eventService),socket, seedParts[0], Integer.parseInt(seedParts[1]))).start();
                 	}else {
                 		LOGGER.error("Error while establishing connection to controller. Unable to determine seed.");
                 		socket.close();

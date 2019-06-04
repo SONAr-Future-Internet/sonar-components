@@ -1,4 +1,4 @@
-package br.ufu.facom.mehar.sonar.interceptor.packet;
+package br.ufu.facom.mehar.sonar.core.util.packet;
 
 public class PacketParsingException extends Exception {
 

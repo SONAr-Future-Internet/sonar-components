@@ -1,4 +1,4 @@
-package br.ufu.facom.mehar.sonar.interceptor.packet;
+package br.ufu.facom.mehar.sonar.core.util.packet;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

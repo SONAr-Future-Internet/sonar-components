@@ -46,4 +46,6 @@ public class SonarTopics {
 	public static final String TOPIC_DHCP = "sonar.dhcp.*";
 	public static final String TOPIC_DHCP_IP_ASSIGNED = "sonar.topology.port.ipAssigned";
 	public static final String TOPIC_DHCP_MESSAGE_INCOMING = "sonar.dhcp.message-incoming";
+	
+	public static final String TOPIC_OPENFLOW_PACKET_OUT = "sonar.openflow.call.packet-out";
 }
