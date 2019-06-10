@@ -175,7 +175,7 @@ public class OVSDBManager implements DeviceManager{
 	}
 	
 	@Override
-	public void configureFlows(Element element, List<Flow> flows) {
+	public Set<String> configureFlows(Element element, List<Flow> flows) {
 		throw new MethodNotImplementedYetException("Method 'configureFlows' of OVSDBManager not implemented yet!");
 	}
 	

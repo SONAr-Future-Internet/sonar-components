@@ -11,6 +11,7 @@ import com.datastax.driver.core.Session;
 import com.datastax.driver.core.querybuilder.Insert;
 import com.datastax.driver.core.querybuilder.QueryBuilder;
 import com.datastax.driver.core.querybuilder.Select;
+import com.datastax.driver.core.querybuilder.Truncate;
 
 import br.ufu.facom.mehar.sonar.client.ndb.repository.PropertyRepository;
 import br.ufu.facom.mehar.sonar.core.model.property.ConfigurationProperty;
@@ -76,7 +77,7 @@ public class CassandraPropertyRepository extends CassandraGenericRepository impl
 	}
 
 	@Override
-	public Boolean setProperty(ConfigurationProperty property) {
+	public Boolean setConfiguration(ConfigurationProperty property) {
 		Session session = session();
 		try {
 
@@ -91,8 +92,8 @@ public class CassandraPropertyRepository extends CassandraGenericRepository impl
 	}
 
 	@Override
-	public Boolean setProperty(String group, String key, String value) {
-		return this.setProperty(new ConfigurationProperty(group, key, value));
+	public Boolean setConfiguration(String group, String key, String value) {
+		return this.setConfiguration(new ConfigurationProperty(group, key, value));
 	}
 
 	@Override
@@ -204,6 +205,34 @@ public class CassandraPropertyRepository extends CassandraGenericRepository impl
 	@Override
 	public Boolean setData(String application, String instance, String group, String key, String value) {
 		return this.setData(new DataProperty(application, instance, group, key, value));
+	}
+
+	@Override
+	public Boolean deleteDataProperties() {
+		Session session = session();
+		try {
+			Truncate truncate = QueryBuilder.truncate(KEYSPACE, DATA_COLECTION);
+			
+			session.execute(truncate);
+
+			return Boolean.TRUE;
+		} finally {
+			close(session);
+		}
+	}
+
+	@Override
+	public Boolean deleteConfigurationProperties() {
+		Session session = session();
+		try {
+			Truncate truncate = QueryBuilder.truncate(KEYSPACE, CONFIGURATION_COLECTION);
+			
+			session.execute(truncate);
+
+			return Boolean.TRUE;
+		} finally {
+			close(session);
+		}
 	}
 
 }

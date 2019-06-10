@@ -95,8 +95,18 @@ public class ONOSManager implements SDNManager {
 	}
 	
 	@Override
-	public void configureFlows(Element element, List<Flow> flows) {
-		ONOSFlowGroup group = ElementModelTranslator.convertToONOSFlow(element, flows);
+	public Set<String> configureFlows(Element element, List<Flow> flows) {
+		for(Flow flow : flows) {
+			if(flow.getDeviceId() == null) {
+				flow.setDeviceId(element.getOfDeviceId());
+			}
+		}
+		return this.configureFlows(flows, Boolean.TRUE);
+	}
+	
+	@Override
+	public Set<String> configureFlows(List<Flow> flows, Boolean waitFlowCreation) {
+		ONOSFlowGroup group = ElementModelTranslator.convertToONOSFlow(flows);
 		
 		for(String endpointController : configuration.getSDNNorthSeeds()) {
 			try {
@@ -104,7 +114,7 @@ public class ONOSManager implements SDNManager {
 				headers.set("Accept", MediaType.APPLICATION_JSON_VALUE);
 				headers.set("Authorization", "Basic " + Base64.encodeBase64String( configuration.getSdnNorthAuthString().getBytes(StandardCharsets.UTF_8)).trim() );
 				
-				logger.info("Creating flows for element with IP:"+element.getManagementIPAddressList()+"\n"+ObjectUtils.fromObject(group));
+				logger.info("Creating flows! => "+ObjectUtils.fromObject(group));
 				
 				ResponseEntity<ONOSFlowResponse> responseDeviceList = restTemplate.exchange(
 						"http://"+endpointController+"/onos/v1/flows",
@@ -120,52 +130,55 @@ public class ONOSManager implements SDNManager {
 					flowSet.add(flow.getFlowId());
 				}
 				
-				Date startDate = new Date();
-				Set<String> flowPendingSet = new HashSet<String>(flowSet); 
-				do {
-					try {
-						logger.info("Waiting for pending flows... "+flowPendingSet);
-						Thread.sleep(1000);
-					} catch (InterruptedException e) {
-						e.printStackTrace();
-					}
-					
-					flowPendingSet.clear();
-					
-					ResponseEntity<ONOSFlowResponse> responsePending = restTemplate.exchange(
-							"http://"+endpointController+"/onos/v1/flows/"+element.getOfDeviceId(),
-							HttpMethod.GET, new HttpEntity<>(headers),
-							new ParameterizedTypeReference<ONOSFlowResponse>() {
-							});
-			
-					ONOSFlowResponse deviceFlowsFlows = responsePending.getBody();
-					
-					
-					
-					for(ONOSFlowRecord flow : deviceFlowsFlows.getFlows()) {
-						if(flowSet.contains(flow.getId()) && !flow.getState().equalsIgnoreCase("ADDED")) {
-							flowPendingSet.add(flow.getId());
+				if(waitFlowCreation) {
+					Date startDate = new Date();
+					Set<String> flowPendingSet = new HashSet<String>(flowSet); 
+					while(!flowPendingSet.isEmpty()){
+						flowPendingSet.clear();
+						ResponseEntity<ONOSFlowResponse> responsePending = restTemplate.exchange(
+								"http://"+endpointController+"/onos/v1/flows",
+								HttpMethod.GET, new HttpEntity<>(headers),
+								new ParameterizedTypeReference<ONOSFlowResponse>() {
+								});
+				
+						ONOSFlowResponse deviceFlows = responsePending.getBody();
+						
+						
+						for(ONOSFlowRecord flow : deviceFlows.getFlows()) {
+							if(flowSet.contains(flow.getId()) && !flow.getState().equalsIgnoreCase("ADDED")) {
+								flowPendingSet.add(flow.getId());
+							}
+						}
+						
+						if(timeoutReached(startDate, 5*flowSet.size()) && !flowPendingSet.isEmpty()) {
+							throw new DeviceConfigurationTimeoutException("Configuration timeout for pending flows "+flowPendingSet);
+						}else {
+							logger.debug("Current flows:"+ObjectUtils.fromObject(responsePending));
+						}
+						
+						if(!flowPendingSet.isEmpty()) {
+							try {
+								logger.info("Waiting for pending flows... "+flowPendingSet);
+								Thread.sleep(1000);
+							} catch (InterruptedException e) {
+								e.printStackTrace();
+							}
 						}
 					}
-					
-					if(timeoutReached(startDate, 10) && !flowPendingSet.isEmpty()) {
-						throw new DeviceConfigurationTimeoutException("Configuration timeout for pending flows "+flowPendingSet);
-					}else {
-						logger.debug("Current flows:"+ObjectUtils.fromObject(responsePending));
-					}
-				}while(!flowPendingSet.isEmpty());
-				
-				break;
+				}
+
+				return flowSet;
 				
 			} catch(Exception e) {
 				if(! (e instanceof DeviceConfigurationTimeoutException)) {
-					throw new DeviceConfigurationException("Error pushing flows on ONOS Controller with endpoint:"+endpointController+" for element:"+ObjectUtils.toString(element), e);
+					throw new DeviceConfigurationException("Error pushing flows on ONOS Controller with endpoint:"+endpointController, e);
 				}
 				throw e;
 			}
 		}
+		return new HashSet<String>();
 	}
-
+	
 	private boolean timeoutReached(Date startDate, int timeInSecs) {
 		Calendar whenTimeout = new GregorianCalendar();
 		whenTimeout.setTime(startDate);

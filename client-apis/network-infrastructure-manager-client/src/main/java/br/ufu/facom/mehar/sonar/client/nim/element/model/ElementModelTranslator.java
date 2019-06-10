@@ -25,11 +25,11 @@ import br.ufu.facom.mehar.sonar.core.util.IPUtils;
 
 public class ElementModelTranslator {
 
-	public static ONOSFlowGroup convertToONOSFlow(Element element, List<Flow> flows) {
+	public static ONOSFlowGroup convertToONOSFlow(List<Flow> flows) {
 		ONOSFlowGroup flowGroup = new ONOSFlowGroup();
 		List<ONOSFlow> onosFlows = new ArrayList<ONOSFlow>();
 		for (Flow flow : flows) {
-			onosFlows.add(convertToONOSFlow(element, flow));
+			onosFlows.add(convertToONOSFlow(flow));
 		}
 
 		flowGroup.setFlows(onosFlows);
@@ -37,12 +37,12 @@ public class ElementModelTranslator {
 		return flowGroup;
 	}
 
-	private static ONOSFlow convertToONOSFlow(Element element, Flow flow) {
+	private static ONOSFlow convertToONOSFlow(Flow flow) {
 		ONOSFlow onosFlow = new ONOSFlow();
 		onosFlow.setIsPermanent(flow.getIsPermanent());
 		onosFlow.setPriority(flow.getPriority());
 		onosFlow.setTimeout(flow.getTimeout());
-		onosFlow.setDeviceId(element.getOfDeviceId());
+		onosFlow.setDeviceId(flow.getDeviceId());
 		if(flow.getSelectors() != null && !flow.getSelectors().isEmpty()) {
 			onosFlow.setSelector(new ONOSFlowSelector());
 			onosFlow.getSelector().setCriteria(new ArrayList<ONOSFlowSelectorCriteria>());

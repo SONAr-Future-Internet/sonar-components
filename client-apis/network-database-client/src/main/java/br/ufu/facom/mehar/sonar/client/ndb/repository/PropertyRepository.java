@@ -15,8 +15,8 @@ public interface PropertyRepository {
 	public List<ConfigurationProperty> getConfiguration(String group);
 	public ConfigurationProperty getConfiguration(String group, String key);
 	
-	public Boolean setProperty(ConfigurationProperty property);
-	public Boolean setProperty(String group, String key, String value);
+	public Boolean setConfiguration(ConfigurationProperty property);
+	public Boolean setConfiguration(String group, String key, String value);
 	
 	
 	/*
@@ -34,4 +34,7 @@ public interface PropertyRepository {
 	
 	public Boolean setData(DataProperty property);
 	public Boolean setData(String application, String instance, String group, String key, String value);
+	
+	public Boolean deleteDataProperties();
+	public Boolean deleteConfigurationProperties();
 }

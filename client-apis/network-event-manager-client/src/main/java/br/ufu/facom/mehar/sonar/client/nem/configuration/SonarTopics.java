@@ -27,6 +27,22 @@ public class SonarTopics {
 	public static final String TOPIC_TOPOLOGY_LINKS = "sonar.topology.links.*";
 	public static final String TOPIC_TOPOLOGY_LINKS_CHANGED = "sonar.topology.links.changed";
 	
+	public static final String TOPIC_BOOT = "sonar.boot.#";
+	public static final String TOPIC_BOOT_START = "sonar.boot.start.*";
+	public static final String TOPIC_BOOT_FINISH = "sonar.boot.finish.*";
+//	public static final String TOPIC_BOOT_START_DHCP_STAGE = "sonar.boot.start.dhcp-stage";
+//	public static final String TOPIC_BOOT_FINISH_DHCP_STAGE = "sonar.boot.finish.dhcp-stage";
+	public static final String TOPIC_BOOT_START_DISCOVERY_STAGE = "sonar.boot.start.discovery";
+	public static final String TOPIC_BOOT_FINISH_DISCOVERY_STAGE = "sonar.boot.finish.discovery";
+	public static final String TOPIC_BOOT_START_ROUTING_STAGE = "sonar.boot.start.routing";
+	public static final String TOPIC_BOOT_FINISH_ROUTING_STAGE = "sonar.boot.finish.routing";
+//	public static final String TOPIC_BOOT_START_CONTROLLER_CONFIGURATION_STAGE = "sonar.boot.start.controller-configuration";
+//	public static final String TOPIC_BOOT_FINISH_CONTROLLER_CONFIGURATION_STAGE = "sonar.boot.start.controller-configuration";
+//	public static final String TOPIC_BOOT_START_CONTROLLER_CONNECTION_STAGE = "sonar.boot.start.controller-connection";
+//	public static final String TOPIC_BOOT_FINISH_CONTROLLER_CONNECTION_STAGE = "sonar.boot.start.controller-connection";
+	public static final String TOPIC_BOOT_START_CONFIGURATION_STAGE = "sonar.boot.start.configuration";
+	public static final String TOPIC_BOOT_FINISH_CONFIGURATION_STAGE = "sonar.boot.finish.configuration";
+	
 	public static final String TOPIC_METRICS = "sonar.metrics.#";
 	public static final String TOPIC_METRICS_ELEMENT = "sonar.metrics.element.*";
 	public static final String TOPIC_METRICS_ELEMENT_INFO = "sonar.metrics.element.info";
@@ -48,4 +64,8 @@ public class SonarTopics {
 	public static final String TOPIC_DHCP_MESSAGE_INCOMING = "sonar.dhcp.message-incoming";
 	
 	public static final String TOPIC_OPENFLOW_PACKET_OUT = "sonar.openflow.call.packet-out";
+	
+	public static final String TOPIC_SCE_CALL_BOOT = "sonar.sce.call.boot";
+	public static final String TOPIC_SCE_CALLBACK_BOOT = "sonar.sce.callback.boot";
+	
 }

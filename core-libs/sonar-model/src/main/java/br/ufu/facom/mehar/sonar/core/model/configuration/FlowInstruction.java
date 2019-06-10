@@ -1,12 +1,14 @@
 package br.ufu.facom.mehar.sonar.core.model.configuration;
 
+import java.util.UUID;
+
 public class FlowInstruction {
 	private FlowInstructionType type;
 	
 	private String value;
 	
+	private UUID refValue;
 	
-
 	public FlowInstruction() {
 		super();
 	}
@@ -19,6 +21,11 @@ public class FlowInstruction {
 	public FlowInstruction(FlowInstructionType type, String value) {
 		this(type);
 		this.value = value;
+	}
+
+	public FlowInstruction(FlowInstructionType type, String value, UUID refValue) {
+		this(type,value);
+		this.refValue = refValue;
 	}
 
 	public FlowInstructionType getType() {
@@ -35,5 +42,13 @@ public class FlowInstruction {
 
 	public void setValue(String value) {
 		this.value = value;
+	}
+
+	public UUID getRefValue() {
+		return refValue;
+	}
+
+	public void setRefValue(UUID refValue) {
+		this.refValue = refValue;
 	}
 }

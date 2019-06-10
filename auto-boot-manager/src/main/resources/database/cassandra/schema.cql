@@ -29,7 +29,8 @@ CREATE TABLE IF NOT EXISTS topology.element (
 	product TEXT,
 	software TEXT,
 	state TEXT,
-	discoveryFailureCount INT );
+	discoveryFailureCount INT,
+	topologyLevel INT );
 CREATE TABLE IF NOT EXISTS topology.port ( 
 	idPort UUID PRIMARY KEY,
 	idElement UUID,

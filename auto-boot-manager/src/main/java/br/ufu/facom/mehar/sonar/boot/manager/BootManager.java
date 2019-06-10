@@ -101,10 +101,10 @@ public class BootManager {
 			Properties propertiesHost = generateProperties(bindInterfaceAddress, ndb, nem, sdn, Boolean.TRUE);
 	
 			// Verify and Run DHCP
-//			if (DHCP_ENABLED) {
-//				checkAndRunSingletonComponent(Component.DHCPServer, propertiesHost);
-//			}
-//	
+			if (DHCP_ENABLED) {
+				checkAndRunSingletonComponent(Component.DHCPServer, propertiesHost);
+			}
+	
 //			checkAndRunSingletonComponent(Component.TopologySelfCollectorEntity, propertiesBridge);
 //			checkAndRunSingletonComponent(Component.SelfConfigurationEntity, propertiesBridge);
 		

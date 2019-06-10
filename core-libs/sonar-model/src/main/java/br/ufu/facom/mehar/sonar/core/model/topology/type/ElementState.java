@@ -48,8 +48,12 @@ public enum ElementState {
 	}
 	
 	
+//	public Boolean isInitialState() {
+//		return this.equals(IP_ASSIGNED_BY_DHCP) || this.equals(REFERRED_BY_CONTROLLER) || this.equals(CONNECTED_TO_TOPOLOGY);
+//	}
+	
 	public Boolean isInitialState() {
-		return this.equals(IP_ASSIGNED_BY_DHCP) || this.equals(REFERRED_BY_CONTROLLER) || this.equals(CONNECTED_TO_TOPOLOGY);
+		return this.equals(CONNECTED_TO_TOPOLOGY);
 	}
 	
 	public Boolean isFinalState(ElementType type) {

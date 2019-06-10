@@ -33,6 +33,7 @@ public class Element {
 	private String lastDicoveredSource; // from?
 	private String lastDicoveredMethod; // how?
 	private Integer discoveryFailureCount; //failed attempts in a row
+	private Integer topologyLevel; //failed attempts in a row
 	
 	// SDN Fields
 	private Set<String> ofControllers;
@@ -254,6 +255,14 @@ public class Element {
 		if(this.discoveryFailureCount < Integer.MAX_VALUE) {
 			this.discoveryFailureCount++;
 		}
+	}
+	
+	public Integer getTopologyLevel() {
+		return this.topologyLevel;
+	}
+
+	public void setTopologyLevel(Integer topologyLevel) {
+		this.topologyLevel = topologyLevel;
 	}
 	
 	@Override

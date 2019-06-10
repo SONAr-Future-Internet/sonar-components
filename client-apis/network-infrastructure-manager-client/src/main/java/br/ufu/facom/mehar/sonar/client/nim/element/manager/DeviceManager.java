@@ -10,6 +10,6 @@ public interface DeviceManager extends ElementManager {
 
 	void configureController(Element element, String[] controllerTargets);
 
-	void configureFlows(Element element, List<Flow> flows);
+	Set<String> configureFlows(Element element, List<Flow> flows);
 
 }

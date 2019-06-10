@@ -35,6 +35,7 @@ import br.ufu.facom.mehar.sonar.organizing.configuration.algorithm.model.Edge;
 import br.ufu.facom.mehar.sonar.organizing.configuration.algorithm.model.Graph;
 import br.ufu.facom.mehar.sonar.organizing.configuration.algorithm.model.Node;
 import br.ufu.facom.mehar.sonar.organizing.configuration.algorithm.model.Path;
+import br.ufu.facom.mehar.sonar.organizing.configuration.algorithm.model.SimpleGraph;
 
 @Service
 public class ControlConfigurationService {
@@ -46,24 +47,202 @@ public class ControlConfigurationService {
 
 	@Autowired
 	private TopologyService topologyService;
+	
+	public Graph<Element, Port> buildGraph(Set<Element> elementList) {
+		Map<UUID, Port> mapPort = new HashMap<UUID, Port>();
+		Map<UUID, Element> mapElement = new HashMap<UUID, Element>();
+		for(Element element : elementList) {
+			mapElement.put(element.getIdElement(), element);
+			for(Port port : element.getPortList()) {
+				mapPort.put(port.getIdPort(), port);
+			}
+		}
+
+		Graph<Element, Port> graph = new Graph<Element, Port>();
+		for(Element element : elementList) {
+			for(Port port : element.getPortList()) {
+				if(port.getRemoteIdPort() != null) {
+					Port remotePort = mapPort.get(port.getRemoteIdPort());
+					if(remotePort != null) {
+						Element remoteElement = mapElement.get(remotePort.getIdElement());
+						if(remoteElement != null) {
+							graph.addLink(element, remoteElement, new Pair<Port, Port>(port, remotePort));
+						}else {
+							logger.error("Unknown remote element!");
+						}
+					}else {
+						logger.error("Unknown remote port!");
+					}
+				}
+			}
+		}
+		return graph;
+	}
+	
+	public Set<Element> findServerRoots(Set<Element> elementSet) {
+		Set<Element> servers = new HashSet<Element>();
+		for(Element element : elementSet) {
+			if(ElementType.SERVER.equals(element.getTypeElement())){
+				servers.add(element);
+			}
+		}
+		return servers;
+	}
+	
+	public Path<Element, Port> calculateBestMultiPath(Element root, Graph<Element, Port> graph){
+		return Dijkstra.calculateShortestPathFromSource(graph, root);
+	}
+	
+	public SimpleGraph<Element> buildDependencyGraph(Path<Element, Port> multiPath) {
+		SimpleGraph<Element> dependencyGraph = new SimpleGraph<Element>();
+		for(Node<Element> node : multiPath.getPathMap().keySet()) {
+			List<Pair<Node<Element>, Edge<Port>>> path = multiPath.getPath(node);
+			Element previous = node.getValue();
+			for(Pair<Node<Element>, Edge<Port>> segment : path) {
+				Element current = segment.getFirst().getValue();
+				if(!current.equals(multiPath.getOrigin().getValue())) {
+					dependencyGraph.addLink(current,previous);
+				}else {
+					if(path.size() == 1) {
+						dependencyGraph.addNode(node);
+					}
+				}
+			}
+		}
+		
+//		print(dependencyGraph);
+		return dependencyGraph;
+	}
+
+	public Map<Element, List<Configuration>> generateConfiguration(Path<Element, Port> multiPath) {
+		Map<Element, List<Configuration>> configurationMap = new HashMap<Element, List<Configuration>>();
+		
+		System.out.println();
+		
+		for(Node<Element> node : multiPath.getPathMap().keySet()) {
+			List<Pair<Node<Element>, Edge<Port>>> path = multiPath.getPath(node);
+			Element element = node.getValue();
+//			Pair<Node<Element>, Edge<Port>> previousSegment = null;
+			for(int i=0; i<path.size(); i++) {
+				Pair<Node<Element>, Edge<Port>> segment = path.get(i);
+				Element neighbor = segment.getFirst().getValue();
+				if (!neighbor.equals(multiPath.getOrigin().getValue())) {
+					Port portFromNeighborToElement = segment.getSecond().getPeerA();
+					List<Configuration> configurationList = buildDeviceRouteConfiguration(neighbor, portFromNeighborToElement,element.getManagementIPAddressList());
+					if(configurationMap.containsKey(neighbor)) {
+						configurationMap.get(neighbor).addAll(configurationList);
+					}else {
+						configurationMap.put(neighbor, configurationList);
+					}
+				}
+				
+				if(i == path.size() -1) {//last segment of path...
+					Port portToRoot = segment.getSecond().getPeerB();
+					List<Configuration> configurationList = buildDeviceRouteConfiguration(element, portToRoot, multiPath.getOrigin().getValue().getManagementIPAddressList());
+					configurationList.addAll(buildBasicDeviceConfiguration(element, portToRoot, Arrays.asList(multiPath.getOrigin().getValue())));
+					if(configurationMap.containsKey(element)) {
+						configurationMap.get(element).addAll(configurationList);
+					}else {
+						configurationMap.put(element, configurationList);
+					}
+				}
+				
+			}
+		}
+		
+//		print(configurationMap);
+//		
+		validate(configurationMap);
+		
+		return configurationMap;
+	}
+
+	private void validate(Map<Element, List<Configuration>> configurationMap) {
+		Map<UUID,Port> mapPort = new HashMap<UUID, Port>();
+		Map<UUID,Element> mapDev = new HashMap<UUID, Element>();
+		
+		for(Element element : configurationMap.keySet()) {
+			mapDev.put(element.getIdElement(), element);
+			for(Port port : element.getPortList()) {
+				mapPort.put(port.getIdPort(), port);
+			}
+		}
+		
+		for(Element element : configurationMap.keySet()) {
+			for(Configuration configuration : configurationMap.get(element)) {
+				if(configuration.getFlow() != null) {
+					Flow flow = configuration.getFlow();
+					for(FlowInstruction instruction : flow.getInstructions()) {
+						if(instruction.getRefValue() != null) {
+							Port port = mapPort.get(instruction.getRefValue());
+							if(!port.getIdElement().equals(element.getIdElement())) {
+								logger.error("Error!!! Flow with incorrect reference! "+element.getName()+" => "+configuration.getIdentification());
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	public SimpleGraph<Element> mergeGraph(SimpleGraph<Element> mergeToGraph, SimpleGraph<Element> mergeFromGraph) {
+		return mergeToGraph.merge(mergeFromGraph);
+	}
+	
+	public Map<Element, List<Configuration>> mergeConfiguration( Map<Element, List<Configuration>> mergeToConfiguration, Map<Element, List<Configuration>> mergeFromConfiguration) {
+		for(Element element : mergeFromConfiguration.keySet()) {
+			if(mergeToConfiguration.containsKey(element)) {
+				Set<String> configurationIdentificationSet = new HashSet<String>();
+				for(Configuration configuration : mergeToConfiguration.get(element)) {
+					configurationIdentificationSet.add(configuration.getIdentification());
+				}
+				
+				for(Configuration configuration : mergeFromConfiguration.get(element)) {
+					if(!configurationIdentificationSet.contains(configuration.getIdentification())) {
+						mergeToConfiguration.get(element).add(configuration);
+					}
+				}
+			}else {
+				mergeToConfiguration.put(element, mergeFromConfiguration.get(element));
+			}
+		}
+		return mergeToConfiguration;
+	}
+	
+	public SimpleGraph<Element> print(SimpleGraph<Element> dependencyGraph) {
+		System.out.println("\nDependency Graph");
+		for(Node<Element> node : dependencyGraph.getNodes()) {
+			StringBuilder sb = new StringBuilder();
+			sb.append(node.getValue().getName()+" => ");
+			for(Node<Element> neighbor : dependencyGraph.getAdjacences(node)) {
+				sb.append(neighbor.getValue().getName()+" ");
+			}
+			System.out.println(sb.toString());
+		}
+		System.out.println();
+		
+		return dependencyGraph;
+	}
+	
+	public Map<Element, List<Configuration>> print(Map<Element, List<Configuration>> configurationMap) {
+		for(Element element : configurationMap.keySet()) {
+			StringBuilder sb = new StringBuilder();
+			sb.append("["+element.getName()+"]\n");
+			for(Configuration configuration : configurationMap.get(element)) {
+				sb.append(configuration.getIdentification()+"\n");
+			}
+			System.out.println(sb.toString()+"\n");
+		}
+		
+		return configurationMap;
+	}
 
 	public List<Configuration> getConfigurationForDevice(Element device){
 		return this.getConfigurationForDevice(device, Boolean.FALSE);
 	}
 	
 	public List<Configuration> getConfigurationForDevice(Element device, Boolean forceRecalculation){
-		//Look for configuration pre-computed
-//		if(!forceRecalculation) {
-//			List<Configuration> deviceConfiguration = configurationService
-//						.getControlConfigurationByIdElement(device.getIdElement());
-//				if (!deviceConfiguration.isEmpty() && !hasScenarioChangedSinceConfiguration(deviceConfiguration)) {
-//					return deviceConfiguration;
-//				}
-//		}
-		
-		//Calculate new configuration
 		List<Configuration> controlConfiguration = calculateControlConfiguration(device, Boolean.FALSE);
-//		configurationService.saveOrReplaceControlConfiguration(controlConfiguration);
 		List<Configuration> deviceConfiguration = new ArrayList<Configuration>();
 		for(Configuration configuration : controlConfiguration) {
 			if(configuration.getIdElement().equals(device.getIdElement())) {
@@ -73,44 +252,6 @@ public class ControlConfigurationService {
 		return deviceConfiguration;
 	}
 	
-	public List<Configuration> getBasicDeviceConfiguration(Element element) {
-		List<Configuration> configurationList = getConfigurationForDevice(element);
-		if(configurationList != null) {
-			return configurationList;
-		}
-		
-		List<Element> serverList = new ArrayList<Element>(); 
-		for (Element e : topologyService.getElements()) {
-			if (ElementType.SERVER.equals(e)) {
-				serverList.add(element);
-			}
-		}
-		
-		//Basic Device Configuration
-		configurationList = buildBasicDeviceConfiguration(element, serverList);
-		
-		return configurationList;
-	}
-	
-	public List<Configuration> getGenericRouteConfiguration(Element element){
-		return new ArrayList<Configuration>(Arrays.asList(
-			buildFlowConfigurationTemplate(element,
-				"Route "+element.getManagementIPAddressList().iterator().next()+"-> any host on 192.168.0.0/24 with learning-switch", 
-				new Flow(
-					Arrays.asList(
-							new FlowSelector(FlowSelectorType.ETH_TYPE, "0x0800"), 
-							new FlowSelector(FlowSelectorType.IPV4_DST, "192.168.0.0/24")
-						), 
-						Arrays.asList(
-							new FlowInstruction(FlowInstructionType.NORMAL)
-						)
-					)
-				)
-			)
-		);
-	}
-	
-
 	public Map<Element, List<Configuration>> getRouteConfigurationToAccessAnElement(Element element) {
 		//Calculate new configuration
 		List<Configuration> controlConfiguration = calculateControlConfiguration(element, Boolean.TRUE);
@@ -204,6 +345,9 @@ public class ControlConfigurationService {
 										// COnfigure route to server 
 										if(portConnectedToServer.getOfPort() != null) {
 											configuration.addAll(buildDeviceRouteConfiguration(element, portConnectedToServer, server.getManagementIPAddressList()));
+											if(!justRoutes) {
+												configuration.addAll(buildBasicDeviceConfiguration(element, portConnectedToServer, serverList));
+											}
 										}else {
 											logger.warn("Unable to use port to server. It doesn't have ofPortId."+portConnectedToServer);
 										}
@@ -226,21 +370,6 @@ public class ControlConfigurationService {
 			}
 		}
 
-		/**
-		 * Generate basic configuration for each device
-		 */
-		if(elementTarget == null) {
-			for (Element element : deviceList) {
-				if(element.getOfDeviceId() != null) {
-					configuration.addAll(buildBasicDeviceConfiguration(element, serverList));
-				}
-			}
-		}else {
-			if(elementTarget.getOfDeviceId() != null && !justRoutes) {
-				configuration.addAll(buildBasicDeviceConfiguration(elementTarget, serverList));
-			}
-		}
-		
 		return configuration;
 	}
 	
@@ -250,13 +379,13 @@ public class ControlConfigurationService {
 		for(String nextHopIp : managementIPAddressList) {
 			configurationList.add(buildFlowConfigurationTemplate(element,
 				"Route "+element.getManagementIPAddressList().iterator().next()+"->"+nextHopIp+" through "+port.getPortName(), 
-				new Flow(
+				new Flow(element.getOfDeviceId(), element.getIdElement(),
 					Arrays.asList(
 							new FlowSelector(FlowSelectorType.ETH_TYPE, "0x0800"), 
 							new FlowSelector(FlowSelectorType.IPV4_DST, nextHopIp+"/32")
 						), 
 						Arrays.asList(
-							new FlowInstruction(FlowInstructionType.OUTPUT, port.getOfPort() != null? port.getOfPort(): port.getPortName())
+							new FlowInstruction(FlowInstructionType.OUTPUT, port.getOfPort(), port.getIdPort())
 						)
 					)
 				)
@@ -266,23 +395,25 @@ public class ControlConfigurationService {
 		return configurationList;
 	}
 
-	private List<Configuration> buildBasicDeviceConfiguration(Element element, List<Element> serverList) {
+	private List<Configuration> buildBasicDeviceConfiguration(Element element, Port portToServer, List<Element> serverList) {
 		List<Configuration> configurationList = new ArrayList<Configuration>();
 		
 		// ARP Flow
 		configurationList.add(buildFlowConfigurationTemplate(element, "ARP Flow",
-				new Flow(new FlowSelector(FlowSelectorType.ETH_TYPE, "0x0806"),
+				new Flow(element.getOfDeviceId(), element.getIdElement(),
+						new FlowSelector(FlowSelectorType.ETH_TYPE, "0x0806"),
 						new FlowInstruction(FlowInstructionType.NORMAL))));
 		
 		//LLDP
 		configurationList.add(buildFlowConfigurationTemplate(element, "LLDP Flow",
-				new Flow(new FlowSelector(FlowSelectorType.ETH_TYPE, "0x88CC"),
+				new Flow(element.getOfDeviceId(), element.getIdElement(),
+						new FlowSelector(FlowSelectorType.ETH_TYPE, "0x88CC"),
 						new FlowInstruction(FlowInstructionType.NORMAL))));
 		
 		//Local Processing
 		for(String address : element.getManagementIPAddressList()) {
 			configurationList.add(buildFlowConfigurationTemplate(element, "Local Processing",
-				new Flow(
+				new Flow(element.getOfDeviceId(), element.getIdElement(),
 					Arrays.asList(
 						new FlowSelector(FlowSelectorType.ETH_TYPE, "0x0800"), 
 						new FlowSelector(FlowSelectorType.IPV4_DST, address+"/32")
@@ -295,8 +426,8 @@ public class ControlConfigurationService {
 		}
 		
 		//DHCP Routes
-		configurationList.add(buildFlowConfigurationTemplate(element, "DHCP Broadcast (->)",
-			new Flow(
+		configurationList.add(buildFlowConfigurationTemplate(element, "DHCP Broadcast (->) " + portToServer.getPortName(),
+			new Flow(element.getOfDeviceId(), element.getIdElement(),
 				Arrays.asList(
 						new FlowSelector(FlowSelectorType.ETH_TYPE, "0x0800"), 
 						new FlowSelector(FlowSelectorType.IPV4_DST, "255.255.255.255/32"),
@@ -304,7 +435,7 @@ public class ControlConfigurationService {
 						new FlowSelector(FlowSelectorType.UDP_DST, "67") 
 				), 
 				Arrays.asList(
-					new FlowInstruction(FlowInstructionType.OUTPUT, "1")
+					new FlowInstruction(FlowInstructionType.OUTPUT, portToServer.getOfPort(), portToServer.getIdPort())
 				)
 			)
 		));
@@ -312,7 +443,7 @@ public class ControlConfigurationService {
 		for(Element server : serverList) {
 			for(String ipServer : server.getManagementIPAddressList()) {
 				configurationList.add(buildFlowConfigurationTemplate(element, "DHCP Broadcast (<-)", //TODO Loop Avoidance 
-					new Flow(
+					new Flow(element.getOfDeviceId(), element.getIdElement(),
 						Arrays.asList(
 								new FlowSelector(FlowSelectorType.ETH_TYPE, "0x0800"), 
 								new FlowSelector(FlowSelectorType.IPV4_SRC, ipServer+"/32"),
@@ -343,7 +474,7 @@ public class ControlConfigurationService {
 	}
 	
 	public static void main(String[] args) {
-		Flow flow = new Flow(
+		Flow flow = new Flow("of:00001a5a2332f14b",
 				Arrays.asList(
 						new FlowSelector(FlowSelectorType.ETH_TYPE, "0x0800"), 
 						new FlowSelector(FlowSelectorType.IPV4_DST, "255.255.255.255/32"),
@@ -354,12 +485,26 @@ public class ControlConfigurationService {
 					new FlowInstruction(FlowInstructionType.CONTROLLER)
 				)
 			);
+		flow.setDeviceId("of:00001a5a2332f14b");
 		
-		Element element = new Element();
-		element.setTypeElement(ElementType.DEVICE);
-		element.setManagementIPAddressList(new HashSet<String>(Arrays.asList("192.168.0.2")));
-		element.setOfDeviceId("of:00001a5a2332f14b");
-		
-		System.out.println(ObjectUtils.fromObject(ElementModelTranslator.convertToONOSFlow(element, Arrays.asList(flow))));
+		System.out.println(ObjectUtils.fromObject(ElementModelTranslator.convertToONOSFlow(Arrays.asList(flow))));
+	}
+	
+	public List<Configuration> getGenericRouteConfiguration(Element element){
+		return new ArrayList<Configuration>(Arrays.asList(
+			buildFlowConfigurationTemplate(element,
+				"Route "+element.getManagementIPAddressList().iterator().next()+"-> any host on 192.168.0.0/24 with learning-switch", 
+				new Flow(element.getOfDeviceId(), element.getIdElement(),
+					Arrays.asList(
+							new FlowSelector(FlowSelectorType.ETH_TYPE, "0x0800"), 
+							new FlowSelector(FlowSelectorType.IPV4_DST, "192.168.0.0/24")
+						), 
+						Arrays.asList(
+							new FlowInstruction(FlowInstructionType.NORMAL)
+						)
+					)
+				)
+			)
+		);
 	}
 }

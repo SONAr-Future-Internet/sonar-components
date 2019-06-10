@@ -28,11 +28,11 @@ public class PropertyService {
 	}
 
 	public Boolean setProperty(ConfigurationProperty property) {
-		return propertyRepository.setProperty(property);
+		return propertyRepository.setConfiguration(property);
 	}
 
 	public Boolean setProperty(String group, String key, String value) {
-		return propertyRepository.setProperty(group, key, value);
+		return propertyRepository.setConfiguration(group, key, value);
 	}
 
 	public List<DataProperty> getData() {
@@ -63,4 +63,11 @@ public class PropertyService {
 		return propertyRepository.setData(application, instance, group, key, value);
 	}
 
+	public Boolean deleteDataProperties() {
+		return propertyRepository.deleteDataProperties();
+	}
+	
+	public Boolean deleteConfigurationProperties() {
+		return propertyRepository.deleteConfigurationProperties();
+	}
 }

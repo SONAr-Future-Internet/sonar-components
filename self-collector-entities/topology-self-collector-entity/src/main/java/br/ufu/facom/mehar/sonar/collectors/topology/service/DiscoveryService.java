@@ -14,6 +14,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.Stack;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -31,6 +32,7 @@ import br.ufu.facom.mehar.sonar.client.nem.action.NetworkEventAction;
 import br.ufu.facom.mehar.sonar.client.nem.configuration.SonarTopics;
 import br.ufu.facom.mehar.sonar.client.nem.service.EventService;
 import br.ufu.facom.mehar.sonar.client.nim.element.service.ElementService;
+import br.ufu.facom.mehar.sonar.core.model.topology.Domain;
 import br.ufu.facom.mehar.sonar.core.model.topology.Element;
 import br.ufu.facom.mehar.sonar.core.model.topology.Link;
 import br.ufu.facom.mehar.sonar.core.model.topology.Port;
@@ -92,11 +94,17 @@ public class DiscoveryService {
 	private static final String SOURCE_SNMP = "SNMP";
 	private static final String SOURCE_DHCP = "DHCP";
 	
-	private final String TRAFFIC_LIGHT_GREEN="GREEN";
-	private final String TRAFFIC_LIGHT_RED="RED";
-	private volatile String traffic_light = TRAFFIC_LIGHT_GREEN;
+	private final String DISCOVERY_STATE_RUNNING="GREEN";
+	private final String DISCOVERING_STATE_STOPPED="RED";
+	private volatile String discovery_state = DISCOVERY_STATE_RUNNING;
 
 
+	private final String NETWORK_STATE_BOOTING = "BOOTING";
+	private final String NETWORK_STATE_RUNNING = "RUNNING";
+	private volatile String network_state = NETWORK_STATE_BOOTING;
+	
+	private Map<String,String> dhcpMap = new HashMap<String, String>();
+	private Date lastDHCPNotification;
 	/**
 	 * Schedulers and Listerners
 	 */
@@ -106,105 +114,110 @@ public class DiscoveryService {
 		eventService.subscribe(SonarTopics.TOPIC_DHCP_IP_ASSIGNED, new NetworkEventAction() {
 			@Override
 			public void handle(String event, String json) {
-				synchronized (parent) {
-					Port portEvent = ObjectUtils.toObject(json, Port.class);
-					String ip = portEvent.getIpAddress();
-					String mac = IPUtils.normalizeMAC(portEvent.getMacAddress());
-	
-					// find element and port using mac
-					Pair<Element, Port> pairByMac = topologyService.getElementAndPortByPortMacAddress(mac);
-					Element elementByMac = null;
-					Port portByMac = null;
-					if (pairByMac != null) {
-						elementByMac = pairByMac.getFirst();
-						portByMac = pairByMac.getSecond();
-					}
-	
-					// find element and port using ip
-					Pair<Element, Port> pairByIp = topologyService.getElementAndPortByPortIPAddress(ip);
-					Element elementByIP = null;
-					Port portByIP = null;
-					if (pairByIp != null) {
-						elementByIP = pairByIp.getFirst();
-						portByIP = pairByIp.getSecond();
-					}
-	
-					// if new element (not found element with ip or mac)
-					if (elementByIP == null && elementByMac == null) {
-						
-						// create basic representation of element
-						Element element = buildBasicElementByIpAndMac(ip, mac, Boolean.TRUE);
-						element.setState(ElementState.IP_ASSIGNED_BY_DHCP);
-						
-						// set discovery fields
-						setDiscoveryFields(element, new Date(), getInstanceDiscovery(), METHOD_IP_ASSIGN, SOURCE_DHCP);
-						
-						// save element
-						Element elementUpdated = saveCascade(element);
-						
-						// send saved state event (initial state before finding the element in topology)
-						eventService.publish(SonarTopics.TOPIC_TOPOLOGY_ELEMENT_CHANGED_STATE_IP_ASSIGNED_BY_DHCP, elementUpdated);
-	
-						// try to discovery it (it may be not accessible)
-						discover(ip, METHOD_IP_ASSIGN);
-					} else {
-						// element found with ip and mac at same time...
-						if (elementByIP != null && elementByMac != null) {
-	
-							// and they are equals
-							if (elementByMac.equals(elementByIP)) {
-								// this is a reassignment of ip, so:
-								// do nothing! Just wait for the normal discovery schedule.
-							} else {
-								// but they are not equals... we found a conflict!
-	
-								// remove ip on element found with the same ip
-								elementByIP.getManagementIPAddressList().remove(ip);
-								portByIP.setIpAddress(ip);
-	
-								// remove old ip (if exists) configured on the port with the same mac
-								if (portByMac.getIpAddress() != null) {
-									if (elementByMac.getManagementIPAddressList() != null) {
-										elementByMac.getManagementIPAddressList().remove(portByMac.getIpAddress());
-									}
-								}
-	
-								// set ip on port with related mac
-								if (elementByMac.getManagementIPAddressList() == null) {
-									elementByMac.setManagementIPAddressList(new HashSet<String>());
-								}
-								elementByMac.getManagementIPAddressList().add(ip);
-								portByMac.setIpAddress(ip);
-	
-								// update both element with ip and element with mac (and also the related ports)
-								update(elementByIP);
-								update(elementByMac);
-								update(portByIP);
-								update(portByMac);
-							}
+				Port portEvent = ObjectUtils.toObject(json, Port.class);
+				String ip = portEvent.getIpAddress();
+				String mac = IPUtils.normalizeMAC(portEvent.getMacAddress());
+				
+				dhcpMap.put(mac,ip);
+				lastDHCPNotification = new Date();
+					
+				if(NETWORK_STATE_RUNNING.equals(network_state)) {	
+					synchronized (parent) {
+						// find element and port using mac
+						Pair<Element, Port> pairByMac = topologyService.getElementAndPortByPortMacAddress(mac);
+						Element elementByMac = null;
+						Port portByMac = null;
+						if (pairByMac != null) {
+							elementByMac = pairByMac.getFirst();
+							portByMac = pairByMac.getSecond();
+						}
+		
+						// find element and port using ip
+						Pair<Element, Port> pairByIp = topologyService.getElementAndPortByPortIPAddress(ip);
+						Element elementByIP = null;
+						Port portByIP = null;
+						if (pairByIp != null) {
+							elementByIP = pairByIp.getFirst();
+							portByIP = pairByIp.getSecond();
+						}
+		
+						// if new element (not found element with ip or mac)
+						if (elementByIP == null && elementByMac == null) {
+							
+							// create basic representation of element
+							Element element = buildBasicElementByIpAndMac(ip, mac, Boolean.TRUE);
+							element.setState(ElementState.IP_ASSIGNED_BY_DHCP);
+							
+							// set discovery fields
+							setDiscoveryFields(element, new Date(), getInstanceDiscovery(), METHOD_IP_ASSIGN, SOURCE_DHCP);
+							
+							// save element
+							Element elementUpdated = saveCascade(element);
+							
+							// send saved state event (initial state before finding the element in topology)
+							eventService.publish(SonarTopics.TOPIC_TOPOLOGY_ELEMENT_CHANGED_STATE_IP_ASSIGNED_BY_DHCP, elementUpdated);
+		
+							// try to discovery it (it may be not accessible)
+							discover(ip, METHOD_IP_ASSIGN);
 						} else {
-							// if an element was found with the mac but not with ip (already created
-							// element)
-							if (elementByMac != null && elementByIP == null) {
-	
-								// remove old ip (if exists) configured on the port with the same mac
-								if (portByMac.getIpAddress() != null) {
-									if (elementByMac.getManagementIPAddressList() != null) {
-										elementByMac.getManagementIPAddressList().remove(portByMac.getIpAddress());
+							// element found with ip and mac at same time...
+							if (elementByIP != null && elementByMac != null) {
+		
+								// and they are equals
+								if (elementByMac.equals(elementByIP)) {
+									// this is a reassignment of ip, so:
+									// do nothing! Just wait for the normal discovery schedule.
+								} else {
+									// but they are not equals... we found a conflict!
+		
+									// remove ip on element found with the same ip
+									elementByIP.getManagementIPAddressList().remove(ip);
+									portByIP.setIpAddress(ip);
+		
+									// remove old ip (if exists) configured on the port with the same mac
+									if (portByMac.getIpAddress() != null) {
+										if (elementByMac.getManagementIPAddressList() != null) {
+											elementByMac.getManagementIPAddressList().remove(portByMac.getIpAddress());
+										}
 									}
+		
+									// set ip on port with related mac
+									if (elementByMac.getManagementIPAddressList() == null) {
+										elementByMac.setManagementIPAddressList(new HashSet<String>());
+									}
+									elementByMac.getManagementIPAddressList().add(ip);
+									portByMac.setIpAddress(ip);
+		
+									// update both element with ip and element with mac (and also the related ports)
+									update(elementByIP);
+									update(elementByMac);
+									update(portByIP);
+									update(portByMac);
 								}
-	
-								// set ip on port with related mac
-								if (elementByMac.getManagementIPAddressList() == null) {
-									elementByMac.setManagementIPAddressList(new HashSet<String>());
-								}
-								elementByMac.getManagementIPAddressList().add(ip);
-								portByMac.setIpAddress(ip);
-	
-								// Update (but not discovery)
-								update(elementByMac);
-								update(portByMac);
-							} 
+							} else {
+								// if an element was found with the mac but not with ip (already created
+								// element)
+								if (elementByMac != null && elementByIP == null) {
+		
+									// remove old ip (if exists) configured on the port with the same mac
+									if (portByMac.getIpAddress() != null) {
+										if (elementByMac.getManagementIPAddressList() != null) {
+											elementByMac.getManagementIPAddressList().remove(portByMac.getIpAddress());
+										}
+									}
+		
+									// set ip on port with related mac
+									if (elementByMac.getManagementIPAddressList() == null) {
+										elementByMac.setManagementIPAddressList(new HashSet<String>());
+									}
+									elementByMac.getManagementIPAddressList().add(ip);
+									portByMac.setIpAddress(ip);
+		
+									// Update (but not discovery)
+									update(elementByMac);
+									update(portByMac);
+								} 
+							}
 						}
 					}
 				}
@@ -213,42 +226,183 @@ public class DiscoveryService {
 	}
 	
 	@EventListener(ApplicationReadyEvent.class)
-	public void discoveryDFS() throws InterruptedException {
-		synchronized (this) {
-			logger.debug("First discovery using 'Initial' with local server as root...");
-
-			discover(serverLocalIpAddress, METHOD_INITIAL);
+	public void boot() throws InterruptedException {
+		synchronized (this) {	
+			eventService.publish(SonarTopics.TOPIC_BOOT_START_DISCOVERY_STAGE, "");
+			Collection<Element> discoveredElements = bootDiscovery();
+			while(discoveredElements.size() <= 2) {
+				Thread.sleep(500);
+				eventService.publish(SonarTopics.TOPIC_BOOT_START_DISCOVERY_STAGE, "");
+				discoveredElements = bootDiscovery();
+//				System.out.println("Discovered "+discoveredElements.size());
+//				for(Element element : discoveredElements) {
+//					System.out.println(element.getName());
+//				}
+			}
+			eventService.publish(SonarTopics.TOPIC_BOOT_FINISH_DISCOVERY_STAGE, "");
+			
+			//Call SCE for configure elements and wait for response... or use a scynhronous method API
+			Domain bootDomain = new Domain();
+			bootDomain.setElementList(new HashSet<Element>(discoveredElements));
+			eventService.publish(SonarTopics.TOPIC_SCE_CALL_BOOT,bootDomain );
+			eventService.subscribe(SonarTopics.TOPIC_SCE_CALLBACK_BOOT, new NetworkEventAction() {
+				@Override
+				public void handle(String event, String json) {
+					Domain domain = ObjectUtils.toObject(json,Domain.class);
+					for(Element element : domain.getElementList()) {
+						saveCascade(element);
+						if(element.getTypeElement().equals(ElementType.SERVER)) {
+							eventService.publish(SonarTopics.TOPIC_TOPOLOGY_ELEMENT_CHANGED_STATE_DISCOVERED, element);
+						}else {
+							eventService.publish(SonarTopics.TOPIC_TOPOLOGY_ELEMENT_CHANGED_STATE_CONFIGURED, element);
+						}
+					}
+					network_state = NETWORK_STATE_RUNNING;
+				}
+			});
 		}
 	}
-	
-	@Scheduled(fixedDelayString = "${topology.scoe.discovery.strategy.timeout:2000}", initialDelayString = "${topology.scoe.discovery.strategy.timeout:2000}")
+
+	private Collection<Element> bootDiscovery() {
+		final ExecutorService taskExecutor = Executors.newFixedThreadPool(2);
+		final CountingLatch latch = new CountingLatch(0);
+		final Map<String,Element> discoveredElements = new ConcurrentHashMap<String, Element>();
+		final Map<String,Port> discoveredPorts = new ConcurrentHashMap<String, Port>();
+		final Set<String> ipsDiscovered = Collections.synchronizedSet(new HashSet<String>());
+		final Set<String> ipsFailed = Collections.synchronizedSet(new HashSet<String>());
+		final Stack<String> ipsToDiscovery = new Stack<String>();
+		ipsToDiscovery.add(serverLocalIpAddress);
+		
+		while (latch.getCount() > 0 || !ipsToDiscovery.isEmpty()) {
+			if (!ipsToDiscovery.isEmpty()) {
+
+				// get current IP of stack, countUp the task and add to set of already discovery
+				final String currentIp = ipsToDiscovery.pop();
+				ipsDiscovered.add(currentIp);
+				latch.countUp();
+
+				// run discovery task
+				taskExecutor.submit(new Runnable() {
+					@Override
+					public void run() {
+						try {
+							// discover current ip
+							Element element = elementService.discover(currentIp);
+							if(element == null) {
+								ipsFailed.add(currentIp);
+								return;
+							}
+							
+							// set ID
+							element.setIdElement(UUID.randomUUID());
+							for(Port port : element.getPortList()) {
+								port.setIdElement(element.getIdElement());
+								port.setIdPort(UUID.randomUUID());
+								discoveredPorts.put(port.getMacAddress().trim(), port);
+							}
+							
+							// merge and update element info
+							setDiscoveryFields(element, new Date(), getInstanceDiscovery(), METHOD_INITIAL, SOURCE_SNMP);
+							
+							// set state and type
+							setElementType(element);
+							element.setState(ElementState.DISCOVERED);
+							
+							// set list discovered
+							for(String ip : element.getManagementIPAddressList()) {
+								discoveredElements.put(ip,element);
+								if(!ipsDiscovered.contains(ip)) {
+									ipsDiscovered.add(ip);
+								}
+							}
+
+							// verify neighbors
+							for(Port port : element.getPortList()) {
+								if(port.getRemoteIpAddress() != null) {
+									String remoteIp = port.getRemoteIpAddress();
+									if(!ipsToDiscovery.contains(remoteIp) && !ipsDiscovered.contains(remoteIp) && !remoteIp.startsWith("172.17")) {
+										ipsToDiscovery.add(remoteIp);
+									}
+								}else {
+									if(port.getRemoteMacAddress() != null) {
+										if(dhcpMap.containsKey(port.getRemoteMacAddress())) {
+											String remoteIp = dhcpMap.get(port.getRemoteMacAddress());
+											if(!ipsToDiscovery.contains(remoteIp) && !ipsDiscovered.contains(remoteIp) && !remoteIp.startsWith("172.17")) {
+												ipsToDiscovery.add(remoteIp);
+											}
+											port.setRemoteIpAddress(remoteIp);
+										}
+									}
+								}
+							}
+																
+						} finally {
+							latch.countDown();
+						}
+					}
+				});
+			}
+
+			try {
+				if (ipsToDiscovery.isEmpty() && latch.getCount() > 0) {
+					logger.info("Waiting... " + latch.getCount() + " discovery tasks running and " + ipsToDiscovery.size() + " devices to discovery.");
+					Thread.sleep(100);
+				}
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
+		
+		taskExecutor.shutdown();
+		
+		for(Element element : discoveredElements.values()) {
+			for(Port port : element.getPortList()) {
+				if(port.getRemoteMacAddress() != null) {
+					Port remotePort = discoveredPorts.get(port.getRemoteMacAddress());
+					
+					if(remotePort != null) {
+						logger.info("Link found! "+element.getName()+"("+element.getManagementIPAddressList().iterator().next()+")"+port.getPortName()+"("+port.getMacAddress()+") => ("+port.getRemoteIpAddress()+")::"+remotePort.getPortName()+"("+remotePort.getMacAddress()+")");	
+						port.setRemoteIdPort(remotePort.getIdPort());
+						remotePort.setRemoteIdPort(port.getIdPort());
+					}else {
+						logger.error("Remote MacAddress not found!"+element.getName()+"("+element.getManagementIPAddressList().iterator().next()+")"+"::"+port.getPortName()+"("+port.getMacAddress()+") => "+port.getRemoteMacAddress());
+					}
+				}
+			}
+		}
+
+		if(!ipsFailed.isEmpty()) {
+			logger.info("Some discovery failed... "+ipsFailed);
+			return new ArrayList<Element>();
+		} else {
+			return discoveredElements.values();
+		}
+	}
+
+	@Scheduled(fixedDelayString = "${topology.scoe.discovery.strategy.timeout:2000}", initialDelayString = "${topology.scoe.discovery.strategy.timeout:1000}")
 	public void updateElements() throws InterruptedException {
-		if(TRAFFIC_LIGHT_GREEN.equals(traffic_light)) {
-			synchronized (this) {
+		if(NETWORK_STATE_RUNNING.equals(network_state)) {
+			if(DISCOVERING_STATE_STOPPED.equals(discovery_state)) {
 				final Stack<String> ipsToDiscovery = new Stack<String>();
 				for (Element element : topologyService.getElements()) {
-					if (updateTimeoutReached(element) && canRunDiscovery(element)) {
+					if (shouldDiscoveryImmediately(element) || (canRunDiscovery(element) && isLeafElement(element)) || ( canRunDiscovery(element) && updateTimeoutReached(element))) {
 						logger.info("Element added to discovery "+element.getManagementIPAddressList()+" state:"+element.getState());
 						ipsToDiscovery.add(element.getManagementIPAddressList().iterator().next());
-					}else {
-						if(!updateTimeoutReached(element)) {
-//							System.out.println("No Timeout:"+element);
-						}
-						
-						if(!canRunDiscovery(element)) {
-//							System.out.println("Can't discovery:"+element);
-						}
 					}
 				}
 	
 				if (!ipsToDiscovery.isEmpty()) {
 					discover(ipsToDiscovery, METHOD_TIMEOUT);
 				}
+			}else {
+				logger.info("Waiting last discovery routine...");
 			}
+		}else {
+			logger.info("Waiting network booting...");
 		}
 	}
 	
-	@Scheduled(fixedDelayString = "${topology.scoe.discovery.strategy.controller.interval:5000}")
+	/*@Scheduled(fixedDelayString = "${topology.scoe.discovery.strategy.controller.interval:4000}")
 	public void discoveryControlledDevices() {
 		synchronized (this) {
 			logger.debug("Discovering network elements using 'Controller'...");
@@ -295,6 +449,45 @@ public class DiscoveryService {
 				}
 			}
 		}
+	}*/
+	
+	@Scheduled(fixedDelayString = "${topology.scoe.discovery.strategy.controller.interval:1000}")
+	public void discoveryControlledDevices() {
+		if(NETWORK_STATE_RUNNING.equals(network_state)) {
+			logger.debug("Discovering network elements using 'Controller'...");
+			Collection<Element> elementList = elementService.discover();
+			if(elementList != null && !elementList.isEmpty()) {
+				for(Element element : elementList) {
+					// find persisted element
+					Element persistedElement = null;
+					for(String ipAddress : element.getManagementIPAddressList()) {
+						persistedElement = topologyService.getElementByIPAddress(ipAddress);
+						if(persistedElement != null) {
+							break;
+						}
+					}
+					
+					// if element is persisted
+					if(persistedElement != null) {
+						if(ElementState.WAITING_CONTROLLER_CONNECTION.equals(persistedElement.getState())) {
+							// update element
+							element.setState(ElementState.WAITING_CONFIGURATION);
+							
+							// save element
+							Element elementUpdated = mergeCascade(persistedElement, element, null, Boolean.FALSE);
+							
+							// send saved state event (initial state before finding the element in topology)
+							eventService.publish(SonarTopics.TOPIC_TOPOLOGY_ELEMENT_CHANGED_STATE_WAITING_CONFIGURATION, elementUpdated);
+						}else {
+							if(persistedElement.getOfDeviceId() == null) {
+								// save element
+								mergeCascade(persistedElement, element, null, Boolean.FALSE);
+							}
+						}
+					}
+				}
+			}
+		}
 	}
 
 
@@ -309,8 +502,8 @@ public class DiscoveryService {
 	}
 
 	private void discover(final Stack<String> ipsToDiscovery, final String method) {
-		traffic_light = TRAFFIC_LIGHT_RED;
-		synchronized(this) {
+		discovery_state = DISCOVERING_STATE_STOPPED;
+//		synchronized(this) {
 			try {
 				Set<Link> linksChanged =  Collections.synchronizedSet(new HashSet<Link>());
 				Map<Element, String> stateEventMap = new HashMap<Element, String>();
@@ -339,98 +532,106 @@ public class DiscoveryService {
 				}
 		
 			}finally {
-				traffic_light = TRAFFIC_LIGHT_GREEN;
+				discovery_state = DISCOVERY_STATE_RUNNING;
 			}
-		}
+//		}
 	}
 
 	private void runNeighborhoodProcessing(List<Element> discoveredElements, Set<Link> linksChanged, Map<Element, String> stateEventMap) {
 			//Work with neighbors
 		for(Element discoveredElement : discoveredElements) {
-			// add neighbors considering the method
-			Map<String,String> mapIpAndPortNeigbors = getNeighbors(discoveredElement);
-			for (String ipNeighbor : mapIpAndPortNeigbors.keySet()) {
-				if(!ipNeighbor.startsWith("172.17")) { //TODO Ignoring Docker IP's... review it
-					Element neighborPersisted = getElementByIP(ipNeighbor);
-					
-					Port port = getPortByRemoteIpOrRemoteMac(discoveredElement, ipNeighbor, mapIpAndPortNeigbors.get(ipNeighbor));
-					
-					if (neighborPersisted == null) {
-						// create basic representation of element
-						Element peerElement = buildBasicElementByIpAndMac(ipNeighbor, mapIpAndPortNeigbors.get(ipNeighbor), Boolean.FALSE);
-						peerElement.setState(ElementState.CONNECTED_TO_TOPOLOGY);
+			if(isOnFinalBootState(discoveredElement)) {
+				// add neighbors considering the method
+				Map<String,String> mapIpAndPortNeigbors = getNeighbors(discoveredElement);
+				for (String ipNeighbor : mapIpAndPortNeigbors.keySet()) {
+					if(!ipNeighbor.startsWith("172.17")) { //TODO Ignoring Docker IP's... review it
+						Element neighborPersisted = getElementByIP(ipNeighbor);
 						
-						// add port and set link on peerPort
-						Port peerPort = new Port();
-						peerPort.setMacAddress(mapIpAndPortNeigbors.get(ipNeighbor));
-						peerPort.setRemoteIdPort(port.getIdPort());
-						peerElement.setPortList(new HashSet<Port>(Arrays.asList(peerPort)));
+						Port port = getPortByRemoteIpOrRemoteMac(discoveredElement, ipNeighbor, mapIpAndPortNeigbors.get(ipNeighbor));
 						
-						// save element
-						Element peerElementUpdated = saveCascade(peerElement);
-						peerElement.setIdElement(peerElementUpdated.getIdElement());
-						
-						// set link on port
-						port.setRemoteIdPort(peerPort.getIdPort());
-						update(port);
-						
-						addLinkChange(linksChanged, port, peerPort, LinkEvent.CREATED);
-						
-						// send saved state event (initial state before finding the element in topology)
-						stateEventMap.put(peerElement, SonarTopics.TOPIC_TOPOLOGY_ELEMENT_CHANGED_STATE_CONNECTED_TO_TOPOLOGY);
-					}else {
-						
-						if(neighborPersisted.getPortList() == null || neighborPersisted.getPortList().isEmpty()) {
-							neighborPersisted.setPortList(getPortsByIdElement(neighborPersisted.getIdElement()));
-						}
-						boolean linkChanged = false;
-						
-						Port peerPort = getPortByMac(neighborPersisted, mapIpAndPortNeigbors.get(ipNeighbor));
-						if(peerPort != null) {
-							if(peerPort.getRemoteIdPort() == null || !peerPort.getRemoteIdPort().equals(port.getIdPort())) {
-								peerPort.setRemoteIdPort(port.getIdPort());
-								update(peerPort);
-								linkChanged = true;
-							}
-						}else {
-							peerPort = new Port();
+						if (neighborPersisted == null) {
+							// create basic representation of element
+							Element peerElement = buildBasicElementByIpAndMac(ipNeighbor, mapIpAndPortNeigbors.get(ipNeighbor), Boolean.FALSE);
+							peerElement.setState(ElementState.CONNECTED_TO_TOPOLOGY);
+							
+							// add port and set link on peerPort
+							Port peerPort = new Port();
 							peerPort.setMacAddress(mapIpAndPortNeigbors.get(ipNeighbor));
-							peerPort.setIdElement(neighborPersisted.getIdElement());
 							peerPort.setRemoteIdPort(port.getIdPort());
-							Port savedPeerPort = save(peerPort);
-							peerPort.setIdPort(savedPeerPort.getIdPort());
-							linkChanged = true;
-							neighborPersisted.getPortList().add(peerPort);
-						}
-						
-						// set link on port
-						if(port.getRemoteIdPort() == null || !port.getRemoteIdPort().equals(peerPort.getIdPort())) {
+							peerElement.setPortList(new HashSet<Port>(Arrays.asList(peerPort)));
+							
+							peerElement.setTopologyLevel(discoveredElement.getTopologyLevel()+1);
+							
+							// save element
+							Element peerElementUpdated = saveCascade(peerElement);
+							peerElement.setIdElement(peerElementUpdated.getIdElement());
+							
+							// set link on port
 							port.setRemoteIdPort(peerPort.getIdPort());
 							update(port);
-							linkChanged = true;
-						}
-						
-						String stateEventToFire = null;
-						if(neighborPersisted.getState().before(ElementState.CONNECTED_TO_TOPOLOGY)) {
-							neighborPersisted.setState(ElementState.CONNECTED_TO_TOPOLOGY);
-							stateEventToFire = SonarTopics.TOPIC_TOPOLOGY_ELEMENT_CHANGED_STATE_CONNECTED_TO_TOPOLOGY;
-						}else {
-							if(neighborPersisted.getState().equals(ElementState.WAITING_ROUTES)) {
-								stateEventToFire = SonarTopics.TOPIC_TOPOLOGY_ELEMENT_CHANGED_STATE_WAITING_ROUTES;	
-							}
-						}
-						
-						// save element
-						Element elementUpdated = update(neighborPersisted);
-						neighborPersisted.setIdElement(elementUpdated.getIdElement());
-						
-						// if state changed: fire an event
-						if(stateEventToFire != null && !stateEventToFire.isEmpty()) {
-							stateEventMap.put(neighborPersisted, stateEventToFire);
-						}
-						// if link changed: add change
-						if(linkChanged) {
+							
 							addLinkChange(linksChanged, port, peerPort, LinkEvent.CREATED);
+							
+							// send saved state event (initial state before finding the element in topology)
+							stateEventMap.put(peerElement, SonarTopics.TOPIC_TOPOLOGY_ELEMENT_CHANGED_STATE_CONNECTED_TO_TOPOLOGY);
+						}else {
+							
+							if(neighborPersisted.getPortList() == null || neighborPersisted.getPortList().isEmpty()) {
+								neighborPersisted.setPortList(getPortsByIdElement(neighborPersisted.getIdElement()));
+							}
+							boolean linkChanged = false;
+							
+							Port peerPort = getPortByMac(neighborPersisted, mapIpAndPortNeigbors.get(ipNeighbor));
+							if(peerPort != null) {
+								if(peerPort.getRemoteIdPort() == null || !peerPort.getRemoteIdPort().equals(port.getIdPort())) {
+									peerPort.setRemoteIdPort(port.getIdPort());
+									update(peerPort);
+									linkChanged = true;
+								}
+							}else {
+								peerPort = new Port();
+								peerPort.setMacAddress(mapIpAndPortNeigbors.get(ipNeighbor));
+								peerPort.setIdElement(neighborPersisted.getIdElement());
+								peerPort.setRemoteIdPort(port.getIdPort());
+								Port savedPeerPort = save(peerPort);
+								peerPort.setIdPort(savedPeerPort.getIdPort());
+								linkChanged = true;
+								neighborPersisted.getPortList().add(peerPort);
+							}
+							
+							// set link on port
+							if(port.getRemoteIdPort() == null || !port.getRemoteIdPort().equals(peerPort.getIdPort())) {
+								port.setRemoteIdPort(peerPort.getIdPort());
+								update(port);
+								linkChanged = true;
+							}
+							
+							String stateEventToFire = null;
+							if(neighborPersisted.getState().before(ElementState.CONNECTED_TO_TOPOLOGY)) {
+								neighborPersisted.setState(ElementState.CONNECTED_TO_TOPOLOGY);
+								stateEventToFire = SonarTopics.TOPIC_TOPOLOGY_ELEMENT_CHANGED_STATE_CONNECTED_TO_TOPOLOGY;
+							}else {
+								if(neighborPersisted.getState().equals(ElementState.WAITING_ROUTES)) {
+									stateEventToFire = SonarTopics.TOPIC_TOPOLOGY_ELEMENT_CHANGED_STATE_WAITING_ROUTES;	
+								}
+							}
+							
+							if(discoveredElement.getTopologyLevel() + 1 < neighborPersisted.getTopologyLevel()) {
+								neighborPersisted.setTopologyLevel(discoveredElement.getTopologyLevel()+1);
+							}
+							
+							// save element
+							Element elementUpdated = update(neighborPersisted);
+							neighborPersisted.setIdElement(elementUpdated.getIdElement());
+							
+							// if state changed: fire an event
+							if(stateEventToFire != null && !stateEventToFire.isEmpty()) {
+								stateEventMap.put(neighborPersisted, stateEventToFire);
+							}
+							// if link changed: add change
+							if(linkChanged) {
+								addLinkChange(linksChanged, port, peerPort, LinkEvent.CREATED);
+							}
 						}
 					}
 				}
@@ -438,8 +639,13 @@ public class DiscoveryService {
 		}
 	}
 	
+	private boolean isOnFinalBootState(Element element) {
+		return  (ElementType.SERVER.equals(element.getTypeElement()) && ElementState.DISCOVERED.equals(element.getState())) ||
+				(ElementType.DEVICE.equals(element.getTypeElement()) && ElementState.CONFIGURED.equals(element.getState()));
+	}
+
 	private void runElementDiscoveryTasks(final Stack<String> ipsToDiscovery, final String method, final Set<Link> linksChanged, final Map<Element, String> stateEventMap, final List<Element> discoveredElements){
-		final ExecutorService taskExecutor = Executors.newFixedThreadPool(4);
+		final ExecutorService taskExecutor = Executors.newFixedThreadPool(16);
 		final CountingLatch latch = new CountingLatch(0);
 		
 		final Set<String> ipsDiscovered = Collections.synchronizedSet(new HashSet<String>());
@@ -499,6 +705,7 @@ public class DiscoveryService {
 
 									// set Discovered state (bypass initial states)
 									discoveredElement.setState(ElementState.DISCOVERED);
+									discoveredElement.setTopologyLevel(0);
 									
 									// save the new element
 									Element updatedElement = saveCascade(discoveredElement);
@@ -527,11 +734,11 @@ public class DiscoveryService {
 											}
 										}else {
 											if(persistedElement.getState().isInitialState() && !waitTimeOutReached(persistedElement)) {
-												if(!persistedElement.getState().equals(ElementState.IP_ASSIGNED_BY_DHCP)) {
+//												if(!persistedElement.getState().equals(ElementState.IP_ASSIGNED_BY_DHCP)) {
 													persistedElement.setState(ElementState.WAITING_ROUTES);
 													update(persistedElement);
 													stateEventMap.put(persistedElement, SonarTopics.TOPIC_TOPOLOGY_ELEMENT_CHANGED_STATE_WAITING_ROUTES);
-												}
+//												}
 											}else {
 												if(persistedElement.getState().equals(ElementState.WAITING_ROUTES) && !waitTimeOutReached(persistedElement)) {
 													//fire the event again
@@ -652,356 +859,380 @@ public class DiscoveryService {
 	 * CRUD
 	 */
 	private Element saveCascade(Element element) {
-		logger.info("New Element saved: " + ObjectUtils.toString(element));
-		setElementType(element);
-		Element savedElement = topologyService.save(element);
-		element.setIdElement(savedElement.getIdElement());
-		for (Port port : element.getPortList()) {
-			port.setIdElement(savedElement.getIdElement());
-			Port savedPort = topologyService.save(port);
-			port.setIdPort(savedPort.getIdPort());
+		synchronized (element.getManagementIPAddressList().iterator().next()) {
+			logger.info("New Element saved: " + ObjectUtils.toString(element));
+			setElementType(element);
+			Element savedElement = topologyService.save(element);
+			element.setIdElement(savedElement.getIdElement());
+			for (Port port : element.getPortList()) {
+				port.setIdElement(savedElement.getIdElement());
+				Port savedPort = topologyService.save(port);
+				port.setIdPort(savedPort.getIdPort());
+			}
+			eventService.publish(SonarTopics.TOPIC_TOPOLOGY_ELEMENT_ADDED, savedElement);
+			return element;
 		}
-		eventService.publish(SonarTopics.TOPIC_TOPOLOGY_ELEMENT_ADDED, savedElement);
-		return element;
 	}
 
 	private void removeCascade(Element persistedElement, Set<Link> linksChanged) {
-		Set<Port> persistedPorts = getPortsByIdElement(persistedElement.getIdElement());
-		if (persistedPorts != null && !persistedPorts.isEmpty()) {
-			for (Port portRemoved : persistedPorts) {
-				if (portRemoved.getRemoteIdPort() != null) {
-					// Port linked being removed
-					addLinkChange(linksChanged, portRemoved, null, LinkEvent.REMOVED );
+		synchronized (persistedElement.getManagementIPAddressList().iterator().next()) {
+			Set<Port> persistedPorts = getPortsByIdElement(persistedElement.getIdElement());
+			if (persistedPorts != null && !persistedPorts.isEmpty()) {
+				for (Port portRemoved : persistedPorts) {
+					if (portRemoved.getRemoteIdPort() != null) {
+						// Port linked being removed
+						addLinkChange(linksChanged, portRemoved, null, LinkEvent.REMOVED );
+					}
+					remove(portRemoved);
 				}
-				remove(portRemoved);
 			}
+			topologyService.deleteElementById(persistedElement.getIdElement());
+			eventService.publish(SonarTopics.TOPIC_TOPOLOGY_ELEMENT_REMOVED, persistedElement);
 		}
-		topologyService.deleteElementById(persistedElement.getIdElement());
-		eventService.publish(SonarTopics.TOPIC_TOPOLOGY_ELEMENT_REMOVED, persistedElement);
 	}
 
 	private Element mergeCascade(Element persistedElement, Element discoveredElement, Set<Link> linksChanged, Boolean completeUpdateMerge) {
-		boolean elementDetailsChanged = false;
-
-		// Verify all attributes
-		if (discoveredElement.getClock() != null && (persistedElement.getClock() == null
-				|| !discoveredElement.getClock().equals(persistedElement.getClock()))) {
-			persistedElement.setClock(discoveredElement.getClock());
-			elementDetailsChanged = true;
-		} else {
-			if(persistedElement.getClock() != null && discoveredElement.getClock() == null) {
-				discoveredElement.setClock(persistedElement.getClock());
+		synchronized (persistedElement.getManagementIPAddressList().iterator().next()) {
+			boolean elementDetailsChanged = false;
+	
+			// Verify all attributes
+			if (discoveredElement.getClock() != null && (persistedElement.getClock() == null
+					|| !discoveredElement.getClock().equals(persistedElement.getClock()))) {
+				persistedElement.setClock(discoveredElement.getClock());
+				elementDetailsChanged = true;
+			} else {
+				if(persistedElement.getClock() != null && discoveredElement.getClock() == null) {
+					discoveredElement.setClock(persistedElement.getClock());
+				}
 			}
-		}
-		if (discoveredElement.getCores() != null && (persistedElement.getCores() == null
-				|| !discoveredElement.getCores().equals(persistedElement.getCores()))) {
-			persistedElement.setCores(discoveredElement.getCores());
-			elementDetailsChanged = true;
-		} else {
-			if(persistedElement.getCores() != null && discoveredElement.getCores() == null) {
-				discoveredElement.setCores(persistedElement.getCores());
+			if (discoveredElement.getCores() != null && (persistedElement.getCores() == null
+					|| !discoveredElement.getCores().equals(persistedElement.getCores()))) {
+				persistedElement.setCores(discoveredElement.getCores());
+				elementDetailsChanged = true;
+			} else {
+				if(persistedElement.getCores() != null && discoveredElement.getCores() == null) {
+					discoveredElement.setCores(persistedElement.getCores());
+				}
 			}
-		}
-		if (discoveredElement.getCost() != null && (persistedElement.getCost() == null
-				|| !discoveredElement.getCost().equals(persistedElement.getCost()))) {
-			persistedElement.setCost(discoveredElement.getCost());
-			elementDetailsChanged = true;
-		} else {
-			if(persistedElement.getCost() != null && discoveredElement.getCost() == null) {
-				discoveredElement.setCost(persistedElement.getCost());
+			if (discoveredElement.getCost() != null && (persistedElement.getCost() == null
+					|| !discoveredElement.getCost().equals(persistedElement.getCost()))) {
+				persistedElement.setCost(discoveredElement.getCost());
+				elementDetailsChanged = true;
+			} else {
+				if(persistedElement.getCost() != null && discoveredElement.getCost() == null) {
+					discoveredElement.setCost(persistedElement.getCost());
+				}
 			}
-		}
-		if (discoveredElement.getDisk() != null && (persistedElement.getDisk() == null
-				|| !discoveredElement.getDisk().equals(persistedElement.getDisk()))) {
-			persistedElement.setDisk(discoveredElement.getDisk());
-			elementDetailsChanged = true;
-		} else {
-			if(persistedElement.getDisk() != null && discoveredElement.getDisk() == null) {
-				discoveredElement.setDisk(persistedElement.getDisk());
+			if (discoveredElement.getDisk() != null && (persistedElement.getDisk() == null
+					|| !discoveredElement.getDisk().equals(persistedElement.getDisk()))) {
+				persistedElement.setDisk(discoveredElement.getDisk());
+				elementDetailsChanged = true;
+			} else {
+				if(persistedElement.getDisk() != null && discoveredElement.getDisk() == null) {
+					discoveredElement.setDisk(persistedElement.getDisk());
+				}
 			}
-		}
-		if (discoveredElement.getEnergy() != null && (persistedElement.getEnergy() == null
-				|| !discoveredElement.getEnergy().equals(persistedElement.getEnergy()))) {
-			persistedElement.setEnergy(discoveredElement.getEnergy());
-			elementDetailsChanged = true;
-		} else {
-			if(persistedElement.getEnergy() != null && discoveredElement.getEnergy() == null) {
-				discoveredElement.setEnergy(persistedElement.getEnergy());
+			if (discoveredElement.getEnergy() != null && (persistedElement.getEnergy() == null
+					|| !discoveredElement.getEnergy().equals(persistedElement.getEnergy()))) {
+				persistedElement.setEnergy(discoveredElement.getEnergy());
+				elementDetailsChanged = true;
+			} else {
+				if(persistedElement.getEnergy() != null && discoveredElement.getEnergy() == null) {
+					discoveredElement.setEnergy(persistedElement.getEnergy());
+				}
 			}
-		}
-		if (discoveredElement.getMemory() != null && (persistedElement.getMemory() == null
-				|| !discoveredElement.getMemory().equals(persistedElement.getMemory()))) {
-			persistedElement.setMemory(discoveredElement.getMemory());
-			elementDetailsChanged = true;
-		} else {
-			if(persistedElement.getMemory() != null && discoveredElement.getMemory() == null) {
-				discoveredElement.setMemory(persistedElement.getMemory());
+			if (discoveredElement.getMemory() != null && (persistedElement.getMemory() == null
+					|| !discoveredElement.getMemory().equals(persistedElement.getMemory()))) {
+				persistedElement.setMemory(discoveredElement.getMemory());
+				elementDetailsChanged = true;
+			} else {
+				if(persistedElement.getMemory() != null && discoveredElement.getMemory() == null) {
+					discoveredElement.setMemory(persistedElement.getMemory());
+				}
 			}
-		}
-		if (discoveredElement.getName() != null && (persistedElement.getName() == null
-				|| !discoveredElement.getName().equals(persistedElement.getName()))) {
-			persistedElement.setName(discoveredElement.getName());
-			elementDetailsChanged = true;
-		} else {
-			if(persistedElement.getName() != null && discoveredElement.getName() == null) {
-				discoveredElement.setName(persistedElement.getName());
+			if (discoveredElement.getName() != null && (persistedElement.getName() == null
+					|| !discoveredElement.getName().equals(persistedElement.getName()))) {
+				persistedElement.setName(discoveredElement.getName());
+				elementDetailsChanged = true;
+			} else {
+				if(persistedElement.getName() != null && discoveredElement.getName() == null) {
+					discoveredElement.setName(persistedElement.getName());
+				}
 			}
-		}
-		if (discoveredElement.getTypeElement() != null && (persistedElement.getTypeElement() == null
-				|| !discoveredElement.getTypeElement().equals(persistedElement.getTypeElement()))) {
-			persistedElement.setTypeElement(discoveredElement.getTypeElement());
-			elementDetailsChanged = true;
-		} else {
-			if(persistedElement.getTypeElement() != null && discoveredElement.getTypeElement() == null) {
+			if (discoveredElement.getTypeElement() != null && (persistedElement.getTypeElement() == null
+					|| !discoveredElement.getTypeElement().equals(persistedElement.getTypeElement()))) {
+				persistedElement.setTypeElement(discoveredElement.getTypeElement());
+				elementDetailsChanged = true;
+			} else {
+				if(persistedElement.getTypeElement() != null && discoveredElement.getTypeElement() == null) {
+					discoveredElement.setTypeElement(persistedElement.getTypeElement());
+				}
+			}
+			if (discoveredElement.getState() != null && (persistedElement.getState() == null
+					|| !discoveredElement.getState().equals(persistedElement.getState()))) {
+				persistedElement.setState(discoveredElement.getState());
+				elementDetailsChanged = true;
+			} else {
+				if(persistedElement.getState() != null && discoveredElement.getState() == null) {
+					discoveredElement.setState(persistedElement.getState());
+				}
+			}
+			if (discoveredElement.getTopologyLevel() != null && (persistedElement.getTopologyLevel() == null
+					|| !discoveredElement.getTopologyLevel().equals(persistedElement.getTopologyLevel()))) {
+				persistedElement.setTopologyLevel(discoveredElement.getTopologyLevel());
+				elementDetailsChanged = true;
+			} else {
+				if(persistedElement.getTopologyLevel() != null && discoveredElement.getTopologyLevel() == null) {
+					discoveredElement.setTopologyLevel(persistedElement.getTopologyLevel());
+				}
+			}
+			if (discoveredElement.getManagementIPAddressList() != null
+					&& (persistedElement.getManagementIPAddressList() == null || !persistedElement
+							.getManagementIPAddressList().containsAll(discoveredElement.getManagementIPAddressList()))) {
+				persistedElement.getManagementIPAddressList().addAll(discoveredElement.getManagementIPAddressList());
+				elementDetailsChanged = true;
+			} else {
+				if(persistedElement.getManagementIPAddressList() != null) {
+					discoveredElement.getManagementIPAddressList().addAll(persistedElement.getManagementIPAddressList());
+				}
+			}
+			if (discoveredElement.getOfControllers() != null && (persistedElement.getOfControllers() == null
+					|| !persistedElement.getOfControllers().containsAll(discoveredElement.getOfControllers()))) {
+				persistedElement.getOfControllers().addAll(discoveredElement.getOfControllers());
+				elementDetailsChanged = true;
+			} else {
+				if(persistedElement.getOfControllers() != null && discoveredElement.getOfControllers() == null) {
+					discoveredElement.setOfControllers(persistedElement.getOfControllers());
+				}
+			}
+			if (discoveredElement.getOfDeviceId() != null && (persistedElement.getOfDeviceId() == null
+					|| !discoveredElement.getOfDeviceId().equals(persistedElement.getOfDeviceId()))) {
+				persistedElement.setOfDeviceId(discoveredElement.getOfDeviceId());
+				elementDetailsChanged = true;
+			} else {
+				if(persistedElement.getOfDeviceId() != null && discoveredElement.getOfDeviceId() == null) {
+					discoveredElement.setOfDeviceId(persistedElement.getOfDeviceId());
+				}
+			}
+			if (discoveredElement.getManufacturer() != null && (persistedElement.getManufacturer() == null
+					|| !discoveredElement.getManufacturer().equals(persistedElement.getManufacturer()))) {
+				persistedElement.setManufacturer(discoveredElement.getManufacturer());
+				elementDetailsChanged = true;
+			} else {
+				if(persistedElement.getManufacturer() != null && discoveredElement.getManufacturer() == null) {
+					discoveredElement.setManufacturer(persistedElement.getManufacturer());
+				}
+			}
+			if (discoveredElement.getProduct() != null && (persistedElement.getProduct() == null
+					|| !discoveredElement.getProduct().equals(persistedElement.getProduct()))) {
+				persistedElement.setProduct(discoveredElement.getProduct());
+				elementDetailsChanged = true;
+			} else {
+				if(persistedElement.getProduct() != null && discoveredElement.getProduct() == null) {
+					discoveredElement.setProduct(persistedElement.getProduct());
+				}
+			}
+			if (discoveredElement.getSoftware() != null && (persistedElement.getSoftware() == null
+					|| !discoveredElement.getSoftware().equals(persistedElement.getSoftware()))) {
+				persistedElement.setSoftware(discoveredElement.getSoftware());
+				elementDetailsChanged = true;
+			} else {
+				if(persistedElement.getSoftware() != null && discoveredElement.getSoftware() == null) {
+					discoveredElement.setSoftware(persistedElement.getSoftware());
+				}
+			}
+			
+			if(discoveredElement.getLastDicoveredAt() != null) {
+				persistedElement.setLastDicoveredAt(discoveredElement.getLastDicoveredAt());
+			}else {
+				if(persistedElement.getLastDicoveredAt() != null) {
+					discoveredElement.setLastDicoveredAt(persistedElement.getLastDicoveredAt());
+				}
+			}
+			if(discoveredElement.getLastDicoveredBy() != null) {
+				persistedElement.setLastDicoveredBy(discoveredElement.getLastDicoveredBy());
+			}else {
+				if(persistedElement.getLastDicoveredBy() != null) {
+					discoveredElement.setLastDicoveredBy(persistedElement.getLastDicoveredBy());
+				}
+			}
+			if(discoveredElement.getLastDicoveredMethod() != null) {
+				persistedElement.setLastDicoveredMethod(discoveredElement.getLastDicoveredMethod());
+			}else {
+				if(persistedElement.getLastDicoveredMethod() != null) {
+					discoveredElement.setLastDicoveredMethod(persistedElement.getLastDicoveredMethod());
+				}
+			}
+			if(discoveredElement.getLastDicoveredSource() != null) {
+				persistedElement.setLastDicoveredSource(discoveredElement.getLastDicoveredSource());
+			}else {
+				if(persistedElement.getLastDicoveredSource() != null) {
+					discoveredElement.setLastDicoveredSource(persistedElement.getLastDicoveredSource());
+				}
+			}
+			
+			Set<Port> persistedPorts = getPortsByIdElement(persistedElement.getIdElement());
+			if (persistedPorts == null) {
+				persistedPorts = new HashSet<Port>();
+			}
+	
+			Map<String, Port> mapPersistedPort = new HashMap<String, Port>();
+			Set<Port> portsRemoved = new HashSet<Port>();
+			for (Port persistedPort : persistedPorts) {
+				mapPersistedPort.put(persistedPort.getMacAddress(), persistedPort);
+				portsRemoved.add(persistedPort);
+			}
+	
+			for (Port discoveredPort : discoveredElement.getPortList()) {
+				// update port
+				if (mapPersistedPort.containsKey(discoveredPort.getMacAddress())) {
+					Port persistedPort = mapPersistedPort.get(discoveredPort.getMacAddress());
+	
+					portsRemoved.remove(persistedPort);
+	
+					boolean portChanged = false;
+					if (discoveredPort.getSpeed() != null && (persistedPort.getSpeed() == null
+							&& !discoveredPort.getSpeed().equals(persistedPort.getSpeed()))) {
+						persistedPort.setSpeed(discoveredPort.getSpeed());
+						portChanged = true;
+					} else {
+						if(persistedPort.getSpeed() != null && discoveredPort.getSpeed() == null) {
+							discoveredPort.setSpeed(persistedPort.getSpeed());
+						}
+					}
+					if (discoveredPort.getPortId() != null && (persistedPort.getPortId() == null
+							&& !discoveredPort.getPortId().equals(persistedPort.getPortId()))) {
+						persistedPort.setPortId(discoveredPort.getPortId());
+						portChanged = true;
+					} else {
+						if(persistedPort.getPortId() != null && discoveredPort.getPortId() == null) {
+							discoveredPort.setPortId(persistedPort.getPortId());
+						}
+					}
+					if (discoveredPort.getPortName() != null && (persistedPort.getPortName() == null
+							&& !discoveredPort.getPortName().equals(persistedPort.getPortName()))) {
+						persistedPort.setPortName(discoveredPort.getPortName());
+						portChanged = true;
+					} else {
+						if(persistedPort.getPortName() != null && discoveredPort.getPortName() == null) {
+							discoveredPort.setPortName(persistedPort.getPortName());
+						}
+					}
+					if (discoveredPort.getIpAddress() != null && (persistedPort.getIpAddress() == null
+							&& !discoveredPort.getIpAddress().equals(persistedPort.getIpAddress()))) {
+						persistedPort.setIpAddress(discoveredPort.getIpAddress());
+						portChanged = true;
+					} else {
+						if(persistedPort.getIpAddress() != null && discoveredPort.getIpAddress() == null) {
+							discoveredPort.setIpAddress(persistedPort.getIpAddress());
+						}
+					}
+					if (discoveredPort.getMacAddress() != null && (persistedPort.getMacAddress() == null
+							&& !discoveredPort.getMacAddress().equals(persistedPort.getMacAddress()))) {
+						persistedPort.setMacAddress(discoveredPort.getMacAddress());
+						portChanged = true;
+					} else {
+						if(persistedPort.getMacAddress() != null && discoveredPort.getMacAddress() == null) {
+							discoveredPort.setMacAddress(persistedPort.getMacAddress());
+						}
+					}
+					if (discoveredPort.getOfPort() != null && (persistedPort.getOfPort() == null
+							&& !discoveredPort.getOfPort().equals(persistedPort.getOfPort()))) {
+						persistedPort.setOfPort(discoveredPort.getOfPort());
+						portChanged = true;
+					} else {
+						if(persistedPort.getOfPort() != null && discoveredPort.getOfPort() == null) {
+							discoveredPort.setOfPort(persistedPort.getOfPort());
+						}
+					}
+					if (discoveredPort.getState() != null && (persistedPort.getState() == null
+							&& !discoveredPort.getState().equals(persistedPort.getState()))) {
+						persistedPort.setState(discoveredPort.getState());
+						portChanged = true;
+					} else {
+						if(persistedPort.getState() != null && discoveredPort.getState() == null) {
+							discoveredPort.setState(persistedPort.getState());
+						}
+					}
+					if (discoveredPort.getAdminState() != null && (persistedPort.getAdminState() == null
+							&& !discoveredPort.getAdminState().equals(persistedPort.getAdminState()))) {
+						persistedPort.setAdminState(discoveredPort.getAdminState());
+						portChanged = true;
+					} else {
+						if(persistedPort.getAdminState() != null && discoveredPort.getAdminState() == null) {
+							discoveredPort.setAdminState(persistedPort.getAdminState());
+						}
+					}
+	
+					if (completeUpdateMerge) {
+						if (discoveredPort.getRemotePortId() == null
+								|| (discoveredPort.getRemotePortId() != null && (persistedPort.getRemotePortId() == null
+										&& !discoveredPort.getRemotePortId().equals(persistedPort.getRemotePortId())))) {
+							persistedPort.setRemotePortId(discoveredPort.getRemotePortId());
+							portChanged = true;
+						}
+						if (discoveredPort.getRemoteIpAddress() == null || (discoveredPort.getRemoteIpAddress() != null
+								&& (persistedPort.getRemoteIpAddress() == null && !discoveredPort.getRemoteIpAddress()
+										.equals(persistedPort.getRemoteIpAddress())))) {
+							persistedPort.setRemoteIpAddress(discoveredPort.getRemoteIpAddress());
+							portChanged = true;
+						}
+						if (discoveredPort.getRemoteMacAddress() == null || (discoveredPort.getRemoteMacAddress() != null
+								&& (persistedPort.getRemoteMacAddress() == null && !discoveredPort.getRemoteMacAddress()
+										.equals(persistedPort.getRemoteMacAddress())))) {
+							persistedPort.setRemoteMacAddress(discoveredPort.getRemoteMacAddress());
+							portChanged = true;
+						}
+						if (discoveredPort.getRemoteHostname() == null || (discoveredPort.getRemoteHostname() != null
+								&& (persistedPort.getRemoteHostname() == null && !discoveredPort.getRemoteHostname()
+										.equals(persistedPort.getRemoteHostname())))) {
+							persistedPort.setRemoteHostname(discoveredPort.getRemoteHostname());
+							portChanged = true;
+						}
+						if (discoveredPort.getRemotePortName() == null || (discoveredPort.getRemotePortName() != null
+								&& (persistedPort.getRemotePortName() == null && !discoveredPort.getRemotePortName()
+										.equals(persistedPort.getRemotePortName())))) {
+							persistedPort.setRemotePortName(discoveredPort.getRemotePortName());
+							portChanged = true;
+						}
+					}
+	
+					if (portChanged) {
+						update(persistedPort);
+					}
+					discoveredPort.setIdPort(persistedPort.getIdPort());
+					discoveredPort.setIdElement(persistedPort.getIdElement());
+					discoveredPort.setRemoteIdPort(persistedPort.getRemoteIdPort());
+				} else {
+					discoveredPort.setIdElement(persistedElement.getIdElement());
+					Port savedPort = save(discoveredPort);
+					discoveredPort.setIdPort(savedPort.getIdPort());
+					discoveredPort.setRemoteIdPort(savedPort.getRemoteIdPort());
+				}
+			}
+	
+			if(completeUpdateMerge) {
+				for (Port portRemoved : portsRemoved) {
+					if (portRemoved.getRemoteIdPort() != null) {
+						// Port linked being removed
+						addLinkChange(linksChanged, portRemoved, null, LinkEvent.REMOVED );
+					}
+					remove(portRemoved);
+				}
+			}
+			
+			discoveredElement.setIdElement(persistedElement.getIdElement());
+			if(discoveredElement.getTypeElement() == null) {
+				setElementType(persistedElement);
 				discoveredElement.setTypeElement(persistedElement.getTypeElement());
 			}
-		}
-		if (discoveredElement.getManagementIPAddressList() != null
-				&& (persistedElement.getManagementIPAddressList() == null || !persistedElement
-						.getManagementIPAddressList().containsAll(discoveredElement.getManagementIPAddressList()))) {
-			persistedElement.getManagementIPAddressList().addAll(discoveredElement.getManagementIPAddressList());
-			elementDetailsChanged = true;
-		} else {
-			if(persistedElement.getManagementIPAddressList() != null) {
-				discoveredElement.getManagementIPAddressList().addAll(persistedElement.getManagementIPAddressList());
-			}
-		}
-		if (discoveredElement.getOfControllers() != null && (persistedElement.getOfControllers() == null
-				|| !persistedElement.getOfControllers().containsAll(discoveredElement.getOfControllers()))) {
-			persistedElement.getOfControllers().addAll(discoveredElement.getOfControllers());
-			elementDetailsChanged = true;
-		} else {
-			if(persistedElement.getOfControllers() != null && discoveredElement.getOfControllers() == null) {
-				discoveredElement.setOfControllers(persistedElement.getOfControllers());
-			}
-		}
-		if (discoveredElement.getOfDeviceId() != null && (persistedElement.getOfDeviceId() == null
-				|| !discoveredElement.getOfDeviceId().equals(persistedElement.getOfDeviceId()))) {
-			persistedElement.setOfDeviceId(discoveredElement.getOfDeviceId());
-			elementDetailsChanged = true;
-		} else {
-			if(persistedElement.getOfDeviceId() != null && discoveredElement.getOfDeviceId() == null) {
-				discoveredElement.setOfDeviceId(persistedElement.getOfDeviceId());
-			}
-		}
-		if (discoveredElement.getManufacturer() != null && (persistedElement.getManufacturer() == null
-				|| !discoveredElement.getManufacturer().equals(persistedElement.getManufacturer()))) {
-			persistedElement.setManufacturer(discoveredElement.getManufacturer());
-			elementDetailsChanged = true;
-		} else {
-			if(persistedElement.getManufacturer() != null && discoveredElement.getManufacturer() == null) {
-				discoveredElement.setManufacturer(persistedElement.getManufacturer());
-			}
-		}
-		if (discoveredElement.getProduct() != null && (persistedElement.getProduct() == null
-				|| !discoveredElement.getProduct().equals(persistedElement.getProduct()))) {
-			persistedElement.setProduct(discoveredElement.getProduct());
-			elementDetailsChanged = true;
-		} else {
-			if(persistedElement.getProduct() != null && discoveredElement.getProduct() == null) {
-				discoveredElement.setProduct(persistedElement.getProduct());
-			}
-		}
-		if (discoveredElement.getSoftware() != null && (persistedElement.getSoftware() == null
-				|| !discoveredElement.getSoftware().equals(persistedElement.getSoftware()))) {
-			persistedElement.setSoftware(discoveredElement.getSoftware());
-			elementDetailsChanged = true;
-		} else {
-			if(persistedElement.getSoftware() != null && discoveredElement.getSoftware() == null) {
-				discoveredElement.setSoftware(persistedElement.getSoftware());
-			}
-		}
-		
-		if(discoveredElement.getLastDicoveredAt() != null) {
-			persistedElement.setLastDicoveredAt(discoveredElement.getLastDicoveredAt());
-		}else {
-			if(persistedElement.getLastDicoveredAt() != null) {
-				discoveredElement.setLastDicoveredAt(persistedElement.getLastDicoveredAt());
-			}
-		}
-		if(discoveredElement.getLastDicoveredBy() != null) {
-			persistedElement.setLastDicoveredBy(discoveredElement.getLastDicoveredBy());
-		}else {
-			if(persistedElement.getLastDicoveredBy() != null) {
-				discoveredElement.setLastDicoveredBy(persistedElement.getLastDicoveredBy());
-			}
-		}
-		if(discoveredElement.getLastDicoveredMethod() != null) {
-			persistedElement.setLastDicoveredMethod(discoveredElement.getLastDicoveredMethod());
-		}else {
-			if(persistedElement.getLastDicoveredMethod() != null) {
-				discoveredElement.setLastDicoveredMethod(persistedElement.getLastDicoveredMethod());
-			}
-		}
-		if(discoveredElement.getLastDicoveredSource() != null) {
-			persistedElement.setLastDicoveredSource(discoveredElement.getLastDicoveredSource());
-		}else {
-			if(persistedElement.getLastDicoveredSource() != null) {
-				discoveredElement.setLastDicoveredSource(persistedElement.getLastDicoveredSource());
-			}
-		}
-		
-		Set<Port> persistedPorts = getPortsByIdElement(persistedElement.getIdElement());
-		if (persistedPorts == null) {
-			persistedPorts = new HashSet<Port>();
-		}
-
-		Map<String, Port> mapPersistedPort = new HashMap<String, Port>();
-		Set<Port> portsRemoved = new HashSet<Port>();
-		for (Port persistedPort : persistedPorts) {
-			mapPersistedPort.put(persistedPort.getMacAddress(), persistedPort);
-			portsRemoved.add(persistedPort);
-		}
-
-		for (Port discoveredPort : discoveredElement.getPortList()) {
-			// update port
-			if (mapPersistedPort.containsKey(discoveredPort.getMacAddress())) {
-				Port persistedPort = mapPersistedPort.get(discoveredPort.getMacAddress());
-
-				portsRemoved.remove(persistedPort);
-
-				boolean portChanged = false;
-				if (discoveredPort.getSpeed() != null && (persistedPort.getSpeed() == null
-						&& !discoveredPort.getSpeed().equals(persistedPort.getSpeed()))) {
-					persistedPort.setSpeed(discoveredPort.getSpeed());
-					portChanged = true;
-				} else {
-					if(persistedPort.getSpeed() != null && discoveredPort.getSpeed() == null) {
-						discoveredPort.setSpeed(persistedPort.getSpeed());
-					}
-				}
-				if (discoveredPort.getPortId() != null && (persistedPort.getPortId() == null
-						&& !discoveredPort.getPortId().equals(persistedPort.getPortId()))) {
-					persistedPort.setPortId(discoveredPort.getPortId());
-					portChanged = true;
-				} else {
-					if(persistedPort.getPortId() != null && discoveredPort.getPortId() == null) {
-						discoveredPort.setPortId(persistedPort.getPortId());
-					}
-				}
-				if (discoveredPort.getPortName() != null && (persistedPort.getPortName() == null
-						&& !discoveredPort.getPortName().equals(persistedPort.getPortName()))) {
-					persistedPort.setPortName(discoveredPort.getPortName());
-					portChanged = true;
-				} else {
-					if(persistedPort.getPortName() != null && discoveredPort.getPortName() == null) {
-						discoveredPort.setPortName(persistedPort.getPortName());
-					}
-				}
-				if (discoveredPort.getIpAddress() != null && (persistedPort.getIpAddress() == null
-						&& !discoveredPort.getIpAddress().equals(persistedPort.getIpAddress()))) {
-					persistedPort.setIpAddress(discoveredPort.getIpAddress());
-					portChanged = true;
-				} else {
-					if(persistedPort.getIpAddress() != null && discoveredPort.getIpAddress() == null) {
-						discoveredPort.setIpAddress(persistedPort.getIpAddress());
-					}
-				}
-				if (discoveredPort.getMacAddress() != null && (persistedPort.getMacAddress() == null
-						&& !discoveredPort.getMacAddress().equals(persistedPort.getMacAddress()))) {
-					persistedPort.setMacAddress(discoveredPort.getMacAddress());
-					portChanged = true;
-				} else {
-					if(persistedPort.getMacAddress() != null && discoveredPort.getMacAddress() == null) {
-						discoveredPort.setMacAddress(persistedPort.getMacAddress());
-					}
-				}
-				if (discoveredPort.getOfPort() != null && (persistedPort.getOfPort() == null
-						&& !discoveredPort.getOfPort().equals(persistedPort.getOfPort()))) {
-					persistedPort.setOfPort(discoveredPort.getOfPort());
-					portChanged = true;
-				} else {
-					if(persistedPort.getOfPort() != null && discoveredPort.getOfPort() == null) {
-						discoveredPort.setOfPort(persistedPort.getOfPort());
-					}
-				}
-				if (discoveredPort.getState() != null && (persistedPort.getState() == null
-						&& !discoveredPort.getState().equals(persistedPort.getState()))) {
-					persistedPort.setState(discoveredPort.getState());
-					portChanged = true;
-				} else {
-					if(persistedPort.getState() != null && discoveredPort.getState() == null) {
-						discoveredPort.setState(persistedPort.getState());
-					}
-				}
-				if (discoveredPort.getAdminState() != null && (persistedPort.getAdminState() == null
-						&& !discoveredPort.getAdminState().equals(persistedPort.getAdminState()))) {
-					persistedPort.setAdminState(discoveredPort.getAdminState());
-					portChanged = true;
-				} else {
-					if(persistedPort.getAdminState() != null && discoveredPort.getAdminState() == null) {
-						discoveredPort.setAdminState(persistedPort.getAdminState());
-					}
-				}
-
-				if (completeUpdateMerge) {
-					if (discoveredPort.getRemotePortId() == null
-							|| (discoveredPort.getRemotePortId() != null && (persistedPort.getRemotePortId() == null
-									&& !discoveredPort.getRemotePortId().equals(persistedPort.getRemotePortId())))) {
-						persistedPort.setRemotePortId(discoveredPort.getRemotePortId());
-						portChanged = true;
-					}
-					if (discoveredPort.getRemoteIpAddress() == null || (discoveredPort.getRemoteIpAddress() != null
-							&& (persistedPort.getRemoteIpAddress() == null && !discoveredPort.getRemoteIpAddress()
-									.equals(persistedPort.getRemoteIpAddress())))) {
-						persistedPort.setRemoteIpAddress(discoveredPort.getRemoteIpAddress());
-						portChanged = true;
-					}
-					if (discoveredPort.getRemoteMacAddress() == null || (discoveredPort.getRemoteMacAddress() != null
-							&& (persistedPort.getRemoteMacAddress() == null && !discoveredPort.getRemoteMacAddress()
-									.equals(persistedPort.getRemoteMacAddress())))) {
-						persistedPort.setRemoteMacAddress(discoveredPort.getRemoteMacAddress());
-						portChanged = true;
-					}
-					if (discoveredPort.getRemoteHostname() == null || (discoveredPort.getRemoteHostname() != null
-							&& (persistedPort.getRemoteHostname() == null && !discoveredPort.getRemoteHostname()
-									.equals(persistedPort.getRemoteHostname())))) {
-						persistedPort.setRemoteHostname(discoveredPort.getRemoteHostname());
-						portChanged = true;
-					}
-					if (discoveredPort.getRemotePortName() == null || (discoveredPort.getRemotePortName() != null
-							&& (persistedPort.getRemotePortName() == null && !discoveredPort.getRemotePortName()
-									.equals(persistedPort.getRemotePortName())))) {
-						persistedPort.setRemotePortName(discoveredPort.getRemotePortName());
-						portChanged = true;
-					}
-				}
-
-				if (portChanged) {
-					update(persistedPort);
-				}
-				discoveredPort.setIdPort(persistedPort.getIdPort());
-				discoveredPort.setIdElement(persistedPort.getIdElement());
-				discoveredPort.setRemoteIdPort(persistedPort.getRemoteIdPort());
+			
+			if (elementDetailsChanged) {
+				return update(persistedElement);
 			} else {
-				discoveredPort.setIdElement(persistedElement.getIdElement());
-				Port savedPort = save(discoveredPort);
-				discoveredPort.setIdPort(savedPort.getIdPort());
-				discoveredPort.setRemoteIdPort(savedPort.getRemoteIdPort());
+				// update to set timeout, but without events
+				return topologyService.update(persistedElement);
 			}
-		}
-
-		if(completeUpdateMerge) {
-			for (Port portRemoved : portsRemoved) {
-				if (portRemoved.getRemoteIdPort() != null) {
-					// Port linked being removed
-					addLinkChange(linksChanged, portRemoved, null, LinkEvent.REMOVED );
-				}
-				remove(portRemoved);
-			}
-		}
-		
-		discoveredElement.setIdElement(persistedElement.getIdElement());
-		if(discoveredElement.getTypeElement() == null) {
-			setElementType(persistedElement);
-			discoveredElement.setTypeElement(persistedElement.getTypeElement());
-		}
-		
-		if (elementDetailsChanged) {
-			return update(persistedElement);
-		} else {
-			// update to set timeout, but without events
-			return topologyService.update(persistedElement);
 		}
 	}
 
@@ -1087,26 +1318,34 @@ public class DiscoveryService {
 	}
 
 	private Port update(Port port) {
-		Port portSaved = topologyService.update(port);
-		eventService.publish(SonarTopics.TOPIC_TOPOLOGY_PORT_CHANGED, portSaved);
-		return portSaved;
+		synchronized (port.getMacAddress()) {
+			Port portSaved = topologyService.update(port);
+			eventService.publish(SonarTopics.TOPIC_TOPOLOGY_PORT_CHANGED, portSaved);
+			return portSaved;
+		}
 	}
 
 	private Element update(Element element) {
-		Element elementSaved = topologyService.update(element);
-		eventService.publish(SonarTopics.TOPIC_TOPOLOGY_ELEMENT_CHANGED_DETAILS, elementSaved);
-		return elementSaved;
+		synchronized (element.getManagementIPAddressList().iterator().next()) {
+			Element elementSaved = topologyService.update(element);
+			eventService.publish(SonarTopics.TOPIC_TOPOLOGY_ELEMENT_CHANGED_DETAILS, elementSaved);
+			return elementSaved;
+		}
 	}
 
 	private Port save(Port port) {
-		Port portSaved = topologyService.save(port);
-		eventService.publish(SonarTopics.TOPIC_TOPOLOGY_PORT_ADDED, portSaved);
-		return portSaved;
+		synchronized (port.getMacAddress()) {
+			Port portSaved = topologyService.save(port);
+			eventService.publish(SonarTopics.TOPIC_TOPOLOGY_PORT_ADDED, portSaved);
+			return portSaved;
+		}
 	}
 
 	private void remove(Port port) {
-		topologyService.delete(port);
-		eventService.publish(SonarTopics.TOPIC_TOPOLOGY_PORT_REMOVED, port);
+		synchronized (port.getMacAddress()) {
+			topologyService.delete(port);
+			eventService.publish(SonarTopics.TOPIC_TOPOLOGY_PORT_REMOVED, port);
+		}
 	}
 
 	/**
@@ -1171,6 +1410,14 @@ public class DiscoveryService {
 	
 	private Boolean canRunDiscovery(Element element) {
 		return !element.getState().equalsAny(ElementState.WAITING_CONFIGURATION, ElementState.WAITING_CONTROLLER_CONNECTION) || waitTimeOutReached(element);
+	}
+	
+	private boolean shouldDiscoveryImmediately(Element element) {
+		return ElementState.WAITING_DISCOVERY.equals(element.getState());
+	}
+	
+	private boolean isLeafElement(Element element) {
+		return getNeighbors(element).size() <= 1;
 	}
 	
 	private boolean isDeviceWithOpenflowSupport(Element persistedElement) {

@@ -20,6 +20,8 @@ public class Dijkstra {
 	public static <T,U> Path<T,U> calculateShortestPathFromSource(Graph<T,U> graph, Node<T> source) {
 		Path<T,U> shortestPath = new Path<T,U>(source, graph.getMapAdjacences().keySet());
 
+		shortestPath.setOrigin(source);;
+		
 		Set<Node<T>> settledNodes = new HashSet<>();
 		Set<Node<T>> unsettledNodes = new HashSet<>();
 

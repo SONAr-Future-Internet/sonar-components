@@ -1,7 +1,12 @@
 package br.ufu.facom.mehar.sonar.organizing.configuration.manager;
 
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,10 +23,15 @@ import br.ufu.facom.mehar.sonar.client.nem.configuration.SonarTopics;
 import br.ufu.facom.mehar.sonar.client.nem.service.EventService;
 import br.ufu.facom.mehar.sonar.client.nim.element.service.DeviceService;
 import br.ufu.facom.mehar.sonar.core.model.configuration.Configuration;
+import br.ufu.facom.mehar.sonar.core.model.topology.Domain;
 import br.ufu.facom.mehar.sonar.core.model.topology.Element;
+import br.ufu.facom.mehar.sonar.core.model.topology.Port;
 import br.ufu.facom.mehar.sonar.core.model.topology.type.ElementState;
 import br.ufu.facom.mehar.sonar.core.model.topology.type.ElementType;
 import br.ufu.facom.mehar.sonar.core.util.ObjectUtils;
+import br.ufu.facom.mehar.sonar.organizing.configuration.algorithm.model.Graph;
+import br.ufu.facom.mehar.sonar.organizing.configuration.algorithm.model.Path;
+import br.ufu.facom.mehar.sonar.organizing.configuration.algorithm.model.SimpleGraph;
 import br.ufu.facom.mehar.sonar.organizing.configuration.configuration.SCEConfiguration;
 import br.ufu.facom.mehar.sonar.organizing.configuration.configuration.service.ControlConfigurationService;
 
@@ -44,9 +54,82 @@ public class TopologyConfigurationManager {
 	@Autowired
 	private ControlConfigurationService controlConfigurationService;
 	
+	private Set<UUID> devicesInConfigurationProcess = Collections.synchronizedSet(new HashSet<UUID>());
+	
 	@Autowired
 	@Qualifier("taskScheduler")
     private TaskExecutor taskExecutor;
+	
+	private static volatile boolean runningBoot = false;
+	@EventListener(ApplicationReadyEvent.class)
+	public void boot() {
+		System.out.println("Listening "+SonarTopics.TOPIC_SCE_CALL_BOOT);
+		eventService.subscribe(SonarTopics.TOPIC_SCE_CALL_BOOT, new NetworkEventAction() {
+			@Override
+			public void handle(String event, String json) {
+				if(!runningBoot) {
+					try {
+						runningBoot = true;
+						Domain bootDomain = ObjectUtils.toObject(json, Domain.class);
+						
+						eventService.publish(SonarTopics.TOPIC_BOOT_START_ROUTING_STAGE, "");
+						//Build Graph
+						Graph<Element, Port> graph = controlConfigurationService.buildGraph(bootDomain.getElementList());
+						
+						//Prepare Data 'Holders'
+						SimpleGraph<Element> generalDependencyGraph = new SimpleGraph<Element>();
+						Map<Element, List<Configuration>> generalConfigurationMap = new HashMap<Element, List<Configuration>>();
+						
+						//Calculate 'Paths', 'Dependencies' and 'Configurations'
+						for(Element root : controlConfigurationService.findServerRoots(bootDomain.getElementList())) {
+							Path<Element, Port> multiPath = controlConfigurationService.calculateBestMultiPath(root, graph);
+							SimpleGraph<Element> dependencyGraph = controlConfigurationService.buildDependencyGraph(multiPath);
+							Map<Element, List<Configuration>> configurationMap = controlConfigurationService.generateConfiguration(multiPath);
+							generalDependencyGraph = controlConfigurationService.mergeGraph(generalDependencyGraph, dependencyGraph);
+							generalConfigurationMap = controlConfigurationService.mergeConfiguration(generalConfigurationMap, configurationMap);
+						}
+						eventService.publish(SonarTopics.TOPIC_BOOT_FINISH_ROUTING_STAGE, "");
+						
+//						System.out.println("\n\n\n");
+//						controlConfigurationService.print(generalDependencyGraph);
+//						System.out.println("\n\n\n");
+//						controlConfigurationService.print(generalConfigurationMap);
+//						
+//						System.out.println();
+						
+						eventService.publish(SonarTopics.TOPIC_BOOT_START_CONFIGURATION_STAGE, "");
+						
+						Set<Element> configuredElements = new HashSet<Element>();
+						while(!generalDependencyGraph.isEmpty()) {
+							Set<Element> leafs = generalDependencyGraph.removeLeafs();
+							if(!leafs.isEmpty()) {
+								//Configure Controller
+								deviceService.configureController(leafs, configuration.getSDNSouthSeeds(), Boolean.TRUE);
+								
+								//Configure Flows
+								Map<Element, List<Configuration>> subConfigurationMap = new HashMap<Element, List<Configuration>>();
+								for(Element element : leafs) {
+									if(generalConfigurationMap.containsKey(element)) {
+										subConfigurationMap.put(element, generalConfigurationMap.get(element));
+									}
+								}
+								deviceService.configure(subConfigurationMap, Boolean.TRUE);
+								configuredElements.addAll(leafs);
+							}
+							System.out.println(".");
+						}
+						
+						System.out.println("FIM!");
+						
+						eventService.publish(SonarTopics.TOPIC_BOOT_FINISH_CONFIGURATION_STAGE, "");
+						
+					}finally {
+						runningBoot = false;
+					}
+				}
+			}
+		});
+	}
 	
 	@EventListener(ApplicationReadyEvent.class)
 	public void listenToTopologyLinkUpdateEvents() {
@@ -81,7 +164,7 @@ public class TopologyConfigurationManager {
 								try {
 									if(ElementType.DEVICE.equals(element.getTypeElement())){
 										//Configure controller (if supported)
-										deviceService.configureControllerIfSupported(element, configuration.getSDNSouthSeeds());
+										deviceService.configureController(element, configuration.getSDNSouthSeeds());
 										
 										//Update state to 'Configured'
 										element.setState(ElementState.WAITING_CONTROLLER_CONNECTION);
@@ -111,40 +194,39 @@ public class TopologyConfigurationManager {
 										
 										//Fire event of state changed
 										eventService.publish(SonarTopics.TOPIC_TOPOLOGY_ELEMENT_CHANGED_STATE_WAITING_DISCOVERY, updatedElement);
-									}else {
-										if(element.getOfDeviceId() != null) {
-											List<Configuration> configuration = controlConfigurationService.getBasicDeviceConfiguration(element);
-											if(configuration != null && !configuration.isEmpty()) {
-												deviceService.configure(element, configuration);
-											}
-										}
 									}
 								}
 								break;
-							case(SonarTopics.TOPIC_TOPOLOGY_ELEMENT_CHANGED_STATE_REFERRED_BY_CONTROLLER):
-								if(ElementType.DEVICE.equals(element.getTypeElement())){
-									//Query or Calculate configuration
-									List<Configuration> configurationList = controlConfigurationService.getBasicDeviceConfiguration(element);
-									
-									//Apply configuration
-									deviceService.configure(element, configurationList);
-								}
-								break;
+//							case(SonarTopics.TOPIC_TOPOLOGY_ELEMENT_CHANGED_STATE_REFERRED_BY_CONTROLLER):
+//								if(ElementType.DEVICE.equals(element.getTypeElement())){
+//									//Query or Calculate configuration
+//									List<Configuration> configurationList = controlConfigurationService.getBasicDeviceConfiguration(element);
+//									
+//									//Apply configuration
+//									deviceService.configure(element, configurationList);
+//								}
+//								break;
 							case(SonarTopics.TOPIC_TOPOLOGY_ELEMENT_CHANGED_STATE_WAITING_CONFIGURATION):
 								if(ElementType.DEVICE.equals(element.getTypeElement())){
-									//Query or Calculate configuration
-									List<Configuration> configurationList = controlConfigurationService.getConfigurationForDevice(element);
-									
-									//Apply configuration
-									deviceService.configure(element, configurationList);
-									
-									//Update state
-									element.setState(ElementState.CONFIGURED);
-									Element updatedElement = topologyService.update(element);
-									
-									//Fire event of state changed
-									eventService.publish(SonarTopics.TOPIC_TOPOLOGY_ELEMENT_CHANGED_STATE_CONFIGURED, updatedElement);
-									
+									if(!devicesInConfigurationProcess.contains(element.getIdElement())) {
+										devicesInConfigurationProcess.add(element.getIdElement());
+										try {
+											//Query or Calculate configuration
+											List<Configuration> configurationList = controlConfigurationService.getConfigurationForDevice(element);
+											
+											//Apply configuration
+											deviceService.configure(element, configurationList);
+											
+											//Update state
+											element.setState(ElementState.CONFIGURED);
+											Element updatedElement = topologyService.update(element);
+											
+											//Fire event of state changed
+											eventService.publish(SonarTopics.TOPIC_TOPOLOGY_ELEMENT_CHANGED_STATE_CONFIGURED, updatedElement);
+										}finally {
+											devicesInConfigurationProcess.remove(element.getIdElement());
+										}
+									}
 								}
 								break;
 						}
