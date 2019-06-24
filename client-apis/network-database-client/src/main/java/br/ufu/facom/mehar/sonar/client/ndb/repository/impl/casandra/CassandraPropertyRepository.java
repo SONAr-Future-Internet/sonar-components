@@ -180,8 +180,12 @@ public class CassandraPropertyRepository extends CassandraGenericRepository impl
 					.where(QueryBuilder.eq("application", application)).and(QueryBuilder.eq("instance", instance))
 					.and(QueryBuilder.eq("group", group)).and(QueryBuilder.eq("key", key));
 			ResultSet rs = session.execute(select);
-
-			return ObjectUtils.toObject(rs.one().getString(0), DataProperty.class);
+			
+			Row row = rs.one();
+			if(row != null) {
+				return ObjectUtils.toObject(row.getString(0), DataProperty.class);
+			}
+			return null;
 		} finally {
 			close(session);
 		}

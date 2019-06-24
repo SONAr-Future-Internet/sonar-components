@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 
 import br.ufu.facom.mehar.sonar.client.nim.element.manager.impl.ONOSManager;
 import br.ufu.facom.mehar.sonar.client.nim.element.manager.impl.SNMPManager;
+import br.ufu.facom.mehar.sonar.core.model.core.Controller;
 import br.ufu.facom.mehar.sonar.core.model.topology.Element;
 
 @Service
@@ -25,7 +26,7 @@ public class ElementService {
 		return snmpManager.discover(ip);
 	}
 
-	public Collection<Element> discover() {
-		return onosManager.discover();
+	public Collection<Element> discover(Controller controller) {
+		return onosManager.discover(controller);
 	}
 }

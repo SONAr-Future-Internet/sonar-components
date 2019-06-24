@@ -39,7 +39,7 @@ import java.util.logging.Logger;
  * @version 1.00
  */
 public class DHCPServlet {
-    private static final Logger logger = Logger.getLogger(DHCPServlet.class.getName().toLowerCase());
+    protected static final Logger logger = Logger.getLogger(DHCPServlet.class.getName().toLowerCase());
     
     /** the server instance running this servlet */
     protected DHCPCoreServer server = null;

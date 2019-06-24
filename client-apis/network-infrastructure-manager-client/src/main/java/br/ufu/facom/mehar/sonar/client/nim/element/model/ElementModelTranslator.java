@@ -292,15 +292,17 @@ public class ElementModelTranslator {
 		element.setOfDeviceId(onosDevice.getId());
 		element.setManufacturer(onosDevice.getMfr());
 		element.setProduct(onosDevice.getHw());
-		element.setSoftware(onosDevice.getDriver() != null ? onosDevice.getDriver() + " " + onosDevice.getSw()
-				: onosDevice.getSw());
+		element.setSoftware(onosDevice.getDriver() != null ? onosDevice.getDriver() + " " + onosDevice.getSw() : onosDevice.getSw());
 		element.setPortList(new HashSet<Port>());
+		
 		if ("SWITCH".equalsIgnoreCase(onosDevice.getType())) {
 			element.setTypeElement(ElementType.DEVICE);
 		}
 		if (onosDevice.getAnnotations().containsKey("managementAddress")) {
-			element.setManagementIPAddressList(
-					new HashSet<String>(Arrays.asList(onosDevice.getAnnotations().get("managementAddress"))));
+			element.setIpAddressList(new HashSet<String>(Arrays.asList(onosDevice.getAnnotations().get("managementAddress"))));
+		}
+		if (onosDevice.getAnnotations().containsKey("channelId")) {
+			element.setOfChannel(onosDevice.getAnnotations().get("channelId"));
 		}
 
 		for (ONOSPort onosPort : onosDevice.getPorts()) {

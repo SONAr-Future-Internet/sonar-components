@@ -16,7 +16,8 @@ public enum Component {
 	SelfProtectionEntity("SPE", "self-protection-entity"),
 	
 	DHCPServer("DHCP", "dhcp-server"),
-	SDNController("SDNCrtl", "sdn-controller");
+	SDNController("SDNCrtl", "sdn-controller"), 
+	ControllerInterceptor("CI","controller-interceptor");
 	
 	private String acronym;
 	private String key;

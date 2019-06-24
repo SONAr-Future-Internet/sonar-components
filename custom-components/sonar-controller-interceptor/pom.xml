@@ -49,6 +49,11 @@
       <artifactId>network-event-manager-client</artifactId>
       <version>${sonar.version}</version>
     </dependency>
+    <dependency>
+      <groupId>br.ufu.facom.mehar.sonar.client</groupId>
+      <artifactId>network-database-client</artifactId>
+      <version>${sonar.version}</version>
+    </dependency>
   <!-- Spring -->
     <dependency>
       <groupId>org.springframework.boot</groupId>

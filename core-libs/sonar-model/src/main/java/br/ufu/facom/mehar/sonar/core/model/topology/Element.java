@@ -22,7 +22,7 @@ public class Element {
 	private ElementType typeElement;
 
 	// Management IPs
-	private Set<String> managementIPAddressList;
+	private Set<String> ipAddressList;
 
 	//State
 	private ElementState state;
@@ -33,11 +33,11 @@ public class Element {
 	private String lastDicoveredSource; // from?
 	private String lastDicoveredMethod; // how?
 	private Integer discoveryFailureCount; //failed attempts in a row
-	private Integer topologyLevel; //failed attempts in a row
 	
 	// SDN Fields
-	private Set<String> ofControllers;
+	private Set<UUID> ofControllerList;
 	private String ofDeviceId;
+	private String ofChannel;
 
 	// Atributes
 	private Integer memory; // ram memory
@@ -90,12 +90,12 @@ public class Element {
 		this.name = name;
 	}
 
-	public Set<String> getManagementIPAddressList() {
-		return managementIPAddressList;
+	public Set<String> getIpAddressList() {
+		return ipAddressList;
 	}
 
-	public void setManagementIPAddressList(Set<String> managementIPAddressList) {
-		this.managementIPAddressList = managementIPAddressList;
+	public void setIpAddressList(Set<String> managementIPAddressList) {
+		this.ipAddressList = managementIPAddressList;
 	}
 
 	public Date getLastDicoveredAt() {
@@ -194,14 +194,6 @@ public class Element {
 		this.domain = domain;
 	}
 
-	public Set<String> getOfControllers() {
-		return ofControllers;
-	}
-
-	public void setOfControllers(Set<String> ofControllers) {
-		this.ofControllers = ofControllers;
-	}
-
 	public String getOfDeviceId() {
 		return ofDeviceId;
 	}
@@ -257,21 +249,29 @@ public class Element {
 		}
 	}
 	
-	public Integer getTopologyLevel() {
-		return this.topologyLevel;
+	public Set<UUID> getOfControllerList() {
+		return ofControllerList;
 	}
 
-	public void setTopologyLevel(Integer topologyLevel) {
-		this.topologyLevel = topologyLevel;
+	public void setOfControllerList(Set<UUID> ofControllers) {
+		this.ofControllerList = ofControllers;
 	}
-	
+
+	public String getOfChannel() {
+		return ofChannel;
+	}
+
+	public void setOfChannel(String ofChannel) {
+		this.ofChannel = ofChannel;
+	}
+
 	@Override
 	public String toString() {
-		return "Element [managementIPAddressList=" + managementIPAddressList + ", ofDeviceId=" + ofDeviceId +  ", idElement=" + idElement 
+		return "Element [managementIPAddressList=" + ipAddressList + ", ofDeviceId=" + ofDeviceId +  ", idElement=" + idElement 
 				+ ", idDomain=" + idDomain + ", name=" + name + ", typeElement="+ typeElement + ", state=" + state
 				+ ", lastDicoveredAt=" + lastDicoveredAt + ", lastDicoveredBy=" + lastDicoveredBy
 				+ ", lastDicoveredSource=" + lastDicoveredSource + ", lastDicoveredMethod=" + lastDicoveredMethod
-				+ ", discoveryFailureCount=" + discoveryFailureCount + ", ofControllers=" + ofControllers
+				+ ", discoveryFailureCount=" + discoveryFailureCount + ", ofControllers=" + ofControllerList
 				+ ", memory=" + memory + ", cores=" + cores + ", clock=" + clock
 				+ ", disk=" + disk + ", cost=" + cost + ", energy=" + energy + ", manufacturer=" + manufacturer
 				+ ", product=" + product + ", software=" + software + ", portList=" + portList + "]";

@@ -24,10 +24,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
-import br.ufu.facom.mehar.sonar.client.nim.component.configuration.NIMConfiguration;
 import br.ufu.facom.mehar.sonar.client.nim.component.manager.SonarCIMContainerManager;
-import br.ufu.facom.mehar.sonar.client.nim.element.exception.MethodNotImplementedYetException;
-import br.ufu.facom.mehar.sonar.client.nim.element.exception.MethodNotSupportedException;
 import br.ufu.facom.mehar.sonar.client.nim.element.manager.SDNManager;
 import br.ufu.facom.mehar.sonar.client.nim.element.model.ElementModelTranslator;
 import br.ufu.facom.mehar.sonar.client.nim.element.model.onos.flow.ONOSDevice;
@@ -38,6 +35,7 @@ import br.ufu.facom.mehar.sonar.client.nim.element.model.onos.flow.ONOSFlowRespo
 import br.ufu.facom.mehar.sonar.client.nim.exception.DeviceConfigurationException;
 import br.ufu.facom.mehar.sonar.client.nim.exception.DeviceConfigurationTimeoutException;
 import br.ufu.facom.mehar.sonar.core.model.configuration.Flow;
+import br.ufu.facom.mehar.sonar.core.model.core.Controller;
 import br.ufu.facom.mehar.sonar.core.model.topology.Element;
 import br.ufu.facom.mehar.sonar.core.model.topology.Port;
 import br.ufu.facom.mehar.sonar.core.util.ObjectUtils;
@@ -49,134 +47,133 @@ public class ONOSManager implements SDNManager {
 	@Autowired
 	private RestTemplate restTemplate;
 	
-	@Autowired
-	private NIMConfiguration configuration;
-	
-
 	@Override
-	public Collection<Element> discover() {
-		logger.debug(this.getClass().getCanonicalName() + "Get all devices on manager ONOS ["+configuration.getSDNNorthSeeds()+"]");
+	public Collection<Element> discover(Controller controller) {
+		logger.debug(this.getClass().getCanonicalName() + "Get all devices on manager ONOS ["+controller.getNorth()+"]");
 		Map<String, Element> responseMap = new HashMap<String, Element>();
-		for(String endpointController : configuration.getSDNNorthSeeds()) {
-			try {
-				HttpHeaders headers = new HttpHeaders();
-				headers.set("Accept", MediaType.APPLICATION_JSON_VALUE);
-				headers.set("Authorization", "Basic " + Base64.encodeBase64String( configuration.getSdnNorthAuthString().getBytes(StandardCharsets.UTF_8)).trim() );
-				
-				ResponseEntity<ONOSDiscovery> responseDeviceList = restTemplate.exchange(
-						"http://"+endpointController+"/onos/v1/devices",
-						HttpMethod.GET, new HttpEntity<>(headers),
-						new ParameterizedTypeReference<ONOSDiscovery>() {
-						});
-		
-				ONOSDiscovery discovery = responseDeviceList.getBody();
-				if(discovery != null && discovery.getDevices() != null && !discovery.getDevices().isEmpty()) {
-					for(ONOSDevice onosDevice : discovery.getDevices()) {
-						if(!responseMap.containsKey(onosDevice.getId())) {
-							//Get all device information and ports
-							ResponseEntity<ONOSDevice> responseDevice = restTemplate.exchange(
-									"http://"+endpointController+"/onos/v1/devices/"+onosDevice.getId()+"/ports",
-									HttpMethod.GET, new HttpEntity<>(headers),
-									new ParameterizedTypeReference<ONOSDevice>() {
-									});
-							
-							ONOSDevice completeOnosDevice = responseDevice.getBody();
-							if(completeOnosDevice.getAvailable()) {
-								responseMap.put(completeOnosDevice.getId(), ElementModelTranslator.convertToElement(completeOnosDevice));
-							}
+		try {
+			HttpHeaders headers = new HttpHeaders();
+			headers.set("Accept", MediaType.APPLICATION_JSON_VALUE);
+			headers.set("Authorization", "Basic " + Base64.encodeBase64String((controller.getAuthUsername()+":"+controller.getAuthPassword()).getBytes(StandardCharsets.UTF_8)).trim() );
+			
+			ResponseEntity<ONOSDiscovery> responseDeviceList = restTemplate.exchange(
+					"http://"+controller.getNorth()+"/onos/v1/devices",
+					HttpMethod.GET, new HttpEntity<>(headers),
+					new ParameterizedTypeReference<ONOSDiscovery>() {
+					});
+	
+			ONOSDiscovery discovery = responseDeviceList.getBody();
+			if(discovery != null && discovery.getDevices() != null && !discovery.getDevices().isEmpty()) {
+				for(ONOSDevice onosDevice : discovery.getDevices()) {
+					if(!responseMap.containsKey(onosDevice.getId())) {
+						//Get all device information and ports
+						ResponseEntity<ONOSDevice> responseDevice = restTemplate.exchange(
+								"http://"+controller.getNorth()+"/onos/v1/devices/"+onosDevice.getId()+"/ports",
+								HttpMethod.GET, new HttpEntity<>(headers),
+								new ParameterizedTypeReference<ONOSDevice>() {
+								});
+						
+						ONOSDevice completeOnosDevice = responseDevice.getBody();
+						if(completeOnosDevice.getAvailable()) {
+							responseMap.put(completeOnosDevice.getId(), ElementModelTranslator.convertToElement(completeOnosDevice));
 						}
 					}
 				}
-			} catch(Exception e) {
-				logger.error("Error discovering devices on ONOS Controller with endpoint:"+endpointController, e);
 			}
+		} catch(Exception e) {
+			logger.error("Error discovering devices on ONOS Controller with endpoint:"+controller.getNorth(), e);
 		}
 		return responseMap.values();
 	}
 	
 	@Override
-	public Set<String> configureFlows(Element element, List<Flow> flows) {
+	public Set<String> configureFlows(Controller controller, Element element, List<Flow> flows) {
 		for(Flow flow : flows) {
 			if(flow.getDeviceId() == null) {
 				flow.setDeviceId(element.getOfDeviceId());
 			}
 		}
-		return this.configureFlows(flows, Boolean.TRUE);
+		return this.configureFlows(controller, flows, Boolean.TRUE);
 	}
 	
 	@Override
-	public Set<String> configureFlows(List<Flow> flows, Boolean waitFlowCreation) {
+	public Set<String> configureFlows(Controller controller, List<Flow> flows, Boolean waitFlowCreation) {
 		ONOSFlowGroup group = ElementModelTranslator.convertToONOSFlow(flows);
 		
-		for(String endpointController : configuration.getSDNNorthSeeds()) {
-			try {
-				HttpHeaders headers = new HttpHeaders();
-				headers.set("Accept", MediaType.APPLICATION_JSON_VALUE);
-				headers.set("Authorization", "Basic " + Base64.encodeBase64String( configuration.getSdnNorthAuthString().getBytes(StandardCharsets.UTF_8)).trim() );
-				
-				logger.info("Creating flows! => "+ObjectUtils.fromObject(group));
-				
-				ResponseEntity<ONOSFlowResponse> responseDeviceList = restTemplate.exchange(
-						"http://"+endpointController+"/onos/v1/flows",
-						HttpMethod.POST, new HttpEntity<>(group, headers),
-						new ParameterizedTypeReference<ONOSFlowResponse>() {
-						});
-		
-				ONOSFlowResponse result = responseDeviceList.getBody();
-				
-				//Wait while flows are pending
-				Set<String> flowSet = new HashSet<String>();
-				for(ONOSFlowRecord flow : result.getFlows()) {
-					flowSet.add(flow.getFlowId());
-				}
-				
-				if(waitFlowCreation) {
-					Date startDate = new Date();
-					Set<String> flowPendingSet = new HashSet<String>(flowSet); 
-					while(!flowPendingSet.isEmpty()){
-						flowPendingSet.clear();
-						ResponseEntity<ONOSFlowResponse> responsePending = restTemplate.exchange(
-								"http://"+endpointController+"/onos/v1/flows",
-								HttpMethod.GET, new HttpEntity<>(headers),
-								new ParameterizedTypeReference<ONOSFlowResponse>() {
-								});
-				
-						ONOSFlowResponse deviceFlows = responsePending.getBody();
-						
-						
-						for(ONOSFlowRecord flow : deviceFlows.getFlows()) {
-							if(flowSet.contains(flow.getId()) && !flow.getState().equalsIgnoreCase("ADDED")) {
-								flowPendingSet.add(flow.getId());
-							}
-						}
-						
-						if(timeoutReached(startDate, 5*flowSet.size()) && !flowPendingSet.isEmpty()) {
-							throw new DeviceConfigurationTimeoutException("Configuration timeout for pending flows "+flowPendingSet);
-						}else {
-							logger.debug("Current flows:"+ObjectUtils.fromObject(responsePending));
-						}
-						
-						if(!flowPendingSet.isEmpty()) {
-							try {
-								logger.info("Waiting for pending flows... "+flowPendingSet);
-								Thread.sleep(1000);
-							} catch (InterruptedException e) {
-								e.printStackTrace();
-							}
-						}
-					}
-				}
+		try {
+			HttpHeaders headers = new HttpHeaders();
+			headers.set("Accept", MediaType.APPLICATION_JSON_VALUE);
+			headers.set("Authorization", "Basic " + Base64.encodeBase64String((controller.getAuthUsername()+":"+controller.getAuthPassword()).getBytes(StandardCharsets.UTF_8)).trim() );
+			
+			logger.info("Creating flows! => "+ObjectUtils.fromObject(group));
+			
+			ResponseEntity<ONOSFlowResponse> responseDeviceList = restTemplate.exchange(
+					"http://"+controller.getNorth()+"/onos/v1/flows",
+					HttpMethod.POST, new HttpEntity<>(group, headers),
+					new ParameterizedTypeReference<ONOSFlowResponse>() {
+					});
+	
+			ONOSFlowResponse result = responseDeviceList.getBody();
+			
+			//Wait while flows are pending
+			Set<String> flowSet = new HashSet<String>();
+			for(ONOSFlowRecord flow : result.getFlows()) {
+				flowSet.add(flow.getFlowId());
+			}
+			
+			if(waitFlowCreation) {
+				waitFlowCreation(controller, flowSet);
+			}
 
-				return flowSet;
-				
-			} catch(Exception e) {
-				if(! (e instanceof DeviceConfigurationTimeoutException)) {
-					throw new DeviceConfigurationException("Error pushing flows on ONOS Controller with endpoint:"+endpointController, e);
+			return flowSet;
+			
+		} catch(Exception e) {
+			if(! (e instanceof DeviceConfigurationTimeoutException)) {
+				throw new DeviceConfigurationException("Error pushing flows on ONOS Controller with endpoint:"+controller.getNorth(), e);
+			}
+			throw e;
+		}
+	}
+
+	private void waitFlowCreation(Controller controller, Set<String> flowSet) {
+		HttpHeaders headers = new HttpHeaders();
+		headers.set("Accept", MediaType.APPLICATION_JSON_VALUE);
+		headers.set("Authorization", "Basic " + Base64.encodeBase64String((controller.getAuthUsername()+":"+controller.getAuthPassword()).getBytes(StandardCharsets.UTF_8)).trim() );
+		
+		Date startDate = new Date();
+		Set<String> flowPendingSet = new HashSet<String>(flowSet); 
+		while(!flowPendingSet.isEmpty()){
+			flowPendingSet.clear();
+			ResponseEntity<ONOSFlowResponse> responsePending = restTemplate.exchange(
+					"http://"+controller.getNorth()+"/onos/v1/flows",
+					HttpMethod.GET, new HttpEntity<>(headers),
+					new ParameterizedTypeReference<ONOSFlowResponse>() {
+					});
+
+			ONOSFlowResponse deviceFlows = responsePending.getBody();
+			
+			
+			for(ONOSFlowRecord flow : deviceFlows.getFlows()) {
+				if(flowSet.contains(flow.getId()) && !flow.getState().equalsIgnoreCase("ADDED")) {
+					flowPendingSet.add(flow.getId());
 				}
-				throw e;
+			}
+			
+			if(timeoutReached(startDate, 5*flowSet.size()) && !flowPendingSet.isEmpty()) {
+				throw new DeviceConfigurationTimeoutException("Configuration timeout for pending flows "+flowPendingSet);
+			}else {
+				logger.debug("Current flows:"+ObjectUtils.fromObject(responsePending));
+			}
+			
+			if(!flowPendingSet.isEmpty()) {
+				try {
+					logger.info("Waiting for pending flows... "+flowPendingSet);
+					Thread.sleep(1000);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
 			}
 		}
-		return new HashSet<String>();
 	}
 	
 	private boolean timeoutReached(Date startDate, int timeInSecs) {
@@ -190,25 +187,18 @@ public class ONOSManager implements SDNManager {
 		return !now.before(whenTimeout);
 	}
 
-	@Override
-	public Element discover(String ip) {
-		throw new MethodNotImplementedYetException("Method 'discover' of ONOSManager not implemented yet!");
-	}
 
-	@Override
-	public void configureController(Element element, String[] controllerTargets) {
-		throw new MethodNotSupportedException("Method 'configureController' of ONOSManager not suported!");
-	}
 	
 	public static void main(String[] args) {
 		ONOSManager onosManager = new ONOSManager();
 		onosManager.restTemplate = new RestTemplate();
-		onosManager.configuration = new NIMConfiguration();
-		onosManager.configuration.setSDNNorthSeedsAttr("192.168.0.1:8181");
-		onosManager.configuration.setSDNNorthAuthStringAttr("onos:rocks");
+		Controller controller = new Controller();
+		controller.setNorth("192.168.0.1:8181");
+		controller.setAuthUsername("onos");
+		controller.setAuthPassword("rocks");
 	
-		for(Element element : onosManager.discover()) {
-			System.out.println(element.getManagementIPAddressList() + " : "+element.getOfDeviceId());
+		for(Element element : onosManager.discover(controller)) {
+			System.out.println(element.getIpAddressList() + " : "+element.getOfDeviceId());
 			for(Port port : element.getPortList()) {
 				System.out.println("\t"+port.getMacAddress()+" : "+port.getOfPort());
 			}

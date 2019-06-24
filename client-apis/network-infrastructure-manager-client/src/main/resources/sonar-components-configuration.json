@@ -1,66 +1,75 @@
 {
 	"distributed-network-database": {
-				"namespace": "meharsonar",	
+				"namespace":"meharsonar",	
 				"image":"cassandra",
 				"version":"latest",
-				"accessPort": {"main": "9042"},
+				"accessPort":{"main": "9042"},
 				"exposedPorts":["7000", "7001", "7199", "9042", "9160"],
 				"portMapping":{"7000":"7000", "7001":"7001", "7199":"7199", "9042":"9042", "9160":"9160"},
 				"autoDestroy":false,
 				"singleton":true
 	},
 	"network-event-manager": {
-				"namespace": "meharsonar",	
+				"namespace":"meharsonar",	
 				"image":"rabbitmq",
 				"version":"latest",
-				"accessPort": {"main": "5672"},
+				"accessPort":{"main": "5672"},
 				"exposedPorts":["4369", "5671", "5672", "25672"],
 				"portMapping":{"4369":"4369", "5671":"5671", "5672":"5672", "25672":"25672"},
 				"autoDestroy":false,
 				"singleton":true
 	},
 	"sdn-controller":{
-				"namespace": "meharsonar",	
+				"namespace":"meharsonar",	
 				"image":"onos",
 				"version":"latest",
-				"accessPort": {"north": "8181", "south":"6653"},
+				"accessPort":{"north": "8181", "south":"6653"},
 				"env": ["ONOS_APPS=org.onosproject.openflow-base"],
 				"exposedPorts":["6653", "6640", "8181", "8101", "9876"],
 				"portMapping":{"6653":"6653", "6640":"6640", "8181":"8181", "8101":"8101", "9876":"9876"},
 				"autoDestroy":false,
 				"singleton":true
 	},
+	"controller-interceptor":{
+				"namespace":"meharsonar",	
+				"image":"sonar-controller-interceptor",
+				"version":"latest",
+				"accessPort":{"main": "6600"},
+				"network":"host",
+				"autoDestroy":false,
+				"singleton":true
+	},
 	"dhcp-server":{
-				"namespace": "meharsonar",	
+				"namespace":"meharsonar",	
 				"image":"sonar-dhcp-server",
 				"version":"latest",
-				"network": "host",
+				"network":"host",
 				"autoDestroy":false,
 				"singleton":true
 	},
 	"topology-self-collector-entity": {
-				"namespace": "meharsonar",	
+				"namespace":"meharsonar",	
 				"image":"topology-self-collector-entity",
 				"version":"latest",
 				"autoDestroy":true,
 				"singleton":true
 	},
 	"metrics-self-collector-entity":{
-				"namespace": "meharsonar",	
+				"namespace":"meharsonar",	
 				"image":"metrics-self-collector-entity",
 				"version":"latest",
 				"autoDestroy":true,
 				"singleton":true
 	},
 	"self-configuraion-entity": {
-				"namespace": "meharsonar",	
+				"namespace":"meharsonar",	
 				"image":"self-configuration-entity",
 				"version":"latest",
 				"autoDestroy":true,
 				"singleton":true
 	},
 	"self-healing-entity": {
-				"namespace": "meharsonar",	
+				"namespace":"meharsonar",	
 				"image":"self-healing-entity",
 				"version":"latest",
 				"autoDestroy":true,
@@ -74,7 +83,7 @@
 				"singleton":true
 	},
 	"self-protection-entity": {
-				"namespace": "meharsonar",	
+				"namespace":"meharsonar",	
 				"image":"self-protection-entity",
 				"version":"latest",
 				"autoDestroy":true,

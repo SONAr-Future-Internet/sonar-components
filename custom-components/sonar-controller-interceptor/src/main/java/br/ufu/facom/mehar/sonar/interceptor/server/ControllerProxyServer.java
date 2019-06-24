@@ -18,12 +18,17 @@ import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
+import br.ufu.facom.mehar.sonar.client.ndb.configuration.SonarProperties;
+import br.ufu.facom.mehar.sonar.client.ndb.service.CoreDataService;
+import br.ufu.facom.mehar.sonar.client.ndb.service.PropertyDataService;
 import br.ufu.facom.mehar.sonar.client.nem.action.NetworkEventAction;
 import br.ufu.facom.mehar.sonar.client.nem.configuration.SonarTopics;
 import br.ufu.facom.mehar.sonar.client.nem.service.EventService;
+import br.ufu.facom.mehar.sonar.core.model.core.Controller;
+import br.ufu.facom.mehar.sonar.core.model.event.ControllerInterceptionEvent;
 import br.ufu.facom.mehar.sonar.core.util.IPUtils;
+import br.ufu.facom.mehar.sonar.core.util.ObjectUtils;
 import br.ufu.facom.mehar.sonar.core.util.openflow.PacketOutRequest;
-import br.ufu.facom.mehar.sonar.interceptor.configuration.CIConfiguration;
 import br.ufu.facom.mehar.sonar.interceptor.manager.SonarSyncInterceptor;
 import br.ufu.facom.mehar.sonar.interceptor.proxy.Connection;
 
@@ -34,18 +39,24 @@ public class ControllerProxyServer {
 	@Value("${interceptor.proxy.port:6600}")
 	private Integer port;
 	
+	@Value("${sonar.ci.instance:192.168.0.1:6600}")
+	private String instance;
+	
 	@Autowired
-	private CIConfiguration configuration;
+	private CoreDataService coreService;
 	
 	@Autowired
 	private EventService eventService;
+	
+	@Autowired
+	private PropertyDataService dataService;
 	
 	private Map<String,List<Socket>> deviceSockMap = new HashMap<String, List<Socket>>();
 	
 	@EventListener(ApplicationReadyEvent.class)
 	public void providePacketOut() {
-		eventService.subscribe(SonarTopics.TOPIC_OPENFLOW_PACKET_OUT, new NetworkEventAction() {
-			
+		LOGGER.info("Listening for events of topic '"+SonarTopics.TOPIC_INTERCEPTOR_CALL_PACKET_OUT+"'...");
+		eventService.subscribe(SonarTopics.TOPIC_INTERCEPTOR_CALL_PACKET_OUT, new NetworkEventAction() {
 			@Override
 			public void handle(String event, byte[] payload) {
 				PacketOutRequest packetOutRequest = PacketOutRequest.deserialize(payload);
@@ -86,15 +97,26 @@ public class ControllerProxyServer {
             LOGGER.info("Listening for connections on port "+port+"...");
             while (true) {
                 socket = serverSocket.accept();
-                for(String seed : configuration.getSDNSouthSeeds()) {
+                boolean anyControllerConnected = false;
+                System.out.println("Instance:"+instance);
+                List<Controller> controllerList = coreService.getControllersByInterceptor(instance);
+                System.out.println("Controller:"+ (controllerList == null? "null" : ObjectUtils.toString(controllerList)));
+                for(Controller controller : controllerList) {
+                	String seed = controller.getSouth();
                 	if(seed.contains(":")) {
+                		anyControllerConnected = true;
                 		String seedParts[] = seed.split(":",2);
-                		registerDeviceSocket(socket);
                 		new Thread(new Connection(new SonarSyncInterceptor(eventService),socket, seedParts[0], Integer.parseInt(seedParts[1]))).start();
                 	}else {
                 		LOGGER.error("Error while establishing connection to controller. Unable to determine seed.");
                 		socket.close();
                 	}
+                }
+                
+                if(!anyControllerConnected) {
+                	socket.close();
+                }else {
+                	registerDeviceSocket(socket);
                 }
             }
         } catch (Exception e) {
@@ -129,5 +151,8 @@ public class ControllerProxyServer {
 		}else {
 			deviceSockMap.put(ipSw, new ArrayList<Socket>(Arrays.asList(socket)));
 		}
+		String pathSw = IPUtils.convertInetToIPString(socket.getLocalAddress())+":"+socket.getLocalPort();
+		dataService.setData(SonarProperties.APPLICATION_CONTROLLER_INTERCEPTOR, SonarProperties.INSTANCE_SHARED, SonarProperties.GROUP_CI_PATH_TO_IP, pathSw, ipSw );
+		eventService.publish(SonarTopics.TOPIC_INTERCEPTOR_NEW_CONNECTION, new ControllerInterceptionEvent(ipSw, pathSw));
 	}
 }

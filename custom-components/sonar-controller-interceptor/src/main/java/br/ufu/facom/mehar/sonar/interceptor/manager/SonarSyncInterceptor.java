@@ -53,31 +53,30 @@ public class SonarSyncInterceptor implements Interceptor{
 					Ethernet frame = new Ethernet();
 					frame.deserialize(packetIn.getData(), 0, packetIn.getData().length);
 					
-					printEthernetFrame(frame);
+//					printEthernetFrame(frame);
 					
 					if(isDHCP(frame)) {
-						//this.eventService.publish(SonarTopics.TOPIC_DHCP_MESSAGE_INCOMING, Arrays.copyOfRange(data, 0, length));
-						this.eventService.publish(SonarTopics.TOPIC_DHCP_MESSAGE_INCOMING, new PacketInIndication(source, Arrays.copyOfRange(data, 0, length)).serialize());
+						this.eventService.publish(SonarTopics.TOPIC_INTERCEPTOR_PACKET_IN_DHCP, new PacketInIndication(source, Arrays.copyOfRange(data, 0, length)).serialize());
 					}
 				}
 				
-				System.out.println(" ["+message.getType()+"] "+source.getHostAddress()+" -> "+destination.getHostAddress());
+				logger.info(" ["+message.getType()+"] "+source.getHostAddress()+" -> "+destination.getHostAddress());
 			}
 		} catch (OFParseError e) {
-			System.out.println("Error while parsing message from "+source.getHostAddress()+" to "+destination.getHostAddress()+" with "+length+" bytes.");
+			logger.error("Error while parsing message from "+source.getHostAddress()+" to "+destination.getHostAddress()+" with "+length+" bytes.",e);
 		}
 	}
 
-	private void printEthernetFrame(Ethernet frame) {
-		IPacket current = frame;
-		System.out.println("---------------------------------");
-		do{
-			System.out.println(current.getClass());
-			System.out.println(current);
-			System.out.println("---------------------------------");
-			current = current.getPayload();
-		}while(current != null && current instanceof IPacket);
-	}
+//	private void printEthernetFrame(Ethernet frame) {
+//		IPacket current = frame;
+//		System.out.println("---------------------------------");
+//		do{
+//			System.out.println(current.getClass());
+//			System.out.println(current);
+//			System.out.println("---------------------------------");
+//			current = current.getPayload();
+//		}while(current != null && current instanceof IPacket);
+//	}
 
 	private boolean isDHCP(Ethernet packet) {
 		return EthType.IPv4.equals(packet.getEtherType()) && packet.getPayload() != null && (packet.getPayload() instanceof IPv4) &&

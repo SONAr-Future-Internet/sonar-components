@@ -12,6 +12,8 @@ import org.springframework.stereotype.Component;
 
 import br.ufu.facom.mehar.sonar.dhcp.api.DHCPCoreServer;
 import br.ufu.facom.mehar.sonar.dhcp.api.DHCPServerInitException;
+import br.ufu.facom.mehar.sonar.dhcp.engine.ConventionalDHCPEngine;
+import br.ufu.facom.mehar.sonar.dhcp.engine.DHCPEngine;
 
 @Component
 public class DHCPServer {
@@ -27,7 +29,7 @@ public class DHCPServer {
 	private String serverThreads;
 	
 	@Autowired
-	private SONArDHCPEngine dhcpServlet;
+	private ConventionalDHCPEngine dhcpServlet;
 
 	@EventListener(ApplicationReadyEvent.class)
 	public void run() {

@@ -74,8 +74,8 @@ public class SNMPManager implements ElementManager{
 	        logger.info("LLDP Discover: "+ip);
 	        
 	        Element element = new Element();
-			if(element.getManagementIPAddressList() == null) {
-				element.setManagementIPAddressList(new HashSet<String>(Arrays.asList(ip)));
+			if(element.getIpAddressList() == null) {
+				element.setIpAddressList(new HashSet<String>(Arrays.asList(ip)));
 			}
 	        
 	        HashMap<String, Port> portMap = new HashMap<String, Port>();
@@ -226,7 +226,7 @@ public class SNMPManager implements ElementManager{
 	        
 	        
 	        if(logger.isDebugEnabled()) {
-	        	logger.debug("Element "+element.getName()+" ("+element.getManagementIPAddressList()+") discovered...");
+	        	logger.debug("Element "+element.getName()+" ("+element.getIpAddressList()+") discovered...");
 	        	logger.debug(
 	        			String.format("%-5s\t%-8s\t%-12s\t%-20s\t%-15s\t<--->\t%-20s\t%-8s\t%-12s\t%-20s\t%-15s",	        			
 	        			"ID",

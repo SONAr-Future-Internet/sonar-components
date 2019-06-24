@@ -14,8 +14,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import br.ufu.facom.mehar.sonar.client.ndb.service.ConfigurationService;
-import br.ufu.facom.mehar.sonar.client.ndb.service.TopologyService;
+import br.ufu.facom.mehar.sonar.client.ndb.service.ConfigurationDataService;
+import br.ufu.facom.mehar.sonar.client.ndb.service.TopologyDataService;
 import br.ufu.facom.mehar.sonar.client.nim.element.model.ElementModelTranslator;
 import br.ufu.facom.mehar.sonar.core.model.configuration.Configuration;
 import br.ufu.facom.mehar.sonar.core.model.configuration.ConfigurationType;
@@ -43,10 +43,10 @@ public class ControlConfigurationService {
 	private static final Logger logger = LoggerFactory.getLogger(ControlConfigurationService.class);
 
 	@Autowired
-	private ConfigurationService configurationService;
+	private ConfigurationDataService configurationService;
 
 	@Autowired
-	private TopologyService topologyService;
+	private TopologyDataService topologyService;
 	
 	public Graph<Element, Port> buildGraph(Set<Element> elementList) {
 		Map<UUID, Port> mapPort = new HashMap<UUID, Port>();
@@ -128,7 +128,7 @@ public class ControlConfigurationService {
 				Element neighbor = segment.getFirst().getValue();
 				if (!neighbor.equals(multiPath.getOrigin().getValue())) {
 					Port portFromNeighborToElement = segment.getSecond().getPeerA();
-					List<Configuration> configurationList = buildDeviceRouteConfiguration(neighbor, portFromNeighborToElement,element.getManagementIPAddressList());
+					List<Configuration> configurationList = buildDeviceRouteConfiguration(neighbor, portFromNeighborToElement,element.getIpAddressList());
 					if(configurationMap.containsKey(neighbor)) {
 						configurationMap.get(neighbor).addAll(configurationList);
 					}else {
@@ -138,7 +138,7 @@ public class ControlConfigurationService {
 				
 				if(i == path.size() -1) {//last segment of path...
 					Port portToRoot = segment.getSecond().getPeerB();
-					List<Configuration> configurationList = buildDeviceRouteConfiguration(element, portToRoot, multiPath.getOrigin().getValue().getManagementIPAddressList());
+					List<Configuration> configurationList = buildDeviceRouteConfiguration(element, portToRoot, multiPath.getOrigin().getValue().getIpAddressList());
 					configurationList.addAll(buildBasicDeviceConfiguration(element, portToRoot, Arrays.asList(multiPath.getOrigin().getValue())));
 					if(configurationMap.containsKey(element)) {
 						configurationMap.get(element).addAll(configurationList);
@@ -344,7 +344,7 @@ public class ControlConfigurationService {
 										Port portConnectedToServer = segment.getSecond().getPeerB();
 										// COnfigure route to server 
 										if(portConnectedToServer.getOfPort() != null) {
-											configuration.addAll(buildDeviceRouteConfiguration(element, portConnectedToServer, server.getManagementIPAddressList()));
+											configuration.addAll(buildDeviceRouteConfiguration(element, portConnectedToServer, server.getIpAddressList()));
 											if(!justRoutes) {
 												configuration.addAll(buildBasicDeviceConfiguration(element, portConnectedToServer, serverList));
 											}
@@ -357,7 +357,7 @@ public class ControlConfigurationService {
 										// Configure the neighbor to forward data to the device
 										if(neighbordPortConnectedToElement.getOfPort() != null) {
 											configuration.addAll(buildDeviceRouteConfiguration(neighbor, neighbordPortConnectedToElement,
-												element.getManagementIPAddressList()));
+												element.getIpAddressList()));
 										}else {
 											logger.warn("Unable to use port to create path to the server. It doesn't have ofPortId."+neighbordPortConnectedToElement);
 										}
@@ -378,7 +378,7 @@ public class ControlConfigurationService {
 		
 		for(String nextHopIp : managementIPAddressList) {
 			configurationList.add(buildFlowConfigurationTemplate(element,
-				"Route "+element.getManagementIPAddressList().iterator().next()+"->"+nextHopIp+" through "+port.getPortName(), 
+				"Route "+element.getIpAddressList().iterator().next()+"->"+nextHopIp+" through "+port.getPortName(), 
 				new Flow(element.getOfDeviceId(), element.getIdElement(),
 					Arrays.asList(
 							new FlowSelector(FlowSelectorType.ETH_TYPE, "0x0800"), 
@@ -411,7 +411,7 @@ public class ControlConfigurationService {
 						new FlowInstruction(FlowInstructionType.NORMAL))));
 		
 		//Local Processing
-		for(String address : element.getManagementIPAddressList()) {
+		for(String address : element.getIpAddressList()) {
 			configurationList.add(buildFlowConfigurationTemplate(element, "Local Processing",
 				new Flow(element.getOfDeviceId(), element.getIdElement(),
 					Arrays.asList(
@@ -426,38 +426,53 @@ public class ControlConfigurationService {
 		}
 		
 		//DHCP Routes
-		configurationList.add(buildFlowConfigurationTemplate(element, "DHCP Broadcast (->) " + portToServer.getPortName(),
-			new Flow(element.getOfDeviceId(), element.getIdElement(),
-				Arrays.asList(
-						new FlowSelector(FlowSelectorType.ETH_TYPE, "0x0800"), 
-						new FlowSelector(FlowSelectorType.IPV4_DST, "255.255.255.255/32"),
-						new FlowSelector(FlowSelectorType.IP_PROTO, "17"),
-						new FlowSelector(FlowSelectorType.UDP_DST, "67") 
-				), 
-				Arrays.asList(
-					new FlowInstruction(FlowInstructionType.OUTPUT, portToServer.getOfPort(), portToServer.getIdPort())
-				)
-			)
-		));
-			
-		for(Element server : serverList) {
-			for(String ipServer : server.getManagementIPAddressList()) {
-				configurationList.add(buildFlowConfigurationTemplate(element, "DHCP Broadcast (<-)", //TODO Loop Avoidance 
-					new Flow(element.getOfDeviceId(), element.getIdElement(),
-						Arrays.asList(
-								new FlowSelector(FlowSelectorType.ETH_TYPE, "0x0800"), 
-								new FlowSelector(FlowSelectorType.IPV4_SRC, ipServer+"/32"),
-								new FlowSelector(FlowSelectorType.IPV4_DST, "192.168.0.255/32"),
-								new FlowSelector(FlowSelectorType.IP_PROTO, "17"),
-								new FlowSelector(FlowSelectorType.UDP_DST, "68") 
-						), 
-						Arrays.asList(
-							new FlowInstruction(FlowInstructionType.FLOOD)
-						)
+		configurationList.add(buildFlowConfigurationTemplate(element, "DHCP Controller " + portToServer.getPortName(),
+				new Flow(element.getOfDeviceId(), element.getIdElement(),
+					Arrays.asList(
+							new FlowSelector(FlowSelectorType.ETH_TYPE, "0x0800"), 
+							new FlowSelector(FlowSelectorType.IPV4_DST, "255.255.255.255/32"),
+							new FlowSelector(FlowSelectorType.IP_PROTO, "17"),
+							new FlowSelector(FlowSelectorType.UDP_DST, "67") 
+					), 
+					Arrays.asList(
+							new FlowInstruction(FlowInstructionType.CONTROLLER)
 					)
-				));
-			}
-		}
+				)
+			));
+
+		//DHCP Routes
+//		configurationList.add(buildFlowConfigurationTemplate(element, "DHCP Broadcast (->) " + portToServer.getPortName(),
+//			new Flow(element.getOfDeviceId(), element.getIdElement(),
+//				Arrays.asList(
+//						new FlowSelector(FlowSelectorType.ETH_TYPE, "0x0800"), 
+//						new FlowSelector(FlowSelectorType.IPV4_DST, "255.255.255.255/32"),
+//						new FlowSelector(FlowSelectorType.IP_PROTO, "17"),
+//						new FlowSelector(FlowSelectorType.UDP_DST, "67") 
+//				), 
+//				Arrays.asList(
+//					new FlowInstruction(FlowInstructionType.OUTPUT, portToServer.getOfPort(), portToServer.getIdPort())
+//				)
+//			)
+//		));
+//			
+//		for(Element server : serverList) {
+//			for(String ipServer : server.getIpAddressList()) {
+//				configurationList.add(buildFlowConfigurationTemplate(element, "DHCP Broadcast (<-)", //TODO Loop Avoidance 
+//					new Flow(element.getOfDeviceId(), element.getIdElement(),
+//						Arrays.asList(
+//								new FlowSelector(FlowSelectorType.ETH_TYPE, "0x0800"), 
+//								new FlowSelector(FlowSelectorType.IPV4_SRC, ipServer+"/32"),
+//								new FlowSelector(FlowSelectorType.IPV4_DST, "192.168.0.255/32"),
+//								new FlowSelector(FlowSelectorType.IP_PROTO, "17"),
+//								new FlowSelector(FlowSelectorType.UDP_DST, "68") 
+//						), 
+//						Arrays.asList(
+//							new FlowInstruction(FlowInstructionType.FLOOD)
+//						)
+//					)
+//				));
+//			}
+//		}
 		
 		return configurationList;
 	}
@@ -468,7 +483,7 @@ public class ControlConfigurationService {
 		configuration.setIdElement(element.getIdElement());
 		configuration.setElement(element);
 		configuration.setType(ConfigurationType.FLOW_CREATION);
-		configuration.setIdentification(label + " [" + element.getManagementIPAddressList().iterator().next() + "]");
+		configuration.setIdentification(label + " [" + element.getIpAddressList().iterator().next() + "]");
 		configuration.setFlow(flow);
 		return configuration;
 	}
@@ -485,26 +500,26 @@ public class ControlConfigurationService {
 					new FlowInstruction(FlowInstructionType.CONTROLLER)
 				)
 			);
-		flow.setDeviceId("of:00001a5a2332f14b");
+		flow.setDeviceId("of:0000ea6e631ba540");
 		
 		System.out.println(ObjectUtils.fromObject(ElementModelTranslator.convertToONOSFlow(Arrays.asList(flow))));
 	}
 	
-	public List<Configuration> getGenericRouteConfiguration(Element element){
-		return new ArrayList<Configuration>(Arrays.asList(
-			buildFlowConfigurationTemplate(element,
-				"Route "+element.getManagementIPAddressList().iterator().next()+"-> any host on 192.168.0.0/24 with learning-switch", 
-				new Flow(element.getOfDeviceId(), element.getIdElement(),
-					Arrays.asList(
-							new FlowSelector(FlowSelectorType.ETH_TYPE, "0x0800"), 
-							new FlowSelector(FlowSelectorType.IPV4_DST, "192.168.0.0/24")
-						), 
-						Arrays.asList(
-							new FlowInstruction(FlowInstructionType.NORMAL)
-						)
-					)
-				)
-			)
-		);
-	}
+//	public List<Configuration> getGenericRouteConfiguration(Element element){
+//		return new ArrayList<Configuration>(Arrays.asList(
+//			buildFlowConfigurationTemplate(element,
+//				"Route "+element.getIpAddressList().iterator().next()+"-> any host on 192.168.0.0/24 with learning-switch", 
+//				new Flow(element.getOfDeviceId(), element.getIdElement(),
+//					Arrays.asList(
+//							new FlowSelector(FlowSelectorType.ETH_TYPE, "0x0800"), 
+//							new FlowSelector(FlowSelectorType.IPV4_DST, "192.168.0.0/24")
+//						), 
+//						Arrays.asList(
+//							new FlowInstruction(FlowInstructionType.NORMAL)
+//						)
+//					)
+//				)
+//			)
+//		);
+//	}
 }

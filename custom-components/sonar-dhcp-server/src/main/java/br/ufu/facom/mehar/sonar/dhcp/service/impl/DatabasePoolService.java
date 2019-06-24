@@ -8,8 +8,9 @@ import javax.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import br.ufu.facom.mehar.sonar.client.ndb.service.PropertyService;
-import br.ufu.facom.mehar.sonar.client.ndb.service.TopologyService;
+import br.ufu.facom.mehar.sonar.client.ndb.configuration.SonarProperties;
+import br.ufu.facom.mehar.sonar.client.ndb.service.PropertyDataService;
+import br.ufu.facom.mehar.sonar.client.ndb.service.TopologyDataService;
 import br.ufu.facom.mehar.sonar.core.model.property.DataProperty;
 import br.ufu.facom.mehar.sonar.core.model.topology.Port;
 import br.ufu.facom.mehar.sonar.core.util.IPUtils;
@@ -17,22 +18,18 @@ import br.ufu.facom.mehar.sonar.dhcp.service.PoolService;
 
 @Service("database")
 public class DatabasePoolService implements PoolService{
-	private static String APPLICATION_NAME = "sonar-dhcp-server";
-	private static String INSTANCE_NAME = IPUtils.searchActiveInterfaceAddress().getAddress().getHostAddress();
-	private static String GROUP = "IP-POOL-TABLE";
-	
 	@Autowired
 	private MemoryPoolService memoryPoolService;
 	
 	@Autowired
-	private PropertyService propertyService;
+	private PropertyDataService propertyService;
 	
 	@Autowired
-	private TopologyService topologyService;
+	private TopologyDataService topologyService;
 
 	@PostConstruct
 	public void init() {
-		List<DataProperty> dataPropertyList = propertyService.getData(APPLICATION_NAME, INSTANCE_NAME, GROUP);
+		List<DataProperty> dataPropertyList = propertyService.getData(SonarProperties.APPLICATION_DHCP_SERVER, SonarProperties.INSTANCE_SHARED, SonarProperties.GROUP_DHCP_MAC_TO_IP);
 		for(DataProperty dataproperty : dataPropertyList) {
 			memoryPoolService.getMacToIp().put(dataproperty.getKey(), dataproperty.getValue());
 			memoryPoolService.getBusyIPs().add(dataproperty.getValue());
@@ -52,7 +49,7 @@ public class DatabasePoolService implements PoolService{
 	public String getIP(String macAddress) {
 		String normalizedMacAddress = IPUtils.normalizeMAC(macAddress);
 		String ip = this.memoryPoolService.getIP(normalizedMacAddress);
-		propertyService.setData(APPLICATION_NAME, INSTANCE_NAME, GROUP, normalizedMacAddress, ip);
+		propertyService.setData(SonarProperties.APPLICATION_DHCP_SERVER, SonarProperties.INSTANCE_SHARED, SonarProperties.GROUP_DHCP_MAC_TO_IP, normalizedMacAddress, ip);
 		return ip;
 	}
 }

@@ -71,7 +71,7 @@ public class OVSDBManager implements DeviceManager{
 	
 	@Override
 	public void configureController(Element element, String[] controllerTargets) {
-		String ip = element.getManagementIPAddressList().iterator().next();
+		String ip = element.getIpAddressList().iterator().next();
 		OvsdbClient client = connect(ip, DEFAULT_PORT);
 		try {
 			//Operations

@@ -61,7 +61,7 @@ public class CassandraDatabaseBuilder extends CassandraGenericRepository impleme
 		Session session = session();
 		try {
 			Metadata metadata = session.getCluster().getMetadata();
-			return metadata.getKeyspace("topology") != null && metadata.getKeyspace("property") != null;
+			return metadata.getKeyspace("core") != null && metadata.getKeyspace("topology") != null && metadata.getKeyspace("property") != null;
 		}  finally {
 			close(session);
 		}

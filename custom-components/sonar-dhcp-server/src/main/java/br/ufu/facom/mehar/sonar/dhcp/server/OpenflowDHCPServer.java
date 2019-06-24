@@ -29,6 +29,7 @@ import org.springframework.stereotype.Component;
 import br.ufu.facom.mehar.sonar.client.nem.action.NetworkEventAction;
 import br.ufu.facom.mehar.sonar.client.nem.configuration.SonarTopics;
 import br.ufu.facom.mehar.sonar.client.nem.service.EventService;
+import br.ufu.facom.mehar.sonar.core.util.IPUtils;
 import br.ufu.facom.mehar.sonar.core.util.exception.OpenflowConversionException;
 import br.ufu.facom.mehar.sonar.core.util.openflow.PacketInIndication;
 import br.ufu.facom.mehar.sonar.core.util.openflow.PacketOutRequest;
@@ -36,13 +37,15 @@ import br.ufu.facom.mehar.sonar.core.util.packet.DHCP;
 import br.ufu.facom.mehar.sonar.core.util.packet.Ethernet;
 import br.ufu.facom.mehar.sonar.core.util.packet.IPv4;
 import br.ufu.facom.mehar.sonar.core.util.packet.UDP;
+import br.ufu.facom.mehar.sonar.dhcp.engine.DHCPEngine;
+import br.ufu.facom.mehar.sonar.dhcp.engine.OpenflowDHCPEngine;
 
 @Component
 public class OpenflowDHCPServer {
 	Logger logger = LoggerFactory.getLogger(OpenflowDHCPServer.class);
 	
 	@Autowired
-	private SONArDHCPEngine dhcpServlet;
+	private OpenflowDHCPEngine dhcpServlet;
 	
 	@Autowired
 	private EventService eventService;
@@ -61,14 +64,11 @@ public class OpenflowDHCPServer {
 	@EventListener(ApplicationReadyEvent.class)
 	public void run() {
 		logger.info("Starting Openflow DHCP Server...");
-		logger.info("  - listening to topic: "+SonarTopics.TOPIC_DHCP_MESSAGE_INCOMING);
-		eventService.subscribe(SonarTopics.TOPIC_DHCP_MESSAGE_INCOMING, new NetworkEventAction() {
+		logger.info("  - listening to topic: "+SonarTopics.TOPIC_INTERCEPTOR_PACKET_IN_DHCP);
+		eventService.subscribe(SonarTopics.TOPIC_INTERCEPTOR_PACKET_IN_DHCP, new NetworkEventAction() {
 			@Override
 			public void handle(String event, byte[] payload) {
 				try {
-//					OFMessage message = ofMessageReader.readFrom(Unpooled.wrappedBuffer(payload));
-//					
-//					if( OFType.PACKET_IN.equals(message.getType()) ){
 					PacketInIndication packetInIndication = PacketInIndication.deserialize(payload, ofMessageReader);
 					
 					OFPacketIn packetIn = packetInIndication.getPacketIn();
@@ -85,8 +85,10 @@ public class OpenflowDHCPServer {
 								
 								byte[] datagramRequestData = dhcpMessage.serialize();
 								
+								OFPort inPort =  packetIn.getMatch().get(MatchField.IN_PORT);
+								
 								DatagramPacket requestDatagram = new DatagramPacket(datagramRequestData, datagramRequestData.length, packet.getDestinationAddress().toInetAddress(), datagram.getDestinationPort().getPort());
-								DatagramPacket responseDatagram = dhcpServlet.serviceDatagram(requestDatagram);
+								DatagramPacket responseDatagram = dhcpServlet.serviceDatagram(IPUtils.convertInetToIPString(packetInIndication.getSource()), Integer.toString(inPort.getPortNumber()) ,requestDatagram);
 								if(responseDatagram != null) {
 									byte[] datagramResponseData = responseDatagram.getData();
 									
@@ -104,8 +106,6 @@ public class OpenflowDHCPServer {
 									frame.setSourceMACAddress(MacAddress.of("00:00:00:00:00:01"));
 									
 									
-									OFPort inPort =  packetIn.getMatch().get(MatchField.IN_PORT);
-									
 									OFActionOutput output = ofFactory.actions().buildOutput()
 										    .setPort(inPort)
 										    .build();
@@ -116,12 +116,7 @@ public class OpenflowDHCPServer {
 											.setActions(Arrays.asList((OFAction)output))
 											.build();
 									
-//									ByteBuf byteBuf = Unpooled.buffer();
-//									packetOut.writeTo(byteBuf);
-//									
-//									eventService.publish(SonarTopics.TOPIC_OPENFLOW_PACKET_OUT, byteBuf.array());
-									
-									eventService.publish(SonarTopics.TOPIC_OPENFLOW_PACKET_OUT, new PacketOutRequest(packetInIndication.getSource(), packetOut).serialize());
+									eventService.publish(SonarTopics.TOPIC_INTERCEPTOR_CALL_PACKET_OUT, new PacketOutRequest(packetInIndication.getSource(), packetOut).serialize());
 								}
 								
 							}
