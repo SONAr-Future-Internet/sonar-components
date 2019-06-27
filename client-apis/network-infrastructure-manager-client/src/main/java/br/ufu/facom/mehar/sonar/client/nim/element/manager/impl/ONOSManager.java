@@ -159,7 +159,7 @@ public class ONOSManager implements SDNManager {
 				}
 			}
 			
-			if(timeoutReached(startDate, 5*flowSet.size()) && !flowPendingSet.isEmpty()) {
+			if(timeoutReached(startDate, 10*flowSet.size()) && !flowPendingSet.isEmpty()) {
 				throw new DeviceConfigurationTimeoutException("Configuration timeout for pending flows "+flowPendingSet);
 			}else {
 				logger.debug("Current flows:"+ObjectUtils.fromObject(responsePending));

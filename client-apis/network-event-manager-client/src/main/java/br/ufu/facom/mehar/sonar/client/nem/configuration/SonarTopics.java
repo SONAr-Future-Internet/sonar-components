@@ -63,5 +63,9 @@ public class SonarTopics {
 	
 	public static final String TOPIC_SCE_CALL_BOOT = "sonar.sce.call.boot";
 	public static final String TOPIC_SCE_CALLBACK_BOOT = "sonar.sce.callback.boot";
+	public static final String TOPIC_SCE_CALL_PNP_ROUTE = "sonar.sce.call.pnp.route";
+	public static final String TOPIC_SCE_CALLBACK_PNP_ROUTE = "sonar.sce.callback.pnp.route";
+	public static final String TOPIC_SCE_CALL_PNP_CONFIG = "sonar.sce.call.pnp.config";
+	public static final String TOPIC_SCE_CALLBACK_PNP_CONFIG = "sonar.sce.callback.pnp.config";
 	
 }

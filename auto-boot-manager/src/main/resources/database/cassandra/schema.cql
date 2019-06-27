@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS topology.element (
 	lastDicoveredBy TEXT,
 	lastDicoveredMethod TEXT,
 	lastDicoveredSource TEXT,
-	ofControllers list<UUID>,
+	ofControllerList list<UUID>,
 	ofDeviceId TEXT,
 	ofChannel TEXT,
 	manufacturer TEXT,

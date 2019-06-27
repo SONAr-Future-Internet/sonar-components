@@ -14,7 +14,12 @@ public class IPAssignmentEvent {
 	private String portInIp;
 	private String portInPort;
 	
+	public IPAssignmentEvent() {
+		super();
+	}
+	
 	public IPAssignmentEvent(String mac, String ip) {
+		this();
 		this.moment = new Date();
 		this.mac = mac;
 		this.ip = ip;

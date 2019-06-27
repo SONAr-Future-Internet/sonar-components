@@ -1,12 +1,11 @@
 package br.ufu.facom.mehar.sonar.organizing.configuration.algorithm.model;
 
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-
-import br.ufu.facom.mehar.sonar.core.model.topology.Element;
 
 public class SimpleGraph<T> {
 	private Map<Node<T>, Set<Node<T>>> mapAdjacences = new HashMap<Node<T>, Set<Node<T>>>();
@@ -86,6 +85,24 @@ public class SimpleGraph<T> {
 		return leafs;
 	}
 	
+	public void removeAll(Collection<T> valueList) {
+		Set<Node<T>> nodesToRemove = new HashSet<Node<T>>();
+		for(Node<T> node : mapAdjacences.keySet()) {
+			if(valueList.contains(node.getValue())) {
+				nodesToRemove.add(node);
+			}
+		}
+		
+		for(Node<T> node : nodesToRemove) {
+			mapAdjacences.remove(node);
+			for(Node<T> otherNode : mapAdjacences.keySet()) {
+				if(mapAdjacences.get(otherNode).contains(node)) {
+					mapAdjacences.get(otherNode).remove(node);
+				}
+			}
+		}
+	}
+	
 	public SimpleGraph<T> merge(SimpleGraph<T> mergeFromGraph) {
 		for(Node<T> node : mergeFromGraph.mapAdjacences.keySet()) {
 			if(!mapAdjacences.containsKey(node)) {
@@ -102,5 +119,4 @@ public class SimpleGraph<T> {
 	public void addNode(Node<T> node) {
 		mapAdjacences.put(node, new HashSet<Node<T>>());
 	}
-	
 }

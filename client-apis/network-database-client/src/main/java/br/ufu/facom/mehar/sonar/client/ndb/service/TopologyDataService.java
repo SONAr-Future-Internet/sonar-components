@@ -213,7 +213,7 @@ public class TopologyDataService {
 		return repository.getElementById(idElement);
 	}
 
-	public Element getElementByIPAddress(String address) {
+	public Element getElementByIP(String address) {
 		return repository.getElementByIPAddress(address);
 	}
 
@@ -284,6 +284,10 @@ public class TopologyDataService {
 		return repository.getPortsByRemoteIdElement(idElement);
 	}
 	
+	public Port getPortByIdElementAndOfPort(UUID idElement, String ofPort) {
+		return repository.getPortsByRemoteIdElement(idElement, ofPort);
+	}
+	
 	public Set<Port> getLinkedPortsByIdElement(Set<UUID> idElementList) {
 		Set<Port> resultSet = new HashSet<Port>();
 		for(Port port : repository.getPorts()) {
@@ -307,5 +311,4 @@ public class TopologyDataService {
 		}
 		return resultSet;
 	}
-
 }

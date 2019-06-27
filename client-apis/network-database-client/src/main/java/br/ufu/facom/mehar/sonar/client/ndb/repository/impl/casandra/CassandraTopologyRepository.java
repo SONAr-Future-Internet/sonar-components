@@ -381,7 +381,7 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 		Session session = session();
 		try {
 			Select.Where select = QueryBuilder.select().json().from(KEYSPACE, ELEMENT_COLECTION).allowFiltering()
-					.where(QueryBuilder.contains("managementIPAddressList", address));;
+					.where(QueryBuilder.contains("ipAddressList", address));;
 			ResultSet rs = session.execute(select);
 			
 			for(Row r : rs.all()) {
@@ -445,6 +445,24 @@ public class CassandraTopologyRepository extends CassandraGenericRepository impl
 			}
 			
 			return result;
+		} finally {
+			close(session);
+		}
+	}
+	
+	@Override
+	public Port getPortsByRemoteIdElement(UUID idElement, String ofPort) {
+		Session session = session();
+		try {
+			Select.Where select = QueryBuilder.select().json().from(KEYSPACE, PORT_COLECTION).allowFiltering()
+					.where(QueryBuilder.eq("idElement", idElement)).and(QueryBuilder.eq("ofPort", ofPort));;
+			ResultSet rs = session.execute(select);
+			
+			for(Row r : rs.all()) {
+				return ObjectUtils.toObject(r.getString(0), Port.class);
+			}
+			
+			return null;
 		} finally {
 			close(session);
 		}

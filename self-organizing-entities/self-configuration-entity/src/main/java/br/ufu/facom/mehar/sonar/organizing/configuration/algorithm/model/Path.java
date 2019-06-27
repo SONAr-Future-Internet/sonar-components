@@ -60,7 +60,20 @@ public class Path<T,U> {
 		return this.getPathMap().get(node);
 	}
 	
+	public List<Pair<Node<T>, Edge<U>>> getPath(T value) {
+		return this.getPathMap().get(this.getNode(value));
+	}
+	
 	public void setPath(Node<T> node, List<Pair<Node<T>, Edge<U>>> path) {
 		this.getPathMap().put(node, path);
+	}
+	
+	public Node<T> getNode(T value) {
+		for(Node<T> node : this.getPathMap().keySet()) {
+			if(node.getValue().equals(value)) {
+				return node;
+			}
+		}
+		return null;
 	}
 }

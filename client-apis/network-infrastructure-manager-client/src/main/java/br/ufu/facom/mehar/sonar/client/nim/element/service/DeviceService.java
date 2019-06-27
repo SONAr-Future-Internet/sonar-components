@@ -7,7 +7,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -46,7 +45,7 @@ public class DeviceService {
 	@Autowired 
 	private PropertyDataService propertyService;
 	
-	public void configureController(Set<Element> deviceSet, Controller controller, Boolean waitConnection) {
+	public void configureController(Collection<Element> deviceSet, Controller controller, Boolean waitConnection) {
 		this.configureController(deviceSet, Arrays.asList(controller), waitConnection);
 	}
 
@@ -58,7 +57,7 @@ public class DeviceService {
 		}
 	}
 	
-	public void configureController(final Set<Element> deviceSet, final List<Controller> controllerList, Boolean waitConnection) {
+	public void configureController(final Collection<Element> deviceSet, final List<Controller> controllerList, Boolean waitConnection) {
 		final ExecutorService taskExecutor = Executors.newFixedThreadPool(deviceSet.size() < 10? deviceSet.size(): 10);
 		final CountingLatch latch = new CountingLatch(0);
 		
@@ -101,7 +100,7 @@ public class DeviceService {
 		}
 	}
 	
-	public void waitConnection(List<Controller> controllerList, Set<Element> deviceSet) {
+	public void waitConnection(Collection<Controller> controllerList, Collection<Element> deviceSet) {
 		Map<String,Element> ipToElementMap = new HashMap<String,Element>();
 		Map<String,Element> macToElementMap = new HashMap<String,Element>();
 		for(final Element element : deviceSet) {

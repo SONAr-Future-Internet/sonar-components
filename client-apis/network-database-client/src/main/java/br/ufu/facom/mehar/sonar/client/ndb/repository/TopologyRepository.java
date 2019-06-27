@@ -51,6 +51,7 @@ public interface TopologyRepository {
 	public Set<Port> getPortsWithIP();
 	public Port getPortByIP(String ip);
 	public Set<Port> getPortsByRemoteIdElement(UUID idElement);
+	public Port getPortsByRemoteIdElement(UUID idElement, String ofPort);
 //	public Set<Port> getPortsByIdElement(Set<UUID> idElementList);
 	
 }
