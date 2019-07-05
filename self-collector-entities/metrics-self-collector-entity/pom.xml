@@ -17,59 +17,37 @@
 
 	<dependencies>
 		<!-- Internal Dependencies -->
-		<dependency>
-			<groupId>br.ufu.facom.mehar.sonar.core</groupId>
-			<artifactId>sonar-model</artifactId>
-			<version>${project.version}</version>
-		</dependency>
-
-		<dependency>
-			<groupId>br.ufu.facom.mehar.sonar.client</groupId>
-			<artifactId>network-event-manager-client</artifactId>
-			<version>${project.version}</version>
-		</dependency>
-
-		<!-- Spring Dependencies -->
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-amqp</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework</groupId>
-			<artifactId>spring-web</artifactId>
-			<exclusions>
-				<exclusion>
-					<artifactId>commons-logging</artifactId>
-					<groupId>commons-logging</groupId>
-				</exclusion>
-			</exclusions>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-test</artifactId>
-			<scope>test</scope>
-		</dependency>
-
-		<!-- Client -->
-		<dependency>
-			<groupId>org.apache.httpcomponents</groupId>
-			<artifactId>httpclient</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>com.fasterxml.jackson.core</groupId>
-			<artifactId>jackson-databind</artifactId>
-		</dependency>
-
-		<!-- OVSDB Client -->
-		<dependency>
-			<groupId>com.vmware.ovsdb</groupId>
-			<artifactId>ovsdb-client</artifactId>
-			<version>1.0.1</version>
-		</dependency>
+	    <dependency>
+	      <groupId>br.ufu.facom.mehar.sonar.core</groupId>
+	      <artifactId>sonar-model</artifactId>
+	      <version>${project.version}</version>
+	    </dependency>
+	    <dependency>
+	      <groupId>br.ufu.facom.mehar.sonar.core</groupId>
+	      <artifactId>sonar-util</artifactId>
+	      <version>${project.version}</version>
+	    </dependency>
+	    <dependency>
+	      <groupId>br.ufu.facom.mehar.sonar.client</groupId>
+	      <artifactId>network-database-client</artifactId>
+	      <version>${sonar.version}</version>
+	    </dependency>
+	    <dependency>
+	      <groupId>br.ufu.facom.mehar.sonar.client</groupId>
+	      <artifactId>network-event-manager-client</artifactId>
+	      <version>${sonar.version}</version>
+	     </dependency>
+	     <dependency>
+	      <groupId>br.ufu.facom.mehar.sonar.client</groupId>
+	      <artifactId>network-infrastructure-manager-client</artifactId>
+	      <version>${sonar.version}</version>
+	     </dependency>
+	
+	    <!-- Spring -->
+	    <dependency>
+	      <groupId>org.springframework.boot</groupId>
+	      <artifactId>spring-boot-starter-web</artifactId>
+	    </dependency>
 	</dependencies>
 
 	<build>

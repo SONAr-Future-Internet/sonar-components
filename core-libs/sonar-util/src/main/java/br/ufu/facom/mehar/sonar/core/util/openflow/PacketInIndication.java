@@ -5,8 +5,8 @@ import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 
 import org.projectfloodlight.openflow.exceptions.OFParseError;
+import org.projectfloodlight.openflow.protocol.OFFactories;
 import org.projectfloodlight.openflow.protocol.OFMessage;
-import org.projectfloodlight.openflow.protocol.OFMessageReader;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFType;
 
@@ -32,12 +32,41 @@ public class PacketInIndication {
 		this.source = source;
 		this.packetInBytes = packetInBytes;
 	}
+	
+	
+	public InetAddress getSource() {
+		return source;
+	}
+
+	public void setSource(InetAddress source) {
+		this.source = source;
+	}
+
+	public byte[] getPacketInBytes() {
+		return packetInBytes;
+	}
+
+	public void setPacketInBytes(byte[] packetInBytes) {
+		this.packetInBytes = packetInBytes;
+	}
+	
+	public void setPacketIn(OFPacketIn packetIn) {
+		this.packetIn = packetIn;
+	}
+	
+	public OFPacketIn getPacketIn() {
+		if(this.packetIn == null && packetInBytes != null) {
+			return deserializeOFMessage(); 
+		}
+		return packetIn;
+	}
 
 	public  byte[] serialize() {
 		if(packetInBytes == null) {
 			ByteBuf byteBuf = Unpooled.buffer();
 			packetIn.writeTo(byteBuf);
-			packetInBytes = byteBuf.array();
+			packetInBytes = new byte[byteBuf.readableBytes()];
+			byteBuf.getBytes(0, packetInBytes);
 		}
 		
 		byte[] sourceArray = source.getAddress();
@@ -54,6 +83,7 @@ public class PacketInIndication {
 		
 		return data;
 	}
+	
 	public static PacketInIndication deserialize(byte[] data) {
 		try {
 			ByteBuffer bb = ByteBuffer.wrap(data);
@@ -75,16 +105,12 @@ public class PacketInIndication {
 		} 
 	}
 	
-	public static PacketInIndication deserialize(byte[] data, OFMessageReader<OFMessage> ofMessageReader) {
+	private OFPacketIn deserializeOFMessage() {
 		try {
-			PacketInIndication packetInIndication = deserialize(data);
-			
-			OFMessage message = ofMessageReader.readFrom(Unpooled.wrappedBuffer(packetInIndication.getPacketInBytes()));
-			
+			OFMessage message = OFFactories.getGenericReader().readFrom(Unpooled.wrappedBuffer(packetInBytes));
 			if( OFType.PACKET_IN.equals(message.getType()) ){
-				OFPacketIn packetIn = (OFPacketIn)message;
-				packetInIndication.setPacketIn(packetIn);
-				return packetInIndication;
+				this.packetIn = (OFPacketIn)message;
+				return this.packetIn;
 			}else {
 				throw new OpenflowConversionException("OFMessage is not a PacketIn. Instead it is "+message.getType());
 			}
@@ -92,30 +118,4 @@ public class PacketInIndication {
 			throw new OpenflowConversionException("Unable to parse the packetIn of PacketInIndication!",e);
 		}
 	}
-
-	public InetAddress getSource() {
-		return source;
-	}
-
-	public void setSource(InetAddress source) {
-		this.source = source;
-	}
-
-	public OFPacketIn getPacketIn() {
-		return packetIn;
-	}
-
-	public void setPacketIn(OFPacketIn packetIn) {
-		this.packetIn = packetIn;
-	}
-
-	public byte[] getPacketInBytes() {
-		return packetInBytes;
-	}
-
-	public void setPacketInBytes(byte[] packetInBytes) {
-		this.packetInBytes = packetInBytes;
-	}
-	
-	
 }

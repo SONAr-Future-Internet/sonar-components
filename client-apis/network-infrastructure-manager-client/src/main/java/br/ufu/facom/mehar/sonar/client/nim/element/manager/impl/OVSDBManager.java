@@ -62,7 +62,9 @@ public class OVSDBManager implements DeviceManager{
 	
 	private static final String FLOW_TABLE = "Flow_Table";
 
-	private static final Integer TIMEOUT_IN_SECS = 3;
+	private static final Integer CONNECTION_TIMEOUT_IN_SECS = 3;
+	private static final Integer CONFIGURATION_TIMEOUT_IN_SECS = 20;
+	
 
 	private static final Integer DEFAULT_PORT = 6640;
 
@@ -146,7 +148,7 @@ public class OVSDBManager implements DeviceManager{
 				operations.add(new Commit(Boolean.TRUE));
 				
 				CompletableFuture<OperationResult[]> resultFuture = client.transact("Open_vSwitch",operations );
-				OperationResult[] resultList = resultFuture.get(10, TimeUnit.SECONDS);
+				OperationResult[] resultList = resultFuture.get(CONFIGURATION_TIMEOUT_IN_SECS, TimeUnit.SECONDS);
 				if (resultList != null && resultList.length > 0) {
 					for(OperationResult operationResult : resultList) {
 						
@@ -250,7 +252,7 @@ public class OVSDBManager implements DeviceManager{
 	private OvsdbClient connect(String ip, Integer port) {
 		try {
 			CompletableFuture<OvsdbClient> clientFuture = connector.connect(ip, port); // (2)
-			return clientFuture.get(TIMEOUT_IN_SECS, TimeUnit.SECONDS);
+			return clientFuture.get(CONNECTION_TIMEOUT_IN_SECS, TimeUnit.SECONDS);
 		} catch (InterruptedException | ExecutionException | TimeoutException e) {
 			logger.error("Error connecting to " + ip + ":" + port + ".");
 			return null;

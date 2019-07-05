@@ -5,8 +5,8 @@ import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 
 import org.projectfloodlight.openflow.exceptions.OFParseError;
+import org.projectfloodlight.openflow.protocol.OFFactories;
 import org.projectfloodlight.openflow.protocol.OFMessage;
-import org.projectfloodlight.openflow.protocol.OFMessageReader;
 import org.projectfloodlight.openflow.protocol.OFPacketOut;
 import org.projectfloodlight.openflow.protocol.OFType;
 
@@ -42,14 +42,6 @@ public class PacketOutRequest {
 		this.destination = destination;
 	}
 
-	public OFPacketOut getPacketOut() {
-		return packetOut;
-	}
-
-	public void setPacketOut(OFPacketOut packetOut) {
-		this.packetOut = packetOut;
-	}
-	
 	public byte[] getPacketOutBytes() {
 		return packetOutBytes;
 	}
@@ -57,19 +49,30 @@ public class PacketOutRequest {
 	public void setPacketOutBytes(byte[] packetOutBytes) {
 		this.packetOutBytes = packetOutBytes;
 	}
+	
+	public void setPacketOut(OFPacketOut packetOut) {
+		this.packetOut = packetOut;
+	}
+
+	public OFPacketOut getPacketOut() {
+		if(packetOut == null && packetOutBytes != null) {
+			return this.deserializeOFMessage();
+		}
+		return packetOut;
+	}
 
 	public  byte[] serialize() {
 		if(packetOutBytes == null) {
 			ByteBuf byteBuf = Unpooled.buffer();
 			packetOut.writeTo(byteBuf);
-			packetOutBytes = byteBuf.array();
+			packetOutBytes = new byte[byteBuf.readableBytes()];
+			byteBuf.getBytes(0, packetOutBytes);
 		}
 		
 		byte[] destinationArray = destination.getAddress();
-		
 		byte sizeDestination = (byte)destinationArray.length;
 		
-		int length= 1 + sizeDestination + packetOutBytes.length;
+		int length = 1 + sizeDestination + packetOutBytes.length;
 		
 		byte[] data = new byte[length];
 		ByteBuffer bb = ByteBuffer.wrap(data);
@@ -101,16 +104,12 @@ public class PacketOutRequest {
 		} 
 	}
 	
-	public static PacketOutRequest deserialize(byte[] data, OFMessageReader<OFMessage> ofMessageReader) {
+	private OFPacketOut deserializeOFMessage() {
 		try {
-			PacketOutRequest packetOutRequest = deserialize(data);
-			
-			OFMessage message = ofMessageReader.readFrom(Unpooled.wrappedBuffer(packetOutRequest.getPacketOutBytes()));
-			
+			OFMessage message = OFFactories.getGenericReader().readFrom(Unpooled.wrappedBuffer(packetOutBytes));
 			if( OFType.PACKET_OUT.equals(message.getType()) ){
-				OFPacketOut packetOut = (OFPacketOut)message;
-				packetOutRequest.setPacketOut(packetOut);
-				return packetOutRequest;
+				this.packetOut = (OFPacketOut)message;
+				return this.packetOut;
 			}else {
 				throw new OpenflowConversionException("OFMessage is not a PacketOut. Instead it is "+message.getType());
 			}
