@@ -31,5 +31,8 @@ public class CoreDataService{
 		return repository.getControllersByInterceptor(interceptor);
 	}
 
+	public Boolean deleteControllers() {
+		return repository.deleteControllers();
+	}
 
 }

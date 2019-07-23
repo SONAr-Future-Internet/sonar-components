@@ -1,5 +1,8 @@
 package br.ufu.facom.mehar.sonar.interceptor.netty;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import br.ufu.facom.mehar.sonar.interceptor.filter.Interceptor;
 import br.ufu.facom.mehar.sonar.interceptor.openflow.OFMessageHolder;
 import br.ufu.facom.mehar.sonar.interceptor.proxy.Connection;
@@ -7,6 +10,7 @@ import br.ufu.facom.mehar.sonar.interceptor.proxy.ConnectionManager;
 import io.netty.channel.ChannelHandlerContext;
 
 class OpenFlowChannelInboundDownstreamHandler extends OpenFlowChannelInboundHandler {
+	Logger logger = LoggerFactory.getLogger(OpenFlowChannelInboundDownstreamHandler.class);
 	
 	public OpenFlowChannelInboundDownstreamHandler(ConnectionManager connectionManager, Interceptor interceptor) {
         super(connectionManager, interceptor);
@@ -19,8 +23,12 @@ class OpenFlowChannelInboundDownstreamHandler extends OpenFlowChannelInboundHand
         //Considering that the channel is already registered in ConnectionManager as a "reverse" channel...
         Connection proxiedConnection = connectionManager.getConnection(ctx.channel());
         
-        //... just activate it to allow the transmission of messages
-        proxiedConnection.activeDownstream();
+        if(proxiedConnection != null) {
+        	//... just activate it to allow the transmission of messages
+        	proxiedConnection.activeDownstream();
+        }else {
+        	logger.error("Coudn't find a proxied connection for channel "+ctx.channel()+" - "+(ctx.channel().localAddress() != null? ctx.channel().localAddress(): "")+" -> "+(ctx.channel().remoteAddress() != null? ctx.channel().remoteAddress(): ""));
+        }
     }
 
     @Override

@@ -89,8 +89,24 @@ public class DHCPEngine extends DHCPServlet {
 		String macAddress = request.getChaddrAsHex();
 		InetAddress requestedAddress = request.getOptionAsInetAddr(DHCPConstants.DHO_DHCP_REQUESTED_ADDRESS);
 
-		subcassLogger.info("Request " + requestedAddress + " from " + macAddress);
-
+		String ip = requestedAddress.getHostAddress();
+		
+		subcassLogger.info("Request " + ip + " from " + macAddress);
+		
+		if(!poolService.isRegistered(macAddress, ip)) {
+			System.out.println("Not registered: "+macAddress+" "+ip);
+			if(!poolService.isAvailable(ip)) {
+				System.out.println("Not available: "+macAddress+" "+ip);
+				ip = poolService.getIP(macAddress);
+				requestedAddress = IPUtils.convertIPStringToInetAddress(ip);
+			}else {
+				System.out.println("Available: "+macAddress+" "+ip);
+				poolService.register(macAddress, ip);
+			}
+		}
+		
+		subcassLogger.info("Provide " + ip + " to " + macAddress);
+		
 		DHCPPacket response = request.clone();
 
 		response.setDHCPMessageType(DHCPConstants.BOOTREPLY);

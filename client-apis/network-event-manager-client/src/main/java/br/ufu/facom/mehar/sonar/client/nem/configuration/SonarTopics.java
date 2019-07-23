@@ -37,6 +37,18 @@ public class SonarTopics {
 	public static final String TOPIC_BOOT_START_CONFIGURATION_STAGE = "sonar.boot.start.configuration";
 	public static final String TOPIC_BOOT_FINISH_CONFIGURATION_STAGE = "sonar.boot.finish.configuration";
 	
+	public static final String TOPIC_PLUG_AND_PLAY = "sonar.pnp.#";
+	public static final String TOPIC_PLUG_AND_PLAY_START = "sonar.pnp.start.*";
+	public static final String TOPIC_PLUG_AND_PLAY_FINISH = "sonar.pnp.finish.*";
+	public static final String TOPIC_PLUG_AND_PLAY_START_DISCOVERY_STAGE = "sonar.pnp.start.discovery";
+	public static final String TOPIC_PLUG_AND_PLAY_FINISH_DISCOVERY_STAGE = "sonar.pnp.finish.discovery";
+	public static final String TOPIC_PLUG_AND_PLAY_START_CHANNEL_ROUTING_STAGE = "sonar.pnp.start.channel-routing";
+	public static final String TOPIC_PLUG_AND_PLAY_FINISH_CHANNEL_ROUTING_STAGE = "sonar.pnp.finish.channel-routing";
+	public static final String TOPIC_PLUG_AND_PLAY_START_CHANNEL_CONFIGURATION_STAGE = "sonar.pnp.start.channel-configuration";
+	public static final String TOPIC_PLUG_AND_PLAY_FINISH_CHANNEL_CONFIGURATION_STAGE = "sonar.pnp.finish.channel-configuration";
+	public static final String TOPIC_PLUG_AND_PLAY_START_CONFIGURATION_STAGE = "sonar.pnp.start.configuration";
+	public static final String TOPIC_PLUG_AND_PLAY_FINISH_CONFIGURATION_STAGE = "sonar.pnp.finish.configuration";
+	
 	public static final String TOPIC_METRICS = "sonar.metrics.#";
 	public static final String TOPIC_METRICS_ELEMENT = "sonar.metrics.element.*";
 	public static final String TOPIC_METRICS_ELEMENT_INFO = "sonar.metrics.element.info";
@@ -61,11 +73,16 @@ public class SonarTopics {
 	public static final String TOPIC_INTERCEPTOR_PACKET_IN_DHCP = "sonar.interceptor.packet-in.dhcp";
 	public static final String TOPIC_INTERCEPTOR_CALL_PACKET_OUT = "sonar.interceptor.call.packet-out";
 	
+	public static final String TOPIC_SCE_CALL = "sonar.sce.call.#";
+	public static final String TOPIC_SCE_CALLBACK = "sonar.sce.callback.#";
 	public static final String TOPIC_SCE_CALL_BOOT = "sonar.sce.call.boot";
 	public static final String TOPIC_SCE_CALLBACK_BOOT = "sonar.sce.callback.boot";
+	public static final String TOPIC_SCE_CALL_PNP = "sonar.sce.call.pnp.*";
+	public static final String TOPIC_SCE_CALLBACK_PNP = "sonar.sce.callback.pnp.*";
 	public static final String TOPIC_SCE_CALL_PNP_ROUTE = "sonar.sce.call.pnp.route";
 	public static final String TOPIC_SCE_CALLBACK_PNP_ROUTE = "sonar.sce.callback.pnp.route";
 	public static final String TOPIC_SCE_CALL_PNP_CONFIG = "sonar.sce.call.pnp.config";
 	public static final String TOPIC_SCE_CALLBACK_PNP_CONFIG = "sonar.sce.callback.pnp.config";
-	
+	public static final String TOPIC_SCE_CALL_PNP_FULL = "sonar.sce.call.pnp.full";
+	public static final String TOPIC_SCE_CALLBACK_PNP_FULL = "sonar.sce.callback.pnp.full";
 }

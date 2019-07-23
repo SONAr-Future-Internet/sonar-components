@@ -1,11 +1,9 @@
 package br.ufu.facom.mehar.sonar.collectors.topology.service;
 
 import java.util.Arrays;
-import java.util.Calendar;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
-import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -16,6 +14,7 @@ import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.PriorityBlockingQueue;
+import java.util.function.Predicate;
 
 import org.apache.commons.lang3.NotImplementedException;
 import org.slf4j.Logger;
@@ -50,9 +49,9 @@ import br.ufu.facom.mehar.sonar.core.util.IPUtils;
 import br.ufu.facom.mehar.sonar.core.util.ObjectUtils;
 
 @Component
-public class DiscoveryService {
+public class TopologyCollectorService {
 
-	private Logger logger = LoggerFactory.getLogger(DiscoveryService.class);
+	private Logger logger = LoggerFactory.getLogger(TopologyCollectorService.class);
 
 	@Autowired
 	private EventService eventService;
@@ -90,10 +89,12 @@ public class DiscoveryService {
 	private Integer fastBootWaitTimeBeforeAttempting;
 	@Value("${topology.scoe.discovery.fast-boot.waitTimeBetweenAttempts:2000}")
 	private Integer fastBootWaitTimeAttempts;
+	@Value("${topology.scoe.discovery.fast-boot.dontDiscovery:false}")
+	private Boolean fastBootDontDiscovery = false;
 	
 	//Merge Strategy
-	private static final String BOOTING_STRATEGY_MERGE = "merge";
-	private static final String BOOTING_STRATEGY_TRUNCATE = "truncate";
+	private static final String BOOTING_PERSISTENCE_STRATEGY_MERGE = "merge";
+	private static final String BOOTING_PERSISTENCE_STRATEGY_TRUNCATE = "truncate";
 	@Value("${topology.scoe.discovery.fast-boot.persistence.strategy:truncate}")
 	private String fastBootPersistenceStrategy;
 	
@@ -104,6 +105,12 @@ public class DiscoveryService {
 	private Integer plugAndPlayWaitTime;
 	@Value("${topology.scoe.discovery.plug-and-play.maxAttempts:100}")
 	private Integer plugAndPlayMaxAttempts;
+	
+	//Merge Strategy
+	private static final String PLUG_AND_PLAY_CONFIGURATION_STRATEGY_ONE_STAGE = "one-stage";
+	private static final String PLUG_AND_PLAY_CONFIGURATION_STRATEGY_TWO_STAGES = "two-stages";
+	@Value("${topology.scoe.discovery.plug-and-play.configuration.strategy:one-stage}")
+	private String plugAndPlayConfigurationStrategy;
 	
 	/*
 	 * Discovery Source Constants
@@ -116,6 +123,7 @@ public class DiscoveryService {
 	 */
 	private static final String METHOD_PLUG_AND_PLAY = "PLUG_AND_PLAY";
 	private static final String METHOD_BOOT = "BOOT";
+//	private static final String METHOD_UPDATE = "UPDATE";
 
 	/*
 	 * Network State (changed after bootstrapping procedures)
@@ -127,7 +135,7 @@ public class DiscoveryService {
 	private static final String PLUG_AND_PLAY_STATE_FREE = "FREE";
 	private static final String PLUG_AND_PLAY_STATE_LOCKED = "LOCKED";
 	private volatile String plug_and_play_state = PLUG_AND_PLAY_STATE_FREE;
-	
+
 	/*
 	 * Caching of IP assignment to Ports (used for discovery)
 	 */
@@ -145,6 +153,16 @@ public class DiscoveryService {
 	 */
 	@EventListener(ApplicationReadyEvent.class)
 	public void boot() throws InterruptedException {
+		if(fastBootDontDiscovery) {
+			List<Element> elements = topologyService.getElements();
+			for(Element element : elements) {
+				indexElement(element);
+			}
+			network_state = NETWORK_STATE_RUNNING;
+			logger.info("Network started (bypass)!");
+			return;
+		}
+		
 		//Run 3 Stages Boot
 		logger.info("Starting Network!");
 
@@ -154,7 +172,7 @@ public class DiscoveryService {
 		}
 		
 		/*
-		 * Stage 1 - Discovery
+		 * Boot - Stage 1 - Discovery
 		 */
 		eventService.publish(SonarTopics.TOPIC_BOOT_START_DISCOVERY_STAGE, "");
 		
@@ -178,6 +196,7 @@ public class DiscoveryService {
 			}
 			
 			// run a new discovery and verify data again
+			eventService.publish(SonarTopics.TOPIC_BOOT_START_DISCOVERY_STAGE, "");
 			discoveredElements = runBootDiscovery();
 			linkTopologyElements(discoveredElements);
 			serverList = filterServerElements(discoveredElements);
@@ -207,7 +226,7 @@ public class DiscoveryService {
 					if(!NETWORK_STATE_RUNNING.equals(network_state)) {
 						BootConfigurationReply bootReply = ObjectUtils.toObject(json,BootConfigurationReply.class);
 						
-						if(BOOTING_STRATEGY_TRUNCATE.equals(fastBootPersistenceStrategy)) {
+						if(BOOTING_PERSISTENCE_STRATEGY_TRUNCATE.equals(fastBootPersistenceStrategy)) {
 							topologyService.deleteDomains();
 							topologyService.deleteElements();
 							topologyService.deletePorts();
@@ -228,7 +247,7 @@ public class DiscoveryService {
 							}
 							
 						}else {
-							if(BOOTING_STRATEGY_MERGE.equals(fastBootPersistenceStrategy)) {
+							if(BOOTING_PERSISTENCE_STRATEGY_MERGE.equals(fastBootPersistenceStrategy)) {
 								throw new NotImplementedException("Method 'merge' of persistence strategy not implemented yet!");
 							}
 						}
@@ -241,133 +260,124 @@ public class DiscoveryService {
 			});
 		}
 	}
-	
+
 	/**
 	 * Plug-and-Play 
 	 */
 	
 	@EventListener(ApplicationReadyEvent.class)
 	public void listenToPlugAndPlayEvents() throws InterruptedException {
-		eventService.subscribe(SonarTopics.TOPIC_SCE_CALLBACK_PNP_CONFIG, new NetworkEventAction() {
+		logger.info("Listening "+SonarTopics.TOPIC_SCE_CALLBACK_PNP_CONFIG+" and "+SonarTopics.TOPIC_SCE_CALLBACK_PNP_FULL);
+		eventService.subscribe(SonarTopics.TOPIC_SCE_CALLBACK_PNP, new NetworkEventAction() {
 			@Override
 			public void handle(String event, String json) {
-				logger.info("New element plugged configured! "+json);
-				PlugAndPlayConfigReply configReply = ObjectUtils.toObject(json, PlugAndPlayConfigReply.class);
-				try {
-					for(Element element : configReply.getConfiguredElementList()) {
-						Element persistedElement = topologyService.getElementById(element.getIdElement());
-						if(persistedElement == null) {
-							for(String ip : element.getIpAddressList()) {
-								persistedElement = topologyService.getElementByIP(ip);
+				if(SonarTopics.TOPIC_SCE_CALLBACK_PNP_CONFIG.equals(event) || SonarTopics.TOPIC_SCE_CALLBACK_PNP_FULL.equals(event)) {
+					logger.info("New element plugged configured! "+json);
+					PlugAndPlayConfigReply configReply = ObjectUtils.toObject(json, PlugAndPlayConfigReply.class);
+					try {
+						for(Element element : configReply.getConfiguredElementList()) {
+							Element persistedElement = topologyService.getElementById(element.getIdElement());
+							if(persistedElement == null) {
+								for(String ip : element.getIpAddressList()) {
+									persistedElement = topologyService.getElementByIP(ip);
+								}
+							}
+							
+							if(persistedElement == null) {
+								saveCascade(element);
+								if(element.getTypeElement().equals(ElementType.SERVER)) {
+									eventService.publish(SonarTopics.TOPIC_TOPOLOGY_ELEMENT_CHANGED_STATE_DISCOVERED, element);
+								}else {
+									eventService.publish(SonarTopics.TOPIC_TOPOLOGY_ELEMENT_CHANGED_STATE_CONFIGURED, element);
+								}
+								indexElement(element);
+							}else {
+								mergeCascade(persistedElement, element, new HashSet<Link>(), Boolean.TRUE);
+								if(element.getTypeElement().equals(ElementType.SERVER)) {
+									if(!ElementState.DISCOVERED.equals(persistedElement.getState())) {
+										eventService.publish(SonarTopics.TOPIC_TOPOLOGY_ELEMENT_CHANGED_STATE_DISCOVERED, element);
+									}
+								}else {
+									if(!ElementState.CONFIGURED.equals(persistedElement.getState())) {
+										eventService.publish(SonarTopics.TOPIC_TOPOLOGY_ELEMENT_CHANGED_STATE_CONFIGURED, element);
+									}
+								}
 							}
 						}
 						
-						if(persistedElement == null) {
-							saveCascade(element);
-							if(element.getTypeElement().equals(ElementType.SERVER)) {
-								eventService.publish(SonarTopics.TOPIC_TOPOLOGY_ELEMENT_CHANGED_STATE_DISCOVERED, element);
-							}else {
-								eventService.publish(SonarTopics.TOPIC_TOPOLOGY_ELEMENT_CHANGED_STATE_CONFIGURED, element);
-							}
-							indexElement(element);
-						}else {
-							mergeCascade(persistedElement, element, new HashSet<Link>(), Boolean.TRUE);
-							if(element.getTypeElement().equals(ElementType.SERVER)) {
-								if(!ElementState.DISCOVERED.equals(persistedElement.getState())) {
-									eventService.publish(SonarTopics.TOPIC_TOPOLOGY_ELEMENT_CHANGED_STATE_DISCOVERED, element);
+						for(Port port : configReply.getChangedPortList()) {
+							update(port);
+						}
+					}finally {
+						plug_and_play_state=PLUG_AND_PLAY_STATE_FREE;
+					}
+				}else {
+					if(SonarTopics.TOPIC_SCE_CALLBACK_PNP_ROUTE.equals(event)) {
+						logger.info("Discovering a new element plugged! "+json);
+						try {
+							PlugAndPlayRouteReply routeReply = ObjectUtils.toObject(json, PlugAndPlayRouteReply.class);
+						
+							String ip = routeReply.getAssignedIP();
+							
+							Element element = topologyService.getElementByIP(ip);
+							if (element == null || !ElementState.CONFIGURED.equals(element.getState()) ) {
+								
+								List<Element> currentElements = queryCurrentElements();
+								Collection<Element> discoveredElements = null;
+								int attemptCount = 1;
+								boolean elementSuccesfullyDiscovered = false;
+								while(!elementSuccesfullyDiscovered) {
+									
+									/*
+									 * Plug-And-Play - SDN - Stage 3 : Discovery
+									 */
+									eventService.publish(SonarTopics.TOPIC_PLUG_AND_PLAY_START_DISCOVERY_STAGE, "");
+									
+									discoveredElements = runPlugAndPlayDiscoveryTwoStages(ip);
+								
+									if(!discoveredElements.isEmpty()) {
+										linkTopologyElements(currentElements, discoveredElements);
+										if(isElementConnectedToTopology(currentElements, discoveredElements)) {
+											elementSuccesfullyDiscovered = true;
+											break;
+										}
+									}
+									
+									// control the number of attempts to evict a infinite loop
+									if(attemptCount > plugAndPlayMaxAttempts) {
+										logger.error("Plug-And-Play  has failed cause the maxAttempts was reached.");
+										break;
+									}else {
+										// wait certain period of time before a new attempt of discovery
+										Thread.sleep(plugAndPlayWaitTime);
+										attemptCount++;
+									}
+									
+								}
+								
+								eventService.publish(SonarTopics.TOPIC_PLUG_AND_PLAY_FINISH_DISCOVERY_STAGE, "");
+								
+								if(elementSuccesfullyDiscovered && !discoveredElements.isEmpty()) {
+									PlugAndPlayConfigRequest configRequest = new PlugAndPlayConfigRequest();
+									configRequest.setPluggedElementList(discoveredElements);
+									configRequest.setCurrentElementList(currentElements);
+									eventService.publish(SonarTopics.TOPIC_SCE_CALL_PNP_CONFIG, configRequest );
+								}else {
+									plug_and_play_state=PLUG_AND_PLAY_STATE_FREE;
+									logger.error("Error while discovering new element plugged. Max attempts reached.");
 								}
 							}else {
-								if(!ElementState.CONFIGURED.equals(persistedElement.getState())) {
-									eventService.publish(SonarTopics.TOPIC_TOPOLOGY_ELEMENT_CHANGED_STATE_CONFIGURED, element);
-								}
+								plug_and_play_state=PLUG_AND_PLAY_STATE_FREE;
+								logger.info("Element plugged is alread discovered and configured.");
 							}
+						} catch(Exception e) {
+							plug_and_play_state=PLUG_AND_PLAY_STATE_FREE;
+							logger.error("Error while trying to plug-and-play a device. Stage 2 - Discovery.", e);
 						}
 					}
-					
-					for(Port port : configReply.getChangedPortList()) {
-						update(port);
-					}
-				}finally {
-					plug_and_play_state=PLUG_AND_PLAY_STATE_FREE;
 				}
 			}
 			
-		});
-		
-		eventService.subscribe(SonarTopics.TOPIC_SCE_CALLBACK_PNP_ROUTE, new NetworkEventAction() {
-			@Override
-			public void handle(String event, String json) {
-				logger.info("Discovering a new element plugged! "+json);
-				try {
-					PlugAndPlayRouteReply routeReply = ObjectUtils.toObject(json, PlugAndPlayRouteReply.class);
-				
-					String ip = routeReply.getAssignedIP();
-					
-					Element element = topologyService.getElementByIP(ip);
-					if (element == null || !ElementState.CONFIGURED.equals(element.getState()) ) {
-						
-						List<Element> currentElements = topologyService.getElements();
-						Set<Port> portList = topologyService.getPorts();
-						Map<UUID,Element> elementMap = new HashMap<UUID, Element>();
-						for(Element elmt : currentElements) {
-							elementMap.put(elmt.getIdElement(), elmt);
-						}
-						for(Port port : portList) {
-							Element elmt = elementMap.get(port.getIdElement());
-							if(elmt != null) {
-								if(elmt.getPortList() == null) {
-									elmt.setPortList(new HashSet<Port>(Arrays.asList(port)));
-								}else {
-									elmt.getPortList().add(port);
-								}
-							}
-						}
-						Collection<Element> discoveredElements = null;
-						
-						int attemptCount = 1;
-						boolean elementSuccesfullyDiscovered = false;
-						
-						while(!elementSuccesfullyDiscovered) {
-							discoveredElements = runPlugAndPlayDiscovery(ip);
-						
-							if(!discoveredElements.isEmpty()) {
-								linkTopologyElements(currentElements, discoveredElements);
-								if(isElementConnectedToTopology(currentElements, discoveredElements)) {
-									elementSuccesfullyDiscovered = true;
-									break;
-								}
-							}
-							
-							// control the number of attempts to evict a infinite loop
-							if(attemptCount > plugAndPlayMaxAttempts) {
-								logger.error("Plug-And-Play  has failed cause the maxAttempts was reached.");
-								break;
-							}else {
-								// wait certain period of time before a new attempt of discovery
-								Thread.sleep(plugAndPlayWaitTime);
-								attemptCount++;
-							}
-							
-						}
-						
-						if(elementSuccesfullyDiscovered && !discoveredElements.isEmpty()) {
-							PlugAndPlayConfigRequest configRequest = new PlugAndPlayConfigRequest();
-							configRequest.setPluggedElementList(discoveredElements);
-							configRequest.setCurrentElementList(currentElements);
-							eventService.publish(SonarTopics.TOPIC_SCE_CALL_PNP_CONFIG, configRequest );
-						}else {
-							plug_and_play_state=PLUG_AND_PLAY_STATE_FREE;
-							logger.error("Error while discovering new element plugged. Max attempts reached.");
-						}
-					}else {
-						plug_and_play_state=PLUG_AND_PLAY_STATE_FREE;
-						logger.info("Element plugged is alread discovered and configured.");
-					}
-				} catch(Exception e) {
-					plug_and_play_state=PLUG_AND_PLAY_STATE_FREE;
-					logger.error("Error while trying to plug-and-play a device. Stage 2 - Discovery.", e);
-				}
-			}
 		});
 		
 		eventService.subscribe(SonarTopics.TOPIC_DHCP_IP_ASSIGNED, new NetworkEventAction() {
@@ -379,12 +389,14 @@ public class DiscoveryService {
 				String mac = IPUtils.normalizeMAC(ipAssignmentEvent.getMac());
 				String ipSrc = ipAssignmentEvent.getPortInIp();
 				String portSrc = ipAssignmentEvent.getPortInPort();
-
+				
 				// caching mac and ip
 				macToIpCache.put(mac,ip);
 				
-				//block waiting for plug-and-play
+				// block waiting for plug-and-play
 				waitToRunPlugAndPlay();
+				
+				// plug-and-play
 				try {
 					Element element = topologyService.getElementByIP(ip);
 					
@@ -394,39 +406,135 @@ public class DiscoveryService {
 						if(ipSrc != null && !ipSrc.isEmpty() && portSrc != null && !portSrc.isEmpty()) {
 							Element attachmentElement = topologyService.getElementByIP(ipSrc);
 							if(attachmentElement != null) {
-								attachmentElement.setPortList(topologyService.getPortsByIdElement(attachmentElement.getIdElement()));
-								
-								Port attachmentPort = null;
-								for(Port port : attachmentElement.getPortList()) {
-									if(port.getOfPort() != null && port.getOfPort().equals(portSrc)) {
-										attachmentPort = port;
-										break;
+								if(plugAndPlayConfigurationStrategy.equals(PLUG_AND_PLAY_CONFIGURATION_STRATEGY_ONE_STAGE)) {
+									// Discovery until find the new element
+									List<Element> currentElements = queryCurrentElements();
+									Collection<Element> discoveredElements = null;
+									int attemptCount = 1;
+									boolean elementSuccesfullyDiscovered = false;
+									
+									while(!elementSuccesfullyDiscovered) {
+										/*
+										 * Plug-And-Play - Legacy - Stage 1 - Discovery
+										 */
+										eventService.publish(SonarTopics.TOPIC_PLUG_AND_PLAY_START_DISCOVERY_STAGE, "");
+										
+										discoveredElements = runPlugAndPlayDiscoveryOneStage(attachmentElement.getIpAddressList().iterator().next());
+									
+										if(!discoveredElements.isEmpty()) {
+											linkTopologyElements(currentElements, discoveredElements);
+											if(isElementConnectedToTopology(currentElements, discoveredElements)) {
+												elementSuccesfullyDiscovered = true;
+												break;
+											}
+										}
+										
+										// control the number of attempts to evict a infinite loop
+										if(attemptCount > plugAndPlayMaxAttempts) {
+											logger.error("Plug-And-Play has failed cause the maxAttempts was reached.");
+											break;
+										}else {
+											// wait certain period of time before a new attempt of discovery
+											Thread.sleep(plugAndPlayWaitTime);
+											attemptCount++;
+										}
+										
+									}
+									
+									eventService.publish(SonarTopics.TOPIC_PLUG_AND_PLAY_FINISH_DISCOVERY_STAGE, "");
+									
+									if(elementSuccesfullyDiscovered && !discoveredElements.isEmpty()) {
+										PlugAndPlayConfigRequest configRequest = new PlugAndPlayConfigRequest();
+										configRequest.setPluggedElementList(discoveredElements);
+										configRequest.setCurrentElementList(currentElements);
+										eventService.publish(SonarTopics.TOPIC_SCE_CALL_PNP_FULL, configRequest );
+									}else {
+										plug_and_play_state=PLUG_AND_PLAY_STATE_FREE;
+										logger.error("Error while discovering new element plugged. Max attempts reached.");
 									}
 								}
 								
-								if(attachmentPort != null) {
-									PlugAndPlayRouteRequest routeRequest = new PlugAndPlayRouteRequest();
-									routeRequest.setAttachmentElement(attachmentElement);
-									routeRequest.setAttachmentPort(attachmentPort);
-									routeRequest.setAssignedIP(ip);
-									routeRequest.setMacAddress(mac);
+								if(plugAndPlayConfigurationStrategy.equals(PLUG_AND_PLAY_CONFIGURATION_STRATEGY_TWO_STAGES)) {
+									attachmentElement.setPortList(topologyService.getPortsByIdElement(attachmentElement.getIdElement()));
 									
-									eventService.publish(SonarTopics.TOPIC_SCE_CALL_PNP_ROUTE, routeRequest );
-								}else {
-									logger.info("Coudn't find port with ofPort="+portSrc+" in element with ip="+ipSrc+" and id="+attachmentElement.getIdElement());
-									plug_and_play_state=PLUG_AND_PLAY_STATE_FREE;
+									Port attachmentPort = null;
+									for(Port port : attachmentElement.getPortList()) {
+										if(port.getOfPort() != null && port.getOfPort().equals(portSrc)) {
+											attachmentPort = port;
+											break;
+										}
+									}
+									
+									if(attachmentPort != null) {
+										PlugAndPlayRouteRequest routeRequest = new PlugAndPlayRouteRequest();
+										routeRequest.setAttachmentElement(attachmentElement);
+										routeRequest.setAttachmentPort(attachmentPort);
+										routeRequest.setAssignedIP(ip);
+										routeRequest.setMacAddress(mac);
+										
+										logger.info("Calling "+SonarTopics.TOPIC_SCE_CALL_PNP_ROUTE);
+										eventService.publish(SonarTopics.TOPIC_SCE_CALL_PNP_ROUTE, routeRequest );
+									}else {
+										logger.info("Coudn't find port with ofPort="+portSrc+" in element with ip="+ipSrc+" and id="+attachmentElement.getIdElement());
+										plug_and_play_state=PLUG_AND_PLAY_STATE_FREE;
+									}
 								}
+								
+								
 							}else {
 								logger.info("Coudn't find element with ip="+ipSrc);
 								plug_and_play_state=PLUG_AND_PLAY_STATE_FREE;
 							}
 						}else{
-							// no route is required
-							PlugAndPlayRouteReply discoveryRequest = new PlugAndPlayRouteReply();
-							discoveryRequest.setAssignedIP(ip);
-							discoveryRequest.setMacAddress(mac);
-							eventService.publish(SonarTopics.TOPIC_SCE_CALLBACK_PNP_ROUTE, discoveryRequest );
+							// Discovery until find the new element
+							List<Element> currentElements = queryCurrentElements();
+							Collection<Element> discoveredElements = null;
+							int attemptCount = 1;
+							boolean elementSuccesfullyDiscovered = false;
+							
+							while(!elementSuccesfullyDiscovered) {
+								/*
+								 * Plug-And-Play - Legacy - Stage 1 - Discovery
+								 */
+								eventService.publish(SonarTopics.TOPIC_PLUG_AND_PLAY_START_DISCOVERY_STAGE, "");
+								
+								discoveredElements = runPlugAndPlayDiscoveryOneStage();
+							
+								if(!discoveredElements.isEmpty()) {
+									linkTopologyElements(currentElements, discoveredElements);
+									if(isElementConnectedToTopology(currentElements, discoveredElements)) {
+										elementSuccesfullyDiscovered = true;
+										break;
+									}
+								}
+								
+								// control the number of attempts to evict a infinite loop
+								if(attemptCount > plugAndPlayMaxAttempts) {
+									logger.error("Plug-And-Play has failed cause the maxAttempts was reached.");
+									break;
+								}else {
+									// wait certain period of time before a new attempt of discovery
+									Thread.sleep(plugAndPlayWaitTime);
+									attemptCount++;
+								}
+								
+							}
+							
+							eventService.publish(SonarTopics.TOPIC_PLUG_AND_PLAY_FINISH_DISCOVERY_STAGE, "");
+							
+							if(elementSuccesfullyDiscovered && !discoveredElements.isEmpty()) {
+								PlugAndPlayConfigRequest configRequest = new PlugAndPlayConfigRequest();
+								configRequest.setPluggedElementList(discoveredElements);
+								configRequest.setCurrentElementList(currentElements);
+								eventService.publish(SonarTopics.TOPIC_SCE_CALL_PNP_FULL, configRequest );
+							}else {
+								plug_and_play_state=PLUG_AND_PLAY_STATE_FREE;
+								logger.error("Error while discovering new element plugged. Max attempts reached.");
+							}
+
 						}
+					}else {
+						logger.info("IP is already assigned to a configured device ID:"+element.getIdElement()+" IP:"+element.getIpAddressList()+" State:"+element.getState());
 					}
 				} catch(Exception e) {
 					plug_and_play_state=PLUG_AND_PLAY_STATE_FREE;
@@ -459,12 +567,43 @@ public class DiscoveryService {
 		}
 	}
 	
+	/**
+	 * Update 
+	 */
+//	@Scheduled(fixedDelayString = "${topology.scoe.discovery.update.scheduler.interval:6000}")
+//	public synchronized void updateElements() throws InterruptedException {
+//		if(NETWORK_STATE_RUNNING.equals(network_state)) {
+//			synchronized (UPDATE_LOCK) {
+//				if(UPDATE_STATE_FREE.equals(update_state)) {
+//					update_state = UPDATE_STATE_LOCKED;
+//				}else {
+//					logger.info("Waiting last discovery routine...");
+//					return;
+//				}
+//			}
+//			
+//			try {
+//				Collection<Element> discoveredElements = runUpdateDiscovery();
+//				linkTopologyElements(discoveredElements);
+//				Collection<Element> serverList = filterServerElements(discoveredElements);
+//				boolean isTopologyConnected = isTopologyConnected(discoveredElements);
+//				//TODO Continue here
+//			}finally {
+//				synchronized (UPDATE_LOCK) {
+//					update_state = UPDATE_STATE_FREE;
+//				}
+//			}
+//		}else {
+//			logger.info("Waiting network booting...");
+//		}
+//	}
+	
 	
 	/**
 	 * Discovery Routines
 	 */
 	private Collection<Element> runBootDiscovery() {
-		Collection<Element> resultList = this.discover(serverLocalIpAddress, Boolean.TRUE, Boolean.FALSE);
+		Collection<Element> resultList = this.discover(serverLocalIpAddress, NeighborhoodDiscoveryStrategy.DISCOVER_ALL_NEIGHBORS);
 		if(resultList != null && !resultList.isEmpty()) {
 			for(Element element : resultList) {
 				setDiscoveryFields(element, new Date(), getInstanceDiscovery(), METHOD_BOOT, SOURCE_DISCOVERY);
@@ -473,8 +612,8 @@ public class DiscoveryService {
 		return resultList;
 	}
 	
-	private Collection<Element> runPlugAndPlayDiscovery(String ip) {
-		Collection<Element> resultList = this.discover(ip, Boolean.TRUE, Boolean.TRUE);
+	private Collection<Element> runPlugAndPlayDiscoveryTwoStages(String ip) {
+		Collection<Element> resultList = this.discover(ip, NeighborhoodDiscoveryStrategy.DISCOVER_ONLY_NEW_NEIGHBORS);
 		if(resultList != null && !resultList.isEmpty()) {
 			for(Element element : resultList) {
 				setDiscoveryFields(element, new Date(), getInstanceDiscovery(), METHOD_PLUG_AND_PLAY, SOURCE_DHCP);
@@ -482,14 +621,76 @@ public class DiscoveryService {
 		}
 		return resultList;
 	}
+	
+	private Collection<Element> runPlugAndPlayDiscoveryOneStage() {
+		Collection<Element> resultList = this.discover(serverLocalIpAddress, NeighborhoodDiscoveryStrategy.DO_NOT_DISCOVER_NEW_NEIGHBORS_AND_CREATE_BASIC_REPRESENTATION);
+
+		if(resultList != null && !resultList.isEmpty()) {
+			//remove already created elements
+			resultList.removeIf(new Predicate<Element>() {
+				@Override
+				public boolean test(Element element) {
+					for(String ip : element.getIpAddressList()) {
+						if(ipToIdElementCache.containsKey(ip)) {
+							return true;
+						}
+					}
+					return false;
+				}
+			});
 		
-	private Collection<Element> discover(String ipAddress, Boolean discoverNeighborhood, Boolean justDiscoverNewDevices) {
-		final Stack<String> ipsToDiscovery = new Stack<String>();
-		ipsToDiscovery.add(ipAddress);
-		return this.discover(ipsToDiscovery, discoverNeighborhood, justDiscoverNewDevices);
+		
+			for(Element element : resultList) {
+				setDiscoveryFields(element, new Date(), getInstanceDiscovery(), METHOD_PLUG_AND_PLAY, SOURCE_DHCP);
+			}
+		}
+		return resultList;
 	}
 	
-	private Set<Element> discover(final Stack<String> ipsToDiscovery, final Boolean discoverNeighborhood, final Boolean justDiscoverNewDevices) {
+	private Collection<Element> runPlugAndPlayDiscoveryOneStage(String ip) {
+		Collection<Element> resultList = this.discover(ip, NeighborhoodDiscoveryStrategy.DO_NOT_DISCOVER_NEIGHBORS_AND_CREATE_BASIC_REPRESENTATION_FOR_NEW_ONES);
+
+		if(resultList != null && !resultList.isEmpty()) {
+			//remove already created elements
+			resultList.removeIf(new Predicate<Element>() {
+				@Override
+				public boolean test(Element element) {
+					for(String ip : element.getIpAddressList()) {
+						if(ipToIdElementCache.containsKey(ip)) {
+							return true;
+						}
+					}
+					return false;
+				}
+			});
+		
+		
+			for(Element element : resultList) {
+				setDiscoveryFields(element, new Date(), getInstanceDiscovery(), METHOD_PLUG_AND_PLAY, SOURCE_DHCP);
+			}
+		}
+		return resultList;
+	}
+	
+//	private Collection<Element> runUpdateDiscovery() {
+//		Collection<Element> resultList = this.discover(serverLocalIpAddress, Boolean.TRUE, Boolean.FALSE);
+//		if(resultList != null && !resultList.isEmpty()) {
+//			for(Element element : resultList) {
+//				setDiscoveryFields(element, new Date(), getInstanceDiscovery(), METHOD_UPDATE, SOURCE_DISCOVERY);
+//			}
+//		}
+//		return resultList;
+//	}
+	enum NeighborhoodDiscoveryStrategy{
+		DO_NOT_DISCOVER_NEIGHBORS, DISCOVER_ALL_NEIGHBORS, DISCOVER_ONLY_NEW_NEIGHBORS, DO_NOT_DISCOVER_NEW_NEIGHBORS_AND_CREATE_BASIC_REPRESENTATION, DO_NOT_DISCOVER_NEIGHBORS_AND_CREATE_BASIC_REPRESENTATION_FOR_NEW_ONES
+	}
+	private Collection<Element> discover(String ipAddress, NeighborhoodDiscoveryStrategy neighborhoodDiscoveryStrategy) {
+		final Stack<String> ipsToDiscovery = new Stack<String>();
+		ipsToDiscovery.add(ipAddress);
+		return this.discover(ipsToDiscovery, neighborhoodDiscoveryStrategy);
+	}
+	
+	private Set<Element> discover(final Stack<String> ipsToDiscovery, final NeighborhoodDiscoveryStrategy neighborhoodDiscoveryStrategy) {
 		final ExecutorService taskExecutor = Executors.newFixedThreadPool(16);
 		final CountingLatch latch = new CountingLatch(0);
 		final Set<Element> discoveredElements = Collections.synchronizedSet(new HashSet<Element>());
@@ -536,7 +737,7 @@ public class DiscoveryService {
 							}
 
 							// verify neighbors
-							if(discoverNeighborhood) {
+							if(!NeighborhoodDiscoveryStrategy.DO_NOT_DISCOVER_NEIGHBORS.equals(neighborhoodDiscoveryStrategy)) {
 								for(Port port : element.getPortList()) {
 									String remoteIp = port.getRemoteIpAddress();
 									if(remoteIp == null) {
@@ -550,15 +751,31 @@ public class DiscoveryService {
 
 									if(remoteIp != null) {
 										if(!ipsToDiscovery.contains(remoteIp) && !ipsDiscovered.contains(remoteIp) && !remoteIp.startsWith("172.17")) {
-											if(justDiscoverNewDevices) {
+											if(!NeighborhoodDiscoveryStrategy.DISCOVER_ALL_NEIGHBORS.equals(neighborhoodDiscoveryStrategy)) {
 												UUID idElement = ipToIdElementCache.get(remoteIp);
 												if(idElement == null) {
 													Element remoteElement = topologyService.getElementByIP(remoteIp);
-													indexElement(remoteElement);
+													if(remoteElement != null) {
+														indexElement(remoteElement);
+														idElement = remoteElement.getIdElement();
+													}
+												}
+												
+												if(idElement == null) {
 													if(!ipsToDiscovery.contains(remoteIp) && !ipsDiscovered.contains(remoteIp)) {
-														if(remoteElement == null) {
+														if(NeighborhoodDiscoveryStrategy.DISCOVER_ONLY_NEW_NEIGHBORS.equals(neighborhoodDiscoveryStrategy)) {
 															ipsToDiscovery.add(remoteIp);
-														} 
+														}else {
+															if(NeighborhoodDiscoveryStrategy.DO_NOT_DISCOVER_NEW_NEIGHBORS_AND_CREATE_BASIC_REPRESENTATION.equals(neighborhoodDiscoveryStrategy)
+															|| NeighborhoodDiscoveryStrategy.DO_NOT_DISCOVER_NEIGHBORS_AND_CREATE_BASIC_REPRESENTATION_FOR_NEW_ONES.equals(neighborhoodDiscoveryStrategy)) {
+																ipsDiscovered.add(remoteIp);
+																discoveredElements.add(buildBasicElement(remoteIp, port.getRemoteMacAddress(), currentIp, port.getMacAddress()));
+															}
+														}
+													}
+												}else {
+													if(NeighborhoodDiscoveryStrategy.DO_NOT_DISCOVER_NEW_NEIGHBORS_AND_CREATE_BASIC_REPRESENTATION.equals(neighborhoodDiscoveryStrategy)) {
+														ipsToDiscovery.add(remoteIp);
 													}
 												}
 											}else {
@@ -697,7 +914,27 @@ public class DiscoveryService {
 			}
 		}
 	}
-
+	
+	private List<Element> queryCurrentElements() {
+		List<Element> currentElements = topologyService.getElements();
+		Set<Port> portList = topologyService.getPorts();
+		Map<UUID,Element> elementMap = new HashMap<UUID, Element>();
+		for(Element elmt : currentElements) {
+			elementMap.put(elmt.getIdElement(), elmt);
+		}
+		for(Port port : portList) {
+			Element elmt = elementMap.get(port.getIdElement());
+			if(elmt != null) {
+				if(elmt.getPortList() == null) {
+					elmt.setPortList(new HashSet<Port>(Arrays.asList(port)));
+				}else {
+					elmt.getPortList().add(port);
+				}
+			}
+		}
+		return currentElements;
+	}
+	
 //	@Scheduled(fixedDelayString = "${topology.scoe.discovery.expiration.scheduler.interval:2000}")
 //	public void updateElements() throws InterruptedException {
 //		if(NETWORK_STATE_RUNNING.equals(network_state)) {
@@ -1097,34 +1334,34 @@ public class DiscoveryService {
 //		}
 //		return null;
 //	}
-	
-	private Map<String, String> getNeighbors(Element element) {
-		Map<String, String> neighbors = new HashMap<String, String>();
-		if (element.getPortList() == null || element.getPortList().isEmpty()) {
-			element.setPortList(getPortsByIdElement(element.getIdElement()));
-		}
-	
-		for (Port port : element.getPortList()) {
-			if (port.getRemoteIpAddress() != null) {
-				neighbors.put(port.getRemoteIpAddress(), port.getRemoteMacAddress());
-			} else {
-				if (port.getRemoteMacAddress() != null) {
-					Port remotePort = getPortByMac(port.getMacAddress());
-					if (remotePort != null) {
-						if (remotePort.getIpAddress() != null) {
-							neighbors.put(remotePort.getIpAddress(), port.getRemoteMacAddress());
-						} else {
-							Element remoteElement = getElementById(remotePort.getIdElement());
-							if (remoteElement != null) {
-								neighbors.put(remoteElement.getIpAddressList().iterator().next(), port.getRemoteMacAddress());
-							}
-						}
-					}
-				}
-			}
-		}
-		return neighbors;
-	}
+//	
+//	private Map<String, String> getNeighbors(Element element) {
+//		Map<String, String> neighbors = new HashMap<String, String>();
+//		if (element.getPortList() == null || element.getPortList().isEmpty()) {
+//			element.setPortList(getPortsByIdElement(element.getIdElement()));
+//		}
+//	
+//		for (Port port : element.getPortList()) {
+//			if (port.getRemoteIpAddress() != null) {
+//				neighbors.put(port.getRemoteIpAddress(), port.getRemoteMacAddress());
+//			} else {
+//				if (port.getRemoteMacAddress() != null) {
+//					Port remotePort = getPortByMac(port.getMacAddress());
+//					if (remotePort != null) {
+//						if (remotePort.getIpAddress() != null) {
+//							neighbors.put(remotePort.getIpAddress(), port.getRemoteMacAddress());
+//						} else {
+//							Element remoteElement = getElementById(remotePort.getIdElement());
+//							if (remoteElement != null) {
+//								neighbors.put(remoteElement.getIpAddressList().iterator().next(), port.getRemoteMacAddress());
+//							}
+//						}
+//					}
+//				}
+//			}
+//		}
+//		return neighbors;
+//	}
 
 	
 	/**
@@ -1145,23 +1382,23 @@ public class DiscoveryService {
 			return element;
 		}
 	}
-
-	private void removeCascade(Element persistedElement, Set<Link> linksChanged) {
-		synchronized (persistedElement.getIpAddressList().iterator().next()) {
-			Set<Port> persistedPorts = getPortsByIdElement(persistedElement.getIdElement());
-			if (persistedPorts != null && !persistedPorts.isEmpty()) {
-				for (Port portRemoved : persistedPorts) {
-					if (portRemoved.getRemoteIdPort() != null) {
-						// Port linked being removed
-						addLinkChange(linksChanged, portRemoved, null, LinkEvent.REMOVED );
-					}
-					remove(portRemoved);
-				}
-			}
-			topologyService.deleteElementById(persistedElement.getIdElement());
-			eventService.publish(SonarTopics.TOPIC_TOPOLOGY_ELEMENT_REMOVED, persistedElement);
-		}
-	}
+//
+//	private void removeCascade(Element persistedElement, Set<Link> linksChanged) {
+//		synchronized (persistedElement.getIpAddressList().iterator().next()) {
+//			Set<Port> persistedPorts = getPortsByIdElement(persistedElement.getIdElement());
+//			if (persistedPorts != null && !persistedPorts.isEmpty()) {
+//				for (Port portRemoved : persistedPorts) {
+//					if (portRemoved.getRemoteIdPort() != null) {
+//						// Port linked being removed
+//						addLinkChange(linksChanged, portRemoved, null, LinkEvent.REMOVED );
+//					}
+//					remove(portRemoved);
+//				}
+//			}
+//			topologyService.deleteElementById(persistedElement.getIdElement());
+//			eventService.publish(SonarTopics.TOPIC_TOPOLOGY_ELEMENT_REMOVED, persistedElement);
+//		}
+//	}
 
 	private Element mergeCascade(Element persistedElement, Element discoveredElement, Set<Link> linksChanged, Boolean completeUpdateMerge) {
 		synchronized (persistedElement.getIpAddressList().iterator().next()) {
@@ -1626,18 +1863,18 @@ public class DiscoveryService {
 	private Set<Port> getPortsByIdElement(UUID idElement) {
 		return topologyService.getPortsByIdElement(idElement);
 	}
-
-	private Element getElementByIP(String currentIp) {
-		return topologyService.getElementByIP(currentIp);
-	}
-
-	private Element getElementById(UUID idElement) {
-		return topologyService.getElementById(idElement);
-	}
-
-	private Port getPortByMac(String macAddress) {
-		return topologyService.getPortByMacAddress(macAddress);
-	}
+//
+//	private Element getElementByIP(String currentIp) {
+//		return topologyService.getElementByIP(currentIp);
+//	}
+//
+//	private Element getElementById(UUID idElement) {
+//		return topologyService.getElementById(idElement);
+//	}
+//
+//	private Port getPortByMac(String macAddress) {
+//		return topologyService.getPortByMacAddress(macAddress);
+//	}
 
 	/**
 	 * Util
@@ -1646,55 +1883,55 @@ public class DiscoveryService {
 		return "tscoe-" + serverLocalIpAddress;
 	}
 
-	private Boolean hasDiscoveryAlreadyExpired(Element element) {
-		Date lastUpdate = element.getLastDicoveredAt();
-		
-		if(lastUpdate == null) {
-			return Boolean.TRUE;
-		}
-		
-		Calendar whenUpdate = new GregorianCalendar();
-		whenUpdate.setTime(lastUpdate);
-		whenUpdate.add(Calendar.MILLISECOND, discoveryExpirationTimeout);
-
-		Calendar now = new GregorianCalendar();
-		now.setTime(new Date());
-
-		return !now.before(whenUpdate);
-	}
-	
-	private Boolean waitTimeOutReached(Element element) {
-		Date lastUpdate = element.getLastDicoveredAt();
-		
-		if(lastUpdate == null) {
-			return Boolean.TRUE;
-		}
-		
-		Calendar whenUpdate = new GregorianCalendar();
-		whenUpdate.setTime(lastUpdate);
-		whenUpdate.add(Calendar.MILLISECOND, waitingStateTimeout * 100);
-
-		Calendar now = new GregorianCalendar();
-		now.setTime(new Date());
-
-		return !now.before(whenUpdate);
-	}
-	
-	private Boolean canRunDiscovery(Element element) {
-		return !element.getState().equalsAny(ElementState.WAITING_CONFIGURATION, ElementState.WAITING_CONTROLLER_CONNECTION) || waitTimeOutReached(element);
-	}
-	
-	private boolean shouldDiscoveryImmediately(Element element) {
-		return ElementState.WAITING_DISCOVERY.equals(element.getState());
-	}
-	
-	private boolean isLeafElement(Element element) {
-		return getNeighbors(element).size() <= 1;
-	}
-	
-	private boolean isDeviceWithOpenflowSupport(Element persistedElement) {
-		return persistedElement.getTypeElement().equals(ElementType.DEVICE);
-	}
+//	private Boolean hasDiscoveryAlreadyExpired(Element element) {
+//		Date lastUpdate = element.getLastDicoveredAt();
+//		
+//		if(lastUpdate == null) {
+//			return Boolean.TRUE;
+//		}
+//		
+//		Calendar whenUpdate = new GregorianCalendar();
+//		whenUpdate.setTime(lastUpdate);
+//		whenUpdate.add(Calendar.MILLISECOND, discoveryExpirationTimeout);
+//
+//		Calendar now = new GregorianCalendar();
+//		now.setTime(new Date());
+//
+//		return !now.before(whenUpdate);
+//	}
+//	
+//	private Boolean waitTimeOutReached(Element element) {
+//		Date lastUpdate = element.getLastDicoveredAt();
+//		
+//		if(lastUpdate == null) {
+//			return Boolean.TRUE;
+//		}
+//		
+//		Calendar whenUpdate = new GregorianCalendar();
+//		whenUpdate.setTime(lastUpdate);
+//		whenUpdate.add(Calendar.MILLISECOND, waitingStateTimeout * 100);
+//
+//		Calendar now = new GregorianCalendar();
+//		now.setTime(new Date());
+//
+//		return !now.before(whenUpdate);
+//	}
+//	
+//	private Boolean canRunDiscovery(Element element) {
+//		return !element.getState().equalsAny(ElementState.WAITING_CONFIGURATION, ElementState.WAITING_CONTROLLER_CONNECTION) || waitTimeOutReached(element);
+//	}
+//	
+//	private boolean shouldDiscoveryImmediately(Element element) {
+//		return ElementState.WAITING_DISCOVERY.equals(element.getState());
+//	}
+//	
+//	private boolean isLeafElement(Element element) {
+//		return getNeighbors(element).size() <= 1;
+//	}
+//	
+//	private boolean isDeviceWithOpenflowSupport(Element persistedElement) {
+//		return persistedElement.getTypeElement().equals(ElementType.DEVICE);
+//	}
 
 	private void setElementType(Element element) {
 		// Temporary solution: TODO fix this setElementType
@@ -1719,15 +1956,19 @@ public class DiscoveryService {
 		return element;
 	}
 	
-	private Element buildBasicElementByIpAndMac(String ip, String mac, Boolean assingIpToPort) {
+	private Element buildBasicElement(String ip, String mac, String remoteIp, String remoteMac) {
 		Element element = new Element();
+		element.setIdElement(UUID.randomUUID());
 		element.setIpAddressList(new HashSet<String>(Arrays.asList(ip)));
+		element.setState(ElementState.DISCOVERED);
+		element.setTypeElement(ElementType.DEVICE);
 		if(mac != null) {
 			Port port = new Port();
+			port.setIdElement(element.getIdElement());
+			port.setIdPort(UUID.randomUUID());
 			port.setMacAddress(mac);
-			if(assingIpToPort) {
-				port.setIpAddress(ip);
-			}
+			port.setRemoteIpAddress(remoteIp);
+			port.setRemoteMacAddress(remoteMac);
 			element.setPortList(new HashSet<Port>(Arrays.asList(port)));
 		}
 		return element;

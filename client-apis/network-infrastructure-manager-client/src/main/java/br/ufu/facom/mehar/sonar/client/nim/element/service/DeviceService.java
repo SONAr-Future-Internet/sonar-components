@@ -153,11 +153,20 @@ public class DeviceService {
 							if(macOrNameToPort.containsKey(sdnPort.getMacAddress())) {
 								Port port = macOrNameToPort.get(sdnPort.getMacAddress());
 								port.setOfPort(sdnPort.getOfPort());
+								port.setPortName(sdnPort.getPortName());
 							}else {
 								if(macOrNameToPort.containsKey(sdnPort.getPortName())) {
 									Port port = macOrNameToPort.get(sdnPort.getPortName());
 									port.setPortName(sdnPort.getPortName());
 									port.setOfPort(sdnPort.getOfPort());
+								}else {
+									Port port = new Port();
+									port.setIdElement(configuredElement.getIdElement());
+									port.setIdPort(UUID.randomUUID());
+									port.setMacAddress(sdnPort.getMacAddress());
+									port.setPortName(sdnPort.getPortName());
+									port.setOfPort(sdnPort.getOfPort());
+									configuredElement.getPortList().add(port);
 								}
 							}
 						}

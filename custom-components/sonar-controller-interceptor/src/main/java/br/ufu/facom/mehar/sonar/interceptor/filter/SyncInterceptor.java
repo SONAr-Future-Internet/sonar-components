@@ -37,7 +37,7 @@ public class SyncInterceptor implements Interceptor{
 			if(message != null) {
 				InetSocketAddress sourceAddress = (InetSocketAddress)channelHandlerContext.channel().remoteAddress();
 				
-				logger.info(" ["+message.getType()+"] from "+IPUtils.convertInetToIPString(sourceAddress.getAddress()));
+				//logger.info(" ["+message.getType()+"] from "+IPUtils.convertInetToIPString(sourceAddress.getAddress()));
 				
 				if( OFType.PACKET_IN.equals(message.getType()) ){
 					OFPacketIn packetIn = (OFPacketIn)message;

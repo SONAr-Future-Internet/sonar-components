@@ -11,4 +11,5 @@ public interface CoreRepository {
 	public Controller save(Controller controller);
 	public Controller getControllerById(UUID idController);
 	public List<Controller> getControllersByInterceptor(String interceptor);
+	public Boolean deleteControllers();
 }

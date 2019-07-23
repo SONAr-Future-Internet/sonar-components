@@ -85,6 +85,38 @@ public class SimpleGraph<T> {
 		return leafs;
 	}
 	
+	public Set<Node<T>> getRoots() {
+		Set<Node<T>> roots = new HashSet<Node<T>>();
+		if(!mapAdjacences.isEmpty()) {
+			int maxIncidency = -1;
+			for(Node<T> node : mapAdjacences.keySet()) {
+				if(mapAdjacences.get(node).size() > maxIncidency) {
+					roots = new HashSet<Node<T>>(Arrays.asList(node));
+					maxIncidency = mapAdjacences.get(node).size();
+				}else {
+					if(mapAdjacences.get(node).size() == maxIncidency) {
+						roots.add(node);
+					}
+				}
+			}
+		}
+		return roots;
+	}
+	
+	public Set<T> removeRoots() {
+		Set<T> roots = new HashSet<T>();
+		for(Node<T> node : getRoots()) {
+			mapAdjacences.remove(node);
+			for(Node<T> otherNode : mapAdjacences.keySet()) {
+				if(mapAdjacences.get(otherNode).contains(node)) {
+					mapAdjacences.get(otherNode).remove(node);
+				}
+			}
+			roots.add(node.getValue());
+		}
+		return roots;
+	}
+	
 	public void removeAll(Collection<T> valueList) {
 		Set<Node<T>> nodesToRemove = new HashSet<Node<T>>();
 		for(Node<T> node : mapAdjacences.keySet()) {

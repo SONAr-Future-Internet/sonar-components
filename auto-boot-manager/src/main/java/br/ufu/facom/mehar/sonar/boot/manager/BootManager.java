@@ -118,16 +118,11 @@ public class BootManager {
 					return;
 				}
 			}
-//			TODO : Mock Interceptor
-//			ci = new Container();
-//			ci.setAccessPort(new HashMap<String, String>());
-//			ci.setServer("192.168.0.1");
-//			ci.getAccessPort().put("main", "6600");
 
 			verifyAndCreateController(sdn, ci, bindInterfaceAddress);
 
-			checkAndRunSingletonComponent(Component.TopologySelfCollectorEntity, propertiesBridge);
-			checkAndRunSingletonComponent(Component.SelfConfigurationEntity, propertiesBridge);
+//			checkAndRunSingletonComponent(Component.TopologySelfCollectorEntity, propertiesBridge);
+//			checkAndRunSingletonComponent(Component.SelfConfigurationEntity, propertiesBridge);
 
 		} finally {
 			finish();

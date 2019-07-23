@@ -82,19 +82,18 @@ public class Connection {
     //Register channel between switch and proxy
     public synchronized void registerUpstream(Channel upstreamChannel) {
         upstream = upstreamChannel;
-        logger.info("["+uniqueId+"] Connected incoming stream from Device: " + upstream.remoteAddress());
+        logger.info("["+uniqueId+"] Connected channel for incoming stream from Device: " + upstream.remoteAddress());
     }
 
     //Register channel between controller and proxy
     public synchronized void registerDownstream(Channel downstreamChannel) {
         downstream = downstreamChannel;
-        logger.info("["+uniqueId+"] Connecting outgoing stream for Controller " + downstream.remoteAddress()+"...");
     }
 
     //Set downstream channel as active send all messages from the queue
     public synchronized void activeDownstream() {
         downstreamActive = true;
-        logger.info("["+uniqueId+"] Connected outgoing stream for Controller " + downstream.remoteAddress());
+        logger.info("["+uniqueId+"] Connected channel for outgoing stream to Controller " + downstream.remoteAddress());
 
         OFMessageHolder container;
         
@@ -109,7 +108,7 @@ public class Connection {
         upstream = null;
         readyForInjectMessage = false;
 
-        logger.info("["+uniqueId+"] Disconnected incoming stream from Device " + downstream.remoteAddress());
+        logger.info("["+uniqueId+"] Disconnected incoming stream");
 
         if (downstream != null) {
             downstream.close();

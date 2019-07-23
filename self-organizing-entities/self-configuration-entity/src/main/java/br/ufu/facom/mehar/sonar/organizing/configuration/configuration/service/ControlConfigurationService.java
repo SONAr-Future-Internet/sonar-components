@@ -12,11 +12,8 @@ import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import br.ufu.facom.mehar.sonar.client.ndb.service.ConfigurationDataService;
-import br.ufu.facom.mehar.sonar.client.ndb.service.TopologyDataService;
 import br.ufu.facom.mehar.sonar.client.nim.element.model.ElementModelTranslator;
 import br.ufu.facom.mehar.sonar.core.model.configuration.Configuration;
 import br.ufu.facom.mehar.sonar.core.model.configuration.ConfigurationType;
@@ -41,12 +38,6 @@ import br.ufu.facom.mehar.sonar.organizing.configuration.algorithm.model.SimpleG
 public class ControlConfigurationService {
 	
 	private static final Logger logger = LoggerFactory.getLogger(ControlConfigurationService.class);
-
-	@Autowired
-	private ConfigurationDataService configurationService;
-
-	@Autowired
-	private TopologyDataService topologyService;
 	
 	/**
 	 * Graph Builders and Utils
@@ -141,7 +132,7 @@ public class ControlConfigurationService {
 	/**
 	 * Configuration Calculators 
 	 */
-	public Map<Element, List<Configuration>> generateConfiguration(Path<Element, Port> multiPath) {
+	public Map<Element, List<Configuration>> generateConfiguration(Path<Element, Port> multiPath, Boolean proxyDHCP) {
 		Map<Element, List<Configuration>> configurationMap = new HashMap<Element, List<Configuration>>();
 		
 		for(Node<Element> node : multiPath.getPathMap().keySet()) {
@@ -163,7 +154,7 @@ public class ControlConfigurationService {
 				if(i == path.size() -1) {//last segment of path...
 					Port portToRoot = segment.getSecond().getPeerB();
 					List<Configuration> configurationList = buildDeviceRouteConfiguration(element, portToRoot, multiPath.getOrigin().getValue().getIpAddressList());
-					configurationList.addAll(buildBasicDeviceConfiguration(element, portToRoot, Arrays.asList(multiPath.getOrigin().getValue())));
+					configurationList.addAll(buildBasicDeviceConfiguration(element, portToRoot, Arrays.asList(multiPath.getOrigin().getValue()), proxyDHCP));
 					if(configurationMap.containsKey(element)) {
 						configurationMap.get(element).addAll(configurationList);
 					}else {
@@ -206,7 +197,7 @@ public class ControlConfigurationService {
 		return configurationMap;
 	}
 	
-	public Map<Element, List<Configuration>> generateConfigurationBasicAndRouteToServers(Element element, Port portToServer, Collection<Element> serverList) {
+	public Map<Element, List<Configuration>> generateConfigurationBasicAndRouteToServers(Element element, Port portToServer, Collection<Element> serverList, Boolean proxyDHCP) {
 		Map<Element, List<Configuration>> configurationMap = new HashMap<Element, List<Configuration>>();
 		
 		Set<String> ipRoots = new HashSet<String>();
@@ -216,7 +207,7 @@ public class ControlConfigurationService {
 		
 		List<Configuration> configurationList = buildDeviceRouteConfiguration(element, portToServer, ipRoots);
 		
-		configurationList.addAll(buildBasicDeviceConfiguration(element, portToServer,serverList));
+		configurationList.addAll(buildBasicDeviceConfiguration(element, portToServer,serverList, proxyDHCP));
 		
 		configurationMap.put(element, configurationList);
 		
@@ -227,7 +218,7 @@ public class ControlConfigurationService {
 		return configurationMap;
 	}
 	
-	public Map<Element, List<Configuration>> generateConfigurationRelatedToSpecificElements(Path<Element, Port> multiPath, Collection<Element> pluggedElementList) {
+	public Map<Element, List<Configuration>> generateConfigurationRelatedToSpecificElements(Path<Element, Port> multiPath, Collection<Element> pluggedElementList,  Boolean proxyDHCP) {
 		Map<Element, List<Configuration>> configurationMap = new HashMap<Element, List<Configuration>>();
 		
 		for(Element element : pluggedElementList) {
@@ -249,7 +240,7 @@ public class ControlConfigurationService {
 				if(i == path.size() -1) {//last segment of path...
 					Port portToRoot = segment.getSecond().getPeerB();
 					List<Configuration> configurationList = buildDeviceRouteConfiguration(element, portToRoot, multiPath.getOrigin().getValue().getIpAddressList());
-					configurationList.addAll(buildBasicDeviceConfiguration(element, portToRoot, Arrays.asList(multiPath.getOrigin().getValue())));
+					configurationList.addAll(buildBasicDeviceConfiguration(element, portToRoot, Arrays.asList(multiPath.getOrigin().getValue()), proxyDHCP));
 					if(configurationMap.containsKey(element)) {
 						configurationMap.get(element).addAll(configurationList);
 					}else {
@@ -291,7 +282,7 @@ public class ControlConfigurationService {
 		return configurationList;
 	}
 
-	private List<Configuration> buildBasicDeviceConfiguration(Element element, Port portToServer, Collection<Element> serverList) {
+	private List<Configuration> buildBasicDeviceConfiguration(Element element, Port portToServer, Collection<Element> serverList, Boolean proxyDHCP) {
 		List<Configuration> configurationList = new ArrayList<Configuration>();
 		
 		// ARP Flow
@@ -322,8 +313,23 @@ public class ControlConfigurationService {
 		}
 		
 		//DHCP Routes
-		configurationList.add(buildFlowConfigurationTemplate(element, "DHCP Controller " + portToServer.getPortName(),
-				new Flow(element.getOfDeviceId(), element.getIdElement(),
+		if(proxyDHCP) {
+			configurationList.add(buildFlowConfigurationTemplate(element, "DHCP Proxy",
+					new Flow(element.getOfDeviceId(), element.getIdElement(),
+						Arrays.asList(
+								new FlowSelector(FlowSelectorType.ETH_TYPE, "0x0800"), 
+								new FlowSelector(FlowSelectorType.IPV4_DST, "255.255.255.255/32"),
+								new FlowSelector(FlowSelectorType.IP_PROTO, "17"),
+								new FlowSelector(FlowSelectorType.UDP_DST, "67") 
+						), 
+						Arrays.asList(
+								new FlowInstruction(FlowInstructionType.CONTROLLER)
+						)
+					)
+				));
+		}else {
+			configurationList.add(buildFlowConfigurationTemplate(element, "DHCP Broadcast (->)",
+				new Flow(
 					Arrays.asList(
 							new FlowSelector(FlowSelectorType.ETH_TYPE, "0x0800"), 
 							new FlowSelector(FlowSelectorType.IPV4_DST, "255.255.255.255/32"),
@@ -331,10 +337,30 @@ public class ControlConfigurationService {
 							new FlowSelector(FlowSelectorType.UDP_DST, "67") 
 					), 
 					Arrays.asList(
-							new FlowInstruction(FlowInstructionType.CONTROLLER)
+						new FlowInstruction(FlowInstructionType.OUTPUT, portToServer.getOfPort(), portToServer.getIdPort())
 					)
 				)
 			));
+				
+			for(Element server : serverList) {
+				for(String ipServer : server.getIpAddressList()) {
+					configurationList.add(buildFlowConfigurationTemplate(element, "DHCP Broadcast (<-)",  
+						new Flow(
+							Arrays.asList(
+									new FlowSelector(FlowSelectorType.ETH_TYPE, "0x0800"), 
+									new FlowSelector(FlowSelectorType.IPV4_SRC, ipServer+"/32"),
+									new FlowSelector(FlowSelectorType.IPV4_DST, "192.168.0.255/32"),
+									new FlowSelector(FlowSelectorType.IP_PROTO, "17"),
+									new FlowSelector(FlowSelectorType.UDP_DST, "68") 
+							), 
+							Arrays.asList(
+								new FlowInstruction(FlowInstructionType.FLOOD)
+							)
+						)
+					));
+				}
+			}
+		}
 
 		return configurationList;
 	}
@@ -430,5 +456,4 @@ public class ControlConfigurationService {
 			}
 		}
 	}
-
 }

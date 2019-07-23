@@ -33,8 +33,7 @@ public class MemoryPoolService implements PoolService {
 		String currentIp = poolFirstIp;
 		while(!currentIp.equals(poolLastIp)) {
 			if(!busyIPs.contains(currentIp)) {
-				macToIp.put(macAddress, currentIp);
-				busyIPs.add(currentIp);
+				register(macAddress, currentIp);
 				return currentIp;
 			}else {
 				currentIp = IPUtils.nextIP(currentIp);
@@ -43,6 +42,25 @@ public class MemoryPoolService implements PoolService {
 
 		//Overflow
 		throw new IpPoolOverflowException("Max IP of Pool '"+poolLastIp+"' was reached!");
+	}
+	
+	@Override
+	public void register(String macAddress, String ip) {
+		String normalizedMacAddress = IPUtils.normalizeMAC(macAddress);
+		macToIp.put(normalizedMacAddress, ip);
+		busyIPs.add(ip);
+	}
+
+	@Override
+	public Boolean isAvailable(String ip) {
+		return !busyIPs.contains(ip);
+	}
+	
+	@Override
+	public Boolean isRegistered(String macAddress, String ip) {
+		String normalizedMacAddress = IPUtils.normalizeMAC(macAddress);
+		String registeredIp = macToIp.get(normalizedMacAddress);
+		return registeredIp != null && registeredIp.equals(ip);
 	}
 
 	public String getPoolFirstIp() {

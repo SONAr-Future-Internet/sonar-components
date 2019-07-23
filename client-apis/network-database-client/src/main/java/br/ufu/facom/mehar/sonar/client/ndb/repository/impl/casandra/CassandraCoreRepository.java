@@ -12,6 +12,7 @@ import com.datastax.driver.core.Session;
 import com.datastax.driver.core.querybuilder.Insert;
 import com.datastax.driver.core.querybuilder.QueryBuilder;
 import com.datastax.driver.core.querybuilder.Select;
+import com.datastax.driver.core.querybuilder.Truncate;
 import com.datastax.driver.core.utils.UUIDs;
 
 import br.ufu.facom.mehar.sonar.client.ndb.repository.CoreRepository;
@@ -93,6 +94,20 @@ public class CassandraCoreRepository extends CassandraGenericRepository implemen
 			}
 
 			return result;
+		} finally {
+			close(session);
+		}
+	}
+
+	@Override
+	public Boolean deleteControllers() {
+		Session session = session();
+		try {
+			Truncate truncate = QueryBuilder.truncate(KEYSPACE, CONTROLLER_COLECTION);
+			
+			session.execute(truncate);
+
+			return Boolean.TRUE;
 		} finally {
 			close(session);
 		}

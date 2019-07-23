@@ -52,4 +52,22 @@ public class DatabasePoolService implements PoolService{
 		propertyService.setData(SonarProperties.APPLICATION_DHCP_SERVER, SonarProperties.INSTANCE_SHARED, SonarProperties.GROUP_DHCP_MAC_TO_IP, normalizedMacAddress, ip);
 		return ip;
 	}
+
+	@Override
+	public void register(String macAddress, String ip) {
+		String normalizedMacAddress = IPUtils.normalizeMAC(macAddress);
+		this.memoryPoolService.register(normalizedMacAddress, ip);
+		propertyService.setData(SonarProperties.APPLICATION_DHCP_SERVER, SonarProperties.INSTANCE_SHARED, SonarProperties.GROUP_DHCP_MAC_TO_IP, normalizedMacAddress, ip);
+	}
+
+	@Override
+	public Boolean isAvailable(String ip) {
+		return this.memoryPoolService.isAvailable(ip);
+	}
+
+	@Override
+	public Boolean isRegistered(String macAddress, String ip) {
+		String normalizedMacAddress = IPUtils.normalizeMAC(macAddress);
+		return this.memoryPoolService.isRegistered(normalizedMacAddress, ip);
+	}
 }

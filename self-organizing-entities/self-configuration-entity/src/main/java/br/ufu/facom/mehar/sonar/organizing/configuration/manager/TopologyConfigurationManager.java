@@ -3,7 +3,6 @@ package br.ufu.facom.mehar.sonar.organizing.configuration.manager;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -67,73 +66,85 @@ public class TopologyConfigurationManager {
     private TaskExecutor taskExecutor;
 	
 	//State control variables
-	private volatile Set<UUID> devicesInConfigurationProcess = Collections.synchronizedSet(new HashSet<UUID>());
 	private static volatile boolean runningBoot = false;
 	/**
 	 * Bootstrapping
 	 */
 	@EventListener(ApplicationReadyEvent.class)
 	public void listenToBootRequest() {
+		//Choose the controller arbitrarily...
+		final Controller choosedController = coreService.getControllers().get(0);
+		
 		logger.info("Listening "+SonarTopics.TOPIC_SCE_CALL_BOOT);
 		eventService.subscribe(SonarTopics.TOPIC_SCE_CALL_BOOT, new NetworkEventAction() {
 			@Override
 			public void handle(String event, String json) {
 				if(!runningBoot) {
 					try {
+						//Set boot-state to running
 						runningBoot = true;
+						
+						//Request
 						BootConfigurationRequest bootRequest = ObjectUtils.toObject(json, BootConfigurationRequest.class);
 						
-						/*
-						 * Stage 2 - Routing Calculation
-						 */
-						eventService.publish(SonarTopics.TOPIC_BOOT_START_ROUTING_STAGE, "");
-						//Build Graph
-						Graph<Element, Port> graph = controlConfigurationService.buildGraph(bootRequest.getElementList());
-						
-						//Prepare Data 'Holders'
+						//Data
 						SimpleGraph<Element> generalDependencyGraph = new SimpleGraph<Element>();
 						Map<Element, List<Configuration>> generalConfigurationMap = new HashMap<Element, List<Configuration>>();
 						
-						//Calculate 'Paths', 'Dependencies' and 'Configurations'
-						Element rootWithController = null;
-						for(Element root : controlConfigurationService.findServerRoots(bootRequest.getElementList())) {
-							rootWithController = root;
-							Path<Element, Port> multiPath = controlConfigurationService.calculateBestMultiPath(root, graph);
-							SimpleGraph<Element> dependencyGraph = controlConfigurationService.buildDependencyGraph(multiPath);
-							Map<Element, List<Configuration>> configurationMap = controlConfigurationService.generateConfiguration(multiPath);
-							generalDependencyGraph = controlConfigurationService.mergeGraph(generalDependencyGraph, dependencyGraph);
-							generalConfigurationMap = controlConfigurationService.mergeConfiguration(generalConfigurationMap, configurationMap);
+						/*
+						 * Boot - Stage 2 : Routing Calculation
+						 */
+						eventService.publish(SonarTopics.TOPIC_BOOT_START_ROUTING_STAGE, "");
+						try {
+							Long init = System.currentTimeMillis();
+							//Build Graph
+							Graph<Element, Port> graph = controlConfigurationService.buildGraph(bootRequest.getElementList());
+							
+							System.out.println("\n"+ (System.currentTimeMillis()-init));
+							
+							//Calculate 'Paths', 'Dependencies' and 'Configurations'
+							for(Element root : controlConfigurationService.findServerRoots(bootRequest.getElementList())) {
+								Path<Element, Port> multiPath = controlConfigurationService.calculateBestMultiPath(root, graph);
+								SimpleGraph<Element> dependencyGraph = controlConfigurationService.buildDependencyGraph(multiPath);
+								Map<Element, List<Configuration>> configurationMap = controlConfigurationService.generateConfiguration(multiPath, shouldProxyDHCP(choosedController));
+								generalDependencyGraph = controlConfigurationService.mergeGraph(generalDependencyGraph, dependencyGraph);
+								generalConfigurationMap = controlConfigurationService.mergeConfiguration(generalConfigurationMap, configurationMap);
+							}
+							System.out.println("\n"+ (System.currentTimeMillis()-init));
+						}finally {
+							eventService.publish(SonarTopics.TOPIC_BOOT_FINISH_ROUTING_STAGE, "");
 						}
-						eventService.publish(SonarTopics.TOPIC_BOOT_FINISH_ROUTING_STAGE, "");
 						
 						/*
-						 * Stage 3 - Configuring
+						 * Boot - Stage 3 - Configuration
 						 */
-						Controller controller = getControllerByServer(rootWithController);
 						eventService.publish(SonarTopics.TOPIC_BOOT_START_CONFIGURATION_STAGE, "");
-						if(controller != null) {
-							while(!generalDependencyGraph.isEmpty()) {
-								Set<Element> leafs = generalDependencyGraph.removeLeafs();
-								if(!leafs.isEmpty()) {
-									//Configure Controller
-									deviceService.configureController(leafs, controller , Boolean.TRUE);
-									
-									//Filter Flows
-									Map<Element, List<Configuration>> subConfigurationMap = filterConfiguration(generalConfigurationMap, leafs);
-									
-									//Configure Flows
-									deviceService.configure(controller, subConfigurationMap, Boolean.TRUE);
-									
-									//Set state
-									for(Element element : leafs) {
-										element.setState(ElementState.CONFIGURED);
+						try {
+							if(choosedController != null) {
+								while(!generalDependencyGraph.isEmpty()) {
+									Set<Element> leafs = generalDependencyGraph.removeLeafs();
+									if(!leafs.isEmpty()) {
+										//Configure Controller
+										deviceService.configureController(leafs, choosedController , Boolean.TRUE);
+										
+										//Filter Flows
+										Map<Element, List<Configuration>> subConfigurationMap = filterConfiguration(generalConfigurationMap, leafs);
+										
+										//Configure Flows
+										deviceService.configure(choosedController, subConfigurationMap, generalDependencyGraph.isEmpty()? Boolean.FALSE : Boolean.FALSE);
+										
+										//Set state
+										for(Element element : leafs) {
+											element.setState(ElementState.CONFIGURED);
+										}
 									}
 								}
+							}else {
+								logger.error("Unable to find a controller to configure!");
 							}
-						}else {
-							logger.error("Unable to find a controller in server "+rootWithController);
+						}finally {
+							eventService.publish(SonarTopics.TOPIC_BOOT_FINISH_CONFIGURATION_STAGE, "");
 						}
-						eventService.publish(SonarTopics.TOPIC_BOOT_FINISH_CONFIGURATION_STAGE, "");
 						
 						//Ending...
 						BootConfigurationReply bootReply = new BootConfigurationReply();
@@ -152,6 +163,9 @@ public class TopologyConfigurationManager {
 	 */
 	@EventListener(ApplicationReadyEvent.class)
 	public void listenToPlugAndPlayEvents() {
+		//Choose the controller arbitrarily...
+		final Controller choosedController = coreService.getControllers().get(0);
+				
 		logger.info("Listening "+SonarTopics.TOPIC_SCE_CALL_PNP_CONFIG);
 		eventService.subscribe(SonarTopics.TOPIC_SCE_CALL_PNP_CONFIG, new NetworkEventAction() {
 			@Override
@@ -161,19 +175,14 @@ public class TopologyConfigurationManager {
 				//Request data
 				PlugAndPlayConfigRequest configRequest = ObjectUtils.toObject(json, PlugAndPlayConfigRequest.class);
 				
+				/*
+				 * Plug-And-Play - SDN - Stage 4 : Configuration
+				 */
+				eventService.publish(SonarTopics.TOPIC_PLUG_AND_PLAY_START_CONFIGURATION_STAGE, "");
 				try {
-					//Choose Controller
-					Controller choosedController = null;
-					Set<Element> roots = controlConfigurationService.findServerRoots(configRequest.getCurrentElementList());
-					for(Element root : roots ) {
-						choosedController = getControllerByServer(root);
-						if(choosedController != null) {
-							break;
-						}
-					}
-					
 					//If the Controller is correctly defined
 					if(choosedController != null) {
+						Set<Element> roots = controlConfigurationService.findServerRoots(configRequest.getCurrentElementList());
 						List<Port> pluggedPortList = getPluggedPorts(configRequest.getPluggedElementList());
 						List<Port> remotePluggedPortList = getRemotePluggedPorts(pluggedPortList, configRequest.getCurrentElementList());
 						
@@ -183,7 +192,7 @@ public class TopologyConfigurationManager {
 							Port pluggedPort = pluggedPortList.iterator().next();
 							
 							//Generate Configuration
-							Map<Element, List<Configuration>> configurationMap = controlConfigurationService.generateConfigurationBasicAndRouteToServers(pluggedElement, pluggedPort, roots);
+							Map<Element, List<Configuration>> configurationMap = controlConfigurationService.generateConfigurationBasicAndRouteToServers(pluggedElement, pluggedPort, roots, shouldProxyDHCP(choosedController));
 							
 							//Configure Controller
 							deviceService.configureController(configRequest.getPluggedElementList(), choosedController , Boolean.TRUE);
@@ -201,6 +210,8 @@ public class TopologyConfigurationManager {
 							configReply.setConfiguredElementList(configRequest.getPluggedElementList());
 							configReply.setChangedPortList(remotePluggedPortList);
 							eventService.publish(SonarTopics.TOPIC_SCE_CALLBACK_PNP_CONFIG, configReply);
+							
+							eventService.publish(SonarTopics.TOPIC_PLUG_AND_PLAY_FINISH_CONFIGURATION_STAGE, "");
 							return;
 						}
 						
@@ -221,7 +232,7 @@ public class TopologyConfigurationManager {
 						for(Element root : controlConfigurationService.findServerRoots(mergedElementList)) {
 							Path<Element, Port> multiPath = controlConfigurationService.calculateBestMultiPath(root, graph);
 							SimpleGraph<Element> dependencyGraph = controlConfigurationService.buildDependencyGraph(multiPath);
-							Map<Element, List<Configuration>> configurationMap = controlConfigurationService.generateConfigurationRelatedToSpecificElements(multiPath, configRequest.getPluggedElementList());
+							Map<Element, List<Configuration>> configurationMap = controlConfigurationService.generateConfigurationRelatedToSpecificElements(multiPath, configRequest.getPluggedElementList(), shouldProxyDHCP(choosedController));
 							generalDependencyGraph = controlConfigurationService.mergeGraph(generalDependencyGraph, dependencyGraph);
 							generalConfigurationMap = controlConfigurationService.mergeConfiguration(generalConfigurationMap, configurationMap);
 						}
@@ -290,6 +301,8 @@ public class TopologyConfigurationManager {
 					logger.error("Error while configuring devices in plug-and-play task.",e);
 					PlugAndPlayConfigReply configReply = new PlugAndPlayConfigReply();
 					eventService.publish(SonarTopics.TOPIC_SCE_CALLBACK_PNP_CONFIG, configReply);
+				} finally {
+					eventService.publish(SonarTopics.TOPIC_PLUG_AND_PLAY_FINISH_CONFIGURATION_STAGE, "");
 				}
 			}
 		});
@@ -299,54 +312,72 @@ public class TopologyConfigurationManager {
 			@Override
 			public void handle(String event, String json) {
 				logger.info("Configuring routes for new plugged elements! "+json);
-				//Request data
+				//Request
 				PlugAndPlayRouteRequest routeRequest = ObjectUtils.toObject(json, PlugAndPlayRouteRequest.class);
 				
+				//Configuration
+				Map<Controller,Map<Element,List<Configuration>>> configurationPerControllerMap = new HashMap<Controller, Map<Element,List<Configuration>>>();
+				
 				try {
-					String targetIp = routeRequest.getAssignedIP();
-					Element attachmentElement = routeRequest.getAttachmentElement();
-					Port attachmentPort = routeRequest.getAttachmentPort();
-					
-					//Current Topology
-					List<Element> elementList = queryCurrentTopology();
-					
-					//Build Graph
-					Graph<Element, Port> graph = controlConfigurationService.buildGraph(elementList);
-					
-					//Prepare Data 'Holders'
-					Map<Element, List<Configuration>> generalConfigurationMap = new HashMap<Element, List<Configuration>>();
-					
-					//Calculate 'Paths', 'Dependencies' and 'Configurations'
-					for(Element root : controlConfigurationService.findServerRoots(elementList)) {
-						Path<Element, Port> multiPath = controlConfigurationService.calculateBestMultiPath(root, graph);
-						Map<Element, List<Configuration>> configurationMap = controlConfigurationService.generateConfigurationAccessRoute(multiPath, attachmentElement, attachmentPort, targetIp);
-						generalConfigurationMap = controlConfigurationService.mergeConfiguration(generalConfigurationMap, configurationMap);
-					}
-					
-					//Split configuration per Controller
-					Map<UUID, Controller> controllerMap = new HashMap<UUID, Controller>();
-					for(Controller controller : coreService.getControllers()) {
-						controllerMap.put(controller.getIdController(), controller);
-					}
-					Map<Controller,Map<Element,List<Configuration>>> configurationPerControllerMap = new HashMap<Controller, Map<Element,List<Configuration>>>();
-					for(Element element : generalConfigurationMap.keySet()) {
-						for(UUID idController : element.getOfControllerList()) {
-							if(controllerMap.containsKey(idController)) {
-								Controller controller = controllerMap.get(idController);
-								if(!configurationPerControllerMap.containsKey(controller)) {
-									configurationPerControllerMap.put(controller, new HashMap<Element, List<Configuration>>());
+					/*
+					 * Plug-And-Play - SDN - Stage 1 : Channel Routing
+					 */
+					eventService.publish(SonarTopics.TOPIC_PLUG_AND_PLAY_START_CHANNEL_ROUTING_STAGE, "");
+					try {
+						String targetIp = routeRequest.getAssignedIP();
+						Element attachmentElement = routeRequest.getAttachmentElement();
+						Port attachmentPort = routeRequest.getAttachmentPort();
+						
+						//Current Topology
+						List<Element> elementList = queryCurrentTopology();
+						
+						//Build Graph
+						Graph<Element, Port> graph = controlConfigurationService.buildGraph(elementList);
+						
+						//Prepare Data 'Holders'
+						Map<Element, List<Configuration>> generalConfigurationMap = new HashMap<Element, List<Configuration>>();
+						
+						//Calculate 'Paths', 'Dependencies' and 'Configurations'
+						for(Element root : controlConfigurationService.findServerRoots(elementList)) {
+							Path<Element, Port> multiPath = controlConfigurationService.calculateBestMultiPath(root, graph);
+							Map<Element, List<Configuration>> configurationMap = controlConfigurationService.generateConfigurationAccessRoute(multiPath, attachmentElement, attachmentPort, targetIp);
+							generalConfigurationMap = controlConfigurationService.mergeConfiguration(generalConfigurationMap, configurationMap);
+						}
+						
+						//Split configuration per Controller
+						Map<UUID, Controller> controllerMap = new HashMap<UUID, Controller>();
+						for(Controller controller : coreService.getControllers()) {
+							controllerMap.put(controller.getIdController(), controller);
+						}
+						for(Element element : generalConfigurationMap.keySet()) {
+							for(UUID idController : element.getOfControllerList()) {
+								if(controllerMap.containsKey(idController)) {
+									Controller controller = controllerMap.get(idController);
+									if(!configurationPerControllerMap.containsKey(controller)) {
+										configurationPerControllerMap.put(controller, new HashMap<Element, List<Configuration>>());
+									}
+									if(!configurationPerControllerMap.get(controller).containsKey(element)) {
+										configurationPerControllerMap.get(controller).put(element, new ArrayList<Configuration>());
+									}
+									configurationPerControllerMap.get(controller).get(element).addAll(generalConfigurationMap.get(element));
 								}
-								if(!configurationPerControllerMap.get(controller).containsKey(element)) {
-									configurationPerControllerMap.get(controller).put(element, new ArrayList<Configuration>());
-								}
-								configurationPerControllerMap.get(controller).get(element).addAll(generalConfigurationMap.get(element));
 							}
 						}
+					} finally {
+						eventService.publish(SonarTopics.TOPIC_PLUG_AND_PLAY_FINISH_CHANNEL_ROUTING_STAGE, "");
 					}
 					
-					//Configure Routes
-					for(Controller controller : configurationPerControllerMap.keySet()) {
-						deviceService.configure(controller, configurationPerControllerMap.get(controller), Boolean.TRUE);
+					/*
+					 * Plug-And-Play - SDN - Stage 2 : Channel Routing
+					 */
+					eventService.publish(SonarTopics.TOPIC_PLUG_AND_PLAY_START_CHANNEL_CONFIGURATION_STAGE, "");
+					try {
+						//Configure Routes
+						for(Controller controller : configurationPerControllerMap.keySet()) {
+							deviceService.configure(controller, configurationPerControllerMap.get(controller), Boolean.TRUE);
+						}
+					} finally {
+						eventService.publish(SonarTopics.TOPIC_PLUG_AND_PLAY_FINISH_CHANNEL_CONFIGURATION_STAGE, "");
 					}
 				} finally {
 					//Send Reply (the finally avoids deadlock)
@@ -357,23 +388,140 @@ public class TopologyConfigurationManager {
 				}
 			}
 		});
+		
+		logger.info("Listening "+SonarTopics.TOPIC_SCE_CALL_PNP_FULL);
+		eventService.subscribe(SonarTopics.TOPIC_SCE_CALL_PNP_FULL, new NetworkEventAction() {
+			@Override
+			public void handle(String event, String json) {
+				logger.info("Configuring new plugged elements! "+json);
+
+				//Request
+				PlugAndPlayConfigRequest configRequest = ObjectUtils.toObject(json, PlugAndPlayConfigRequest.class);
+				
+				//Data
+				Map<Element, List<Configuration>> generalConfigurationMap = new HashMap<Element, List<Configuration>>();
+				Map<Controller,Map<Element,List<Configuration>>> configurationForCurrentDevicesPerControllerMap = new HashMap<Controller, Map<Element,List<Configuration>>>();
+				SimpleGraph<Element> generalDependencyGraph = new SimpleGraph<Element>();
+				
+				/*
+				 * Plug-And-Play - Legacy - Stage 2 : Routing
+				 */
+				eventService.publish(SonarTopics.TOPIC_PLUG_AND_PLAY_START_CHANNEL_ROUTING_STAGE, "");
+				try {
+					//Merge Elements
+					Set<Element> mergedElementList = new HashSet<Element>();
+					mergedElementList.addAll(configRequest.getCurrentElementList());
+					mergedElementList.addAll(configRequest.getPluggedElementList());
+					
+					//Build Graph
+					Graph<Element, Port> graph = controlConfigurationService.buildGraph(mergedElementList);
+
+					//Calculate 'Paths', 'Dependencies' and 'Configurations'
+					for(Element root : controlConfigurationService.findServerRoots(mergedElementList)) {
+						Path<Element, Port> multiPath = controlConfigurationService.calculateBestMultiPath(root, graph);
+						SimpleGraph<Element> dependencyGraph = controlConfigurationService.buildDependencyGraph(multiPath);
+						Map<Element, List<Configuration>> configurationMap = controlConfigurationService.generateConfigurationRelatedToSpecificElements(multiPath, configRequest.getPluggedElementList(), shouldProxyDHCP(choosedController));
+						generalDependencyGraph = controlConfigurationService.mergeGraph(generalDependencyGraph, dependencyGraph);
+						generalConfigurationMap = controlConfigurationService.mergeConfiguration(generalConfigurationMap, configurationMap);
+					}
+					
+					//Split configuration per Controller, Device and Kind
+					Map<UUID, Controller> controllerMap = new HashMap<UUID, Controller>();
+					for(Controller controller : coreService.getControllers()) {
+						controllerMap.put(controller.getIdController(), controller);
+					}
+					for(Element element : generalConfigurationMap.keySet()) {
+						if(!configRequest.getPluggedElementList().contains(element)) {
+							for(UUID idController : element.getOfControllerList()) {
+								if(controllerMap.containsKey(idController)) {
+									Controller controller = controllerMap.get(idController);
+									if(!configurationForCurrentDevicesPerControllerMap.containsKey(controller)) {
+										configurationForCurrentDevicesPerControllerMap.put(controller, new HashMap<Element, List<Configuration>>());
+									}
+									if(!configurationForCurrentDevicesPerControllerMap.get(controller).containsKey(element)) {
+										configurationForCurrentDevicesPerControllerMap.get(controller).put(element, new ArrayList<Configuration>());
+									}
+									configurationForCurrentDevicesPerControllerMap.get(controller).get(element).addAll(generalConfigurationMap.get(element));
+								}
+							}
+						}
+					}
+				} finally {
+					eventService.publish(SonarTopics.TOPIC_PLUG_AND_PLAY_FINISH_CHANNEL_ROUTING_STAGE, "");
+				}
+				
+				/*
+				 * Plug-And-Play - Legacy - Stage 3 : Channel Configuration
+				 */
+				eventService.publish(SonarTopics.TOPIC_PLUG_AND_PLAY_START_CHANNEL_CONFIGURATION_STAGE, "");
+				try {
+					//Configure all current elements and remove already created elements from dependency graph
+					for(Controller controller : configurationForCurrentDevicesPerControllerMap.keySet()) {
+						deviceService.configure(controller,configurationForCurrentDevicesPerControllerMap.get(controller) , Boolean.TRUE);
+						
+					}
+				}finally {
+					eventService.publish(SonarTopics.TOPIC_PLUG_AND_PLAY_FINISH_CHANNEL_CONFIGURATION_STAGE, "");
+				}
+				
+				//Remove already configured elements
+				generalDependencyGraph.removeAll(configRequest.getCurrentElementList());
+				
+				/*
+				 * Plug-And-Play - Legacy - Stage 4 : Configuration
+				 */
+				eventService.publish(SonarTopics.TOPIC_PLUG_AND_PLAY_START_CONFIGURATION_STAGE, "");
+				try {
+					//Configure plugged elements
+					while(!generalDependencyGraph.isEmpty()) {
+						Set<Element> leafs = generalDependencyGraph.removeLeafs();
+						if(!leafs.isEmpty()) {
+							//Configure Controller
+							deviceService.configureController(leafs, choosedController , Boolean.TRUE);
+							
+							//Filter Flows
+							Map<Element, List<Configuration>> subConfigurationMap = filterConfiguration(generalConfigurationMap, leafs);
+							
+							//Configure Flows
+							deviceService.configure(choosedController, subConfigurationMap, Boolean.TRUE);
+							
+							//Set State
+							for(Element element : leafs) {
+								element.setState(ElementState.CONFIGURED);
+							}
+						}
+					}
+				} finally {
+					eventService.publish(SonarTopics.TOPIC_PLUG_AND_PLAY_FINISH_CONFIGURATION_STAGE, "");
+				}
+				//Identify ports changed
+				List<Port> pluggedPortList = getPluggedPorts(configRequest.getPluggedElementList());
+				List<Port> remotePluggedPortList = getRemotePluggedPorts(pluggedPortList, configRequest.getCurrentElementList());
+				
+				//Send Reply
+				PlugAndPlayConfigReply configReply = new PlugAndPlayConfigReply();
+				configReply.setConfiguredElementList(configRequest.getPluggedElementList());
+				configReply.setChangedPortList(remotePluggedPortList);
+				eventService.publish(SonarTopics.TOPIC_SCE_CALLBACK_PNP_FULL, configReply);
+			}
+		});
 	}
 	
 	/**
 	 * Util
 	 */
-	private Controller getControllerByServer(Element rootWithController) {
-		for(Controller controller : coreService.getControllers()) {
-			String south = controller.getSouth();
-			if(south != null && !south.isEmpty() && south.contains(":")) {
-				String ip = south.split(":",2)[0];
-				if(rootWithController.getIpAddressList().contains(ip)) {
-					return controller;
-				}
-			}
-		}
-		return null;
-	}
+//	private Controller getControllerByServer(Element rootWithController) {
+//		for(Controller controller : coreService.getControllers()) {
+//			String south = controller.getSouth();
+//			if(south != null && !south.isEmpty() && south.contains(":")) {
+//				String ip = south.split(":",2)[0];
+//				if(rootWithController.getIpAddressList().contains(ip)) {
+//					return controller;
+//				}
+//			}
+//		}
+//		return null;
+//	}
 	
 	private Map<Element, List<Configuration>> filterConfiguration(Map<Element, List<Configuration>> generalConfigurationMap, Set<Element> leafs) {
 		Map<Element, List<Configuration>> subConfigurationMap = new HashMap<Element, List<Configuration>>();
@@ -436,6 +584,10 @@ public class TopologyConfigurationManager {
 			}
 		}
 		return elementList;
+	}
+	
+	private Boolean shouldProxyDHCP(Controller controller) {
+		return controller.getInterceptor() != null && !controller.getInterceptor().isEmpty();
 	}
 	
 	/*@EventListener(ApplicationReadyEvent.class)
