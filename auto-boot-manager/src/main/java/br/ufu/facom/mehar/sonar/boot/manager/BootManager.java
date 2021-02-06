@@ -3,7 +3,6 @@ package br.ufu.facom.mehar.sonar.boot.manager;
 import java.net.InterfaceAddress;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -23,11 +22,15 @@ import br.ufu.facom.mehar.sonar.client.ndb.configuration.NDBConfiguration;
 import br.ufu.facom.mehar.sonar.client.ndb.repository.DatabaseBuilder;
 import br.ufu.facom.mehar.sonar.client.ndb.repository.impl.casandra.CassandraGenericRepository;
 import br.ufu.facom.mehar.sonar.client.ndb.service.CoreDataService;
+import br.ufu.facom.mehar.sonar.client.nem.action.NetworkEventAction;
+import br.ufu.facom.mehar.sonar.client.nem.configuration.SonarTopics;
+import br.ufu.facom.mehar.sonar.client.nem.service.EventService;
 import br.ufu.facom.mehar.sonar.client.nim.component.Component;
 import br.ufu.facom.mehar.sonar.client.nim.component.service.ComponentService;
 import br.ufu.facom.mehar.sonar.core.model.container.Container;
 import br.ufu.facom.mehar.sonar.core.model.container.ContainerStatus;
 import br.ufu.facom.mehar.sonar.core.model.core.Controller;
+import br.ufu.facom.mehar.sonar.core.model.sonar.Entity;
 import br.ufu.facom.mehar.sonar.core.util.IPUtils;
 import br.ufu.facom.mehar.sonar.core.util.ObjectUtils;
 
@@ -44,6 +47,9 @@ public class BootManager {
 
 	@Autowired
 	private CoreDataService coreService;
+
+	@Autowired
+	private EventService eventService;
 
 	@Value("${cim.manager.ip:localhost}")
 	private String CIM_IP;
@@ -124,35 +130,65 @@ public class BootManager {
 //			checkAndRunSingletonComponent(Component.TopologySelfCollectorEntity, propertiesBridge);
 //			checkAndRunSingletonComponent(Component.SelfConfigurationEntity, propertiesBridge);
 
+			waitSpecificEntitiesInitialization();
+			checkAndRunSingletonComponent(Component.SelfHealingEntity, propertiesBridge);
+
 		} finally {
 			finish();
 		}
 	}
 
+	private void waitSpecificEntitiesInitialization() {
+		logger.info("Listening " + SonarTopics.TOPIC_ENTITY_STARTED);
+		eventService.subscribe(SonarTopics.TOPIC_ENTITY_STARTED, new NetworkEventAction() {
+			@Override
+			public void handle(String event, String json) {
+				logger.info("-- receiving entity started: " + json);
+				Entity entity = ObjectUtils.toObject(json, Entity.class);
+				logger.info("-- entity started: " + entity);
+				if ("SHE".equalsIgnoreCase(entity.getName())) {
+					logger.info("-- SHE started. Sending the catalog to it");
+					containerMap.entrySet().forEach(entry -> {
+						logger.info("-- Container: " + entry.getKey() + " " + entry.getValue());
+						eventService.publish(SonarTopics.TOPIC_CATALOG_CONTAINERS, entry.getValue().get(0));
+					});
+
+				}
+			}
+		});
+
+	}
+
 	private void verifyAndCreateController(Container sdn, Container ci, InterfaceAddress bindInterfaceAddress) {
 		boolean controllerAlreadyCreated = false;
-		for(Controller controller : coreService.getControllers()) {
-			if(controller.getSouth().equals(findEndPoint(Component.SDNController, sdn, "south", bindInterfaceAddress.getAddress().getHostAddress()))) {
+		for (Controller controller : coreService.getControllers()) {
+			if (controller.getSouth().equals(findEndPoint(Component.SDNController, sdn, "south",
+					bindInterfaceAddress.getAddress().getHostAddress()))) {
 				controllerAlreadyCreated = true;
 			}
 		}
-		
-		if(!controllerAlreadyCreated) {
+
+		if (!controllerAlreadyCreated) {
 			Controller controller = new Controller();
 			controller.setIdController(UUID.randomUUID());
-			controller.setSouth(findEndPoint(Component.SDNController, sdn, "south", bindInterfaceAddress.getAddress().getHostAddress()));
-			controller.setNorth(findEndPoint(Component.SDNController, sdn, "north", bindInterfaceAddress.getAddress().getHostAddress()));
-			if(ci != null) {
-				controller.setInterceptor(findEndPoint(Component.ControllerInterceptor, ci, "main", bindInterfaceAddress.getAddress().getHostAddress()));
+			controller.setSouth(findEndPoint(Component.SDNController, sdn, "south",
+					bindInterfaceAddress.getAddress().getHostAddress()));
+			controller.setNorth(findEndPoint(Component.SDNController, sdn, "north",
+					bindInterfaceAddress.getAddress().getHostAddress()));
+			if (ci != null) {
+				controller.setInterceptor(findEndPoint(Component.ControllerInterceptor, ci, "main",
+						bindInterfaceAddress.getAddress().getHostAddress()));
 			}
 			controller.setStrategy(sdn.getImage());
 			if ("onos".equals(sdn.getImage())) {
 				controller.setAuthUsername("onos");
 				controller.setAuthPassword("rocks");
 			} else {
-				throw new NotImplementedException( "Support to SDN Controller images different of 'onos' is not supported yet! Image:" + sdn.getImage());
+				throw new NotImplementedException(
+						"Support to SDN Controller images different of 'onos' is not supported yet! Image:"
+								+ sdn.getImage());
 			}
-			
+
 			coreService.save(controller);
 		}
 	}

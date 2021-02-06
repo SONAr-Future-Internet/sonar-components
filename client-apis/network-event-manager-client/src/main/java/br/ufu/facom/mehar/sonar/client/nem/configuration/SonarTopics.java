@@ -26,7 +26,7 @@ public class SonarTopics {
 	public static final String TOPIC_TOPOLOGY_PORT_CHANGED = "sonar.topology.port.changed";
 	public static final String TOPIC_TOPOLOGY_LINKS = "sonar.topology.links.*";
 	public static final String TOPIC_TOPOLOGY_LINKS_CHANGED = "sonar.topology.links.changed";
-	
+
 	public static final String TOPIC_BOOT = "sonar.boot.#";
 	public static final String TOPIC_BOOT_START = "sonar.boot.start.*";
 	public static final String TOPIC_BOOT_FINISH = "sonar.boot.finish.*";
@@ -36,7 +36,7 @@ public class SonarTopics {
 	public static final String TOPIC_BOOT_FINISH_ROUTING_STAGE = "sonar.boot.finish.routing";
 	public static final String TOPIC_BOOT_START_CONFIGURATION_STAGE = "sonar.boot.start.configuration";
 	public static final String TOPIC_BOOT_FINISH_CONFIGURATION_STAGE = "sonar.boot.finish.configuration";
-	
+
 	public static final String TOPIC_PLUG_AND_PLAY = "sonar.pnp.#";
 	public static final String TOPIC_PLUG_AND_PLAY_START = "sonar.pnp.start.*";
 	public static final String TOPIC_PLUG_AND_PLAY_FINISH = "sonar.pnp.finish.*";
@@ -48,7 +48,7 @@ public class SonarTopics {
 	public static final String TOPIC_PLUG_AND_PLAY_FINISH_CHANNEL_CONFIGURATION_STAGE = "sonar.pnp.finish.channel-configuration";
 	public static final String TOPIC_PLUG_AND_PLAY_START_CONFIGURATION_STAGE = "sonar.pnp.start.configuration";
 	public static final String TOPIC_PLUG_AND_PLAY_FINISH_CONFIGURATION_STAGE = "sonar.pnp.finish.configuration";
-	
+
 	public static final String TOPIC_METRICS = "sonar.metrics.#";
 	public static final String TOPIC_METRICS_ELEMENT = "sonar.metrics.element.*";
 	public static final String TOPIC_METRICS_ELEMENT_INFO = "sonar.metrics.element.info";
@@ -59,20 +59,20 @@ public class SonarTopics {
 	public static final String TOPIC_METRICS_FLOW = "sonar.metrics.flow.*";
 	public static final String TOPIC_METRICS_FLOW_INFO = "sonar.metrics.flow.info";
 	public static final String TOPIC_METRICS_FLOW_WARN = "sonar.metrics.flow.warn";
-	
+
 	public static final String TOPIC_SERVICE = "sonar.service.*";
 	public static final String TOPIC_SERVICE_ADDED = "sonar.service.added";
 	public static final String TOPIC_SERVICE_REMOVED = "sonar.service.added";
 	public static final String TOPIC_SERVICE_CHANGED = "sonar.service.added";
-	
+
 	public static final String TOPIC_DHCP = "sonar.dhcp.*";
 	public static final String TOPIC_DHCP_IP_ASSIGNED = "sonar.dhcp.ip-assigned";
-	
+
 	public static final String TOPIC_INTERCEPTOR = "sonar.interceptor.#";
 	public static final String TOPIC_INTERCEPTOR_NEW_CONNECTION = "sonar.interceptor.new-connection";
 	public static final String TOPIC_INTERCEPTOR_PACKET_IN_DHCP = "sonar.interceptor.packet-in.dhcp";
 	public static final String TOPIC_INTERCEPTOR_CALL_PACKET_OUT = "sonar.interceptor.call.packet-out";
-	
+
 	public static final String TOPIC_SCE_CALL = "sonar.sce.call.#";
 	public static final String TOPIC_SCE_CALLBACK = "sonar.sce.callback.#";
 	public static final String TOPIC_SCE_CALL_BOOT = "sonar.sce.call.boot";
@@ -85,4 +85,8 @@ public class SonarTopics {
 	public static final String TOPIC_SCE_CALLBACK_PNP_CONFIG = "sonar.sce.callback.pnp.config";
 	public static final String TOPIC_SCE_CALL_PNP_FULL = "sonar.sce.call.pnp.full";
 	public static final String TOPIC_SCE_CALLBACK_PNP_FULL = "sonar.sce.callback.pnp.full";
+
+	// Topics for healing management purposes
+	public static final String TOPIC_CATALOG_CONTAINERS = "sonar.catalog.containers";
+	public static final String TOPIC_ENTITY_STARTED = "sonar.entity.started";
 }

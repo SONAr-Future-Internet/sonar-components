@@ -1,25 +1,70 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-  <modelVersion>4.0.0</modelVersion>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
 
-  <parent>
-        <groupId>br.ufu.facom.mehar.sonar</groupId>
-        <artifactId>self-organizing-entities</artifactId>
-        <version>0.0.1-SNAPSHOT</version>
-  </parent>
+	<parent>
+		<groupId>br.ufu.facom.mehar.sonar</groupId>
+		<artifactId>self-organizing-entities</artifactId>
+		<version>0.0.1-SNAPSHOT</version>
+	</parent>
 
-  <groupId>br.ufu.facom.mehar.sonar.soe</groupId>
-  <artifactId>self-healing-entity</artifactId>
-  <version>0.0.1-SNAPSHOT</version>
-  <packaging>jar</packaging>
-  <name>SHE - Self-Healing Entity</name>
-  <url>http://sonar.facom.ufu.br</url>
+	<groupId>br.ufu.facom.mehar.sonar.soe</groupId>
+	<artifactId>self-healing-entity</artifactId>
+	<version>0.0.1-SNAPSHOT</version>
+	<packaging>jar</packaging>
+	<name>SHE - Self-Healing Entity</name>
+	<url>http://sonar.facom.ufu.br</url>
 
-  <build>
-    
-  </build>
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-maven-plugin</artifactId>
+				<configuration>
+					<mainClass>br.ufu.facom.mehar.sonar.organizing.healing.App</mainClass>
+					<executable>true</executable>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>com.spotify</groupId>
+				<artifactId>dockerfile-maven-plugin</artifactId>
+			</plugin>
+		</plugins>
+	</build>
 
-  <dependencies>
-    
-  </dependencies>
+	<dependencies>
+		<!-- Internal Dependencies -->
+		<dependency>
+			<groupId>br.ufu.facom.mehar.sonar.core</groupId>
+			<artifactId>sonar-model</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>br.ufu.facom.mehar.sonar.core</groupId>
+			<artifactId>sonar-util</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>br.ufu.facom.mehar.sonar.client</groupId>
+			<artifactId>network-database-client</artifactId>
+			<version>${sonar.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>br.ufu.facom.mehar.sonar.client</groupId>
+			<artifactId>network-event-manager-client</artifactId>
+			<version>${sonar.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>br.ufu.facom.mehar.sonar.client</groupId>
+			<artifactId>network-infrastructure-manager-client</artifactId>
+			<version>${sonar.version}</version>
+		</dependency>
+
+		<!-- Spring -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-web</artifactId>
+		</dependency>
+	</dependencies>
 </project>

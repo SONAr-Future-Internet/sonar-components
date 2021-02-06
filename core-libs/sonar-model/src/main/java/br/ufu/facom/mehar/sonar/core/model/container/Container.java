@@ -7,7 +7,7 @@ import java.util.Set;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
-public class Container implements Serializable{
+public class Container implements Serializable {
 	private static final long serialVersionUID = -3994886242833800179L;
 
 	private String server;
@@ -26,14 +26,14 @@ public class Container implements Serializable{
 	private List<String> entrypoint;
 	private Set<String> volumes;
 	private String network;
-	
+
 	private ContainerStatus status;
-	
+
 	private Map<String, String> accessPort;
 
 	private Boolean autoDestroy;
 	private Boolean singleton;
-	
+
 	public Boolean getSingleton() {
 		return singleton;
 	}
@@ -113,7 +113,7 @@ public class Container implements Serializable{
 	public void setVersion(String version) {
 		this.version = version;
 	}
-	
+
 	public List<String> getEnv() {
 		return env;
 	}
@@ -161,7 +161,7 @@ public class Container implements Serializable{
 	public void setAccessPort(Map<String, String> accessPort) {
 		this.accessPort = accessPort;
 	}
-	
+
 	public String getNetwork() {
 		return network;
 	}
@@ -174,27 +174,27 @@ public class Container implements Serializable{
 	public String getImageNameWithNamespace() {
 		return Container.getImageNameWithNamespace(namespace, image);
 	}
-	
+
 	@JsonIgnore
 	public String getImageNameWithNamespaceAndVersion() {
 		return Container.getImageNameWithNamespaceAndVersion(namespace, image, version);
 	}
-	
+
 	@JsonIgnore
 	public String getImageNameWithVersion() {
 		return Container.getImageNameWithVersion(image, version);
 	}
-	
+
 	public static String getImageNameWithNamespaceAndVersion(String namespace, String image, String version) {
 		return Container.getImageNameWithNamespace(namespace, Container.getImageNameWithVersion(image, version));
 	}
-	
+
 	public static String getImageNameWithNamespace(String namespace, String image) {
-		return  namespace != null? namespace + "/" +image : image;
+		return namespace != null ? namespace + "/" + image : image;
 	}
-	
+
 	private static String getImageNameWithVersion(String image, String version) {
-		return version != null? image + ":" +version : image;
+		return version != null ? image + ":" + version : image;
 	}
 
 	@Override
@@ -239,4 +239,14 @@ public class Container implements Serializable{
 			return false;
 		return true;
 	}
+
+	@Override
+	public String toString() {
+		return "Container [server=" + server + ", namespace=" + namespace + ", image=" + image + ", version=" + version
+				+ ", id=" + id + ", name=" + name + ", portMapping=" + portMapping + ", env=" + env + ", exposedPorts="
+				+ exposedPorts + ", cmd=" + cmd + ", entrypoint=" + entrypoint + ", volumes=" + volumes + ", network="
+				+ network + ", status=" + status + ", accessPort=" + accessPort + ", autoDestroy=" + autoDestroy
+				+ ", singleton=" + singleton + "]";
+	}
+
 }
